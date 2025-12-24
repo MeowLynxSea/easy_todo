@@ -217,6 +217,7 @@ class _PomodoroScreenState extends State<PomodoroScreen>
                               label: l10n.stop,
                               onPressed: () async {
                                 await pomodoroProvider.stopTimer();
+                                if (!context.mounted) return;
                                 Navigator.of(context).pop();
                               },
                               backgroundColor: theme.colorScheme.errorContainer,
@@ -227,7 +228,8 @@ class _PomodoroScreenState extends State<PomodoroScreen>
                           // Complete button - available during active timer sessions and break time
                           if (pomodoroProvider.state == PomodoroState.running ||
                               pomodoroProvider.state == PomodoroState.paused ||
-                              pomodoroProvider.state == PomodoroState.completed ||
+                              pomodoroProvider.state ==
+                                  PomodoroState.completed ||
                               pomodoroProvider.state == PomodoroState.breakTime)
                             _ControlButton(
                               icon: Icons.check,
@@ -250,9 +252,12 @@ class _PomodoroScreenState extends State<PomodoroScreen>
                                     completedAt: tz.TZDateTime.now(tz.local),
                                     timeSpent:
                                         (widget.todo.timeSpent ?? 0) +
-                                        pomodoroProvider.getTotalTimeSpent(todoId: widget.todo.id),
+                                        pomodoroProvider.getTotalTimeSpent(
+                                          todoId: widget.todo.id,
+                                        ),
                                   ),
                                 );
+                                if (!context.mounted) return;
                                 Navigator.of(context).pop();
                               },
                               backgroundColor: theme.colorScheme.primary,

@@ -13,7 +13,10 @@ class AIService {
   final ApiRequestManager _requestManager;
   BuildContext? _context;
 
-  AIService(this.settings, {BuildContext? context}) : _dio = Dio(), _requestManager = ApiRequestManager(), _context = context {
+  AIService(this.settings, {BuildContext? context})
+    : _dio = Dio(),
+      _requestManager = ApiRequestManager(),
+      _context = context {
     // Configure rate limiting based on settings
     ApiRequestManager.setMaxRequestsPerMinute(settings.maxRequestsPerMinute);
   }
@@ -25,7 +28,6 @@ class AIService {
 
   // Get localized prompt from l10n framework - prioritize user language over app locale
   String _getPromptForLanguage(String promptType, String languageCode) {
-
     if (_context == null) {
       // Fallback to English if no context is available
       return _getFallbackPrompt(promptType);
@@ -34,7 +36,6 @@ class AIService {
     final l10n = AppLocalizations.of(_context!);
     if (l10n == null) {
       return _getFallbackPrompt(promptType);
-    } else {
     }
 
     // Handle language code variants (e.g., zh_CN, zh-Hans, etc.)
@@ -51,25 +52,57 @@ class AIService {
       String localizedPrompt;
       switch (promptType) {
         case 'categorization':
-          localizedPrompt = l10n.aiPromptCategorization('{title}', '{description}');
+          localizedPrompt = l10n.aiPromptCategorization(
+            '{title}',
+            '{description}',
+          );
           break;
         case 'priority':
-          localizedPrompt = l10n.aiPromptPriority('{deadline}', '{description}', '{hasDeadline}', '{title}');
+          localizedPrompt = l10n.aiPromptPriority(
+            '{deadline}',
+            '{description}',
+            '{hasDeadline}',
+            '{title}',
+          );
           break;
         case 'motivation':
-          localizedPrompt = l10n.aiPromptMotivation('{date}', '{description}', '{name}', '{unit}', '{value}');
+          localizedPrompt = l10n.aiPromptMotivation(
+            '{date}',
+            '{description}',
+            '{name}',
+            '{unit}',
+            '{value}',
+          );
           break;
         case 'notification':
-          localizedPrompt = l10n.aiPromptNotification('{category}', '{description}', '{priority}', '{title}');
+          localizedPrompt = l10n.aiPromptNotification(
+            '{category}',
+            '{description}',
+            '{priority}',
+            '{title}',
+          );
           break;
         case 'completion':
-          localizedPrompt = l10n.aiPromptCompletion('{completed}', '{percentage}', '{total}');
+          localizedPrompt = l10n.aiPromptCompletion(
+            '{completed}',
+            '{percentage}',
+            '{total}',
+          );
           break;
         case 'daily_summary':
-          localizedPrompt = l10n.aiPromptDailySummary('{avgPriority}', '{categories}', '{pendingCount}');
+          localizedPrompt = l10n.aiPromptDailySummary(
+            '{avgPriority}',
+            '{categories}',
+            '{pendingCount}',
+          );
           break;
         case 'pomodoro':
-          localizedPrompt = l10n.aiPromptPomodoro('{duration}', '{isCompleted}', '{sessionType}', '{taskTitle}');
+          localizedPrompt = l10n.aiPromptPomodoro(
+            '{duration}',
+            '{isCompleted}',
+            '{sessionType}',
+            '{taskTitle}',
+          );
           break;
         default:
           return _getFallbackPrompt(promptType);
@@ -78,7 +111,9 @@ class AIService {
       return localizedPrompt;
     } catch (e) {
       // If localization fails for the requested language, use fallback
-      debugPrint('AIService: ❌ Localization failed for $normalizedLanguageCode, using fallback. Error: $e');
+      debugPrint(
+        'AIService: ❌ Localization failed for $normalizedLanguageCode, using fallback. Error: $e',
+      );
       return _getFallbackPrompt(promptType);
     }
   }
@@ -199,7 +234,7 @@ class AIService {
 
   Future<String?> callAI(String prompt, String languageCode) async {
     if (!settings.isValid) {
-        return null;
+      return null;
     }
 
     try {
@@ -214,18 +249,26 @@ class AIService {
             final content = _extractContentFromResponse(data);
             return content;
           } else {
-            debugPrint('AIService: API Error - Status: ${response.statusCode}, Body: ${response.data}');
+            debugPrint(
+              'AIService: API Error - Status: ${response.statusCode}, Body: ${response.data}',
+            );
             throw Exception('API Error: ${response.statusCode}');
           }
         },
-        timeout: Duration(milliseconds: settings.requestTimeout + 10000), // Add buffer
+        timeout: Duration(
+          milliseconds: settings.requestTimeout + 10000,
+        ), // Add buffer
       );
     } on DioException catch (e) {
       debugPrint('AIService: API Error (${e.type}): ${e.message}');
       if (e.type == DioExceptionType.connectionError) {
-        debugPrint('AIService: Connection error - check if AI service is running');
+        debugPrint(
+          'AIService: Connection error - check if AI service is running',
+        );
       } else if (e.type == DioExceptionType.connectionTimeout) {
-        debugPrint('AIService: Request timeout - consider increasing timeout value');
+        debugPrint(
+          'AIService: Request timeout - consider increasing timeout value',
+        );
       } else if (e.response?.statusCode == 429) {
         debugPrint('AIService: Rate limited - too many requests');
       } else if (e.response?.statusCode == 401) {
@@ -249,12 +292,10 @@ class AIService {
           'options': {
             'temperature': settings.temperature,
             'num_predict': settings.maxTokens,
-          }
+          },
         },
         options: Options(
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: {'Content-Type': 'application/json'},
           receiveTimeout: Duration(milliseconds: settings.requestTimeout),
           sendTimeout: Duration(milliseconds: settings.requestTimeout),
         ),
@@ -266,10 +307,7 @@ class AIService {
         data: {
           'model': settings.modelName,
           'messages': [
-            {
-              'role': 'user',
-              'content': prompt,
-            }
+            {'role': 'user', 'content': prompt},
           ],
           'temperature': settings.temperature,
           'max_tokens': settings.maxTokens,
@@ -348,7 +386,10 @@ class AIService {
 
     String basePrompt = _getPromptForLanguage('motivation', languageCode)
         .replaceAll('{name}', 'Daily Progress')
-        .replaceAll('{description}', 'Task completion rate: ${statistics.completionRate.toStringAsFixed(1)}%')
+        .replaceAll(
+          '{description}',
+          'Task completion rate: ${statistics.completionRate.toStringAsFixed(1)}%',
+        )
         .replaceAll('{value}', statistics.completionRate.toString())
         .replaceAll('{unit}', '%')
         .replaceAll('{date}', statistics.date.toIso8601String());
@@ -373,9 +414,12 @@ class AIService {
         .replaceAll('{description}', todo.description ?? '')
         .replaceAll('{category}', todo.aiCategory ?? 'general')
         .replaceAll('{priority}', todo.aiPriority.toString())
-        .replaceAll('{reminderTime}', todo.reminderTime != null
-            ? '${todo.reminderTime!.hour}:${todo.reminderTime!.minute.toString().padLeft(2, '0')}'
-            : 'no specific time');
+        .replaceAll(
+          '{reminderTime}',
+          todo.reminderTime != null
+              ? '${todo.reminderTime!.hour}:${todo.reminderTime!.minute.toString().padLeft(2, '0')}'
+              : 'no specific time',
+        );
 
     // Apply custom persona if provided
     if (settings.customPersonaPrompt.isNotEmpty) {
@@ -393,9 +437,14 @@ class AIService {
     if (!settings.enableSmartNotifications) return null;
 
     // Create summary prompt using multi-language prompts
-    final categories = todos.map((todo) => todo.aiCategory ?? 'general').toSet().join(', ');
+    final categories = todos
+        .map((todo) => todo.aiCategory ?? 'general')
+        .toSet()
+        .join(', ');
     final totalPriority = todos.fold(0, (sum, todo) => sum + todo.aiPriority);
-    final avgPriority = todos.isNotEmpty ? (totalPriority / todos.length).round() : 50;
+    final avgPriority = todos.isNotEmpty
+        ? (totalPriority / todos.length).round()
+        : 50;
 
     String basePrompt = _getPromptForLanguage('daily_summary', languageCode)
         .replaceAll('{pendingCount}', todos.length.toString())
@@ -453,8 +502,8 @@ class AIService {
 
     final sessionType = session.isBreak ? 'break' : 'focus';
     final duration = session.duration ~/ 60; // Convert seconds to minutes
-    final isCompleted = "true"; // Will be completed when this notification is sent
-
+    final isCompleted =
+        "true"; // Will be completed when this notification is sent
 
     String basePrompt = _getPromptForLanguage('pomodoro', languageCode)
         .replaceAll('{taskTitle}', taskTitle)
@@ -502,17 +551,16 @@ class AIService {
     final results = <String, dynamic>{};
 
     try {
-
       for (int i = 0; i < tasks.length; i++) {
         final task = tasks[i];
         if (!task.aiProcessed) {
           try {
-
             // Remove manual delays - let the request manager handle rate limiting
             // Process with retry mechanism (but with shorter delays since request manager handles rate limiting)
             final category = await _retryWithDelay(
               () => categorizeTask(task, languageCode),
-              maxRetries: 2, // Reduced retries since request manager handles rate limiting
+              maxRetries:
+                  2, // Reduced retries since request manager handles rate limiting
               initialDelayMs: 1000, // Reduced initial delay
             );
 
@@ -525,10 +573,7 @@ class AIService {
               initialDelayMs: 1000, // Reduced initial delay
             );
 
-            results[task.id] = {
-              'category': category,
-              'priority': priority,
-            };
+            results[task.id] = {'category': category, 'priority': priority};
           } catch (e) {
             // Continue with next task
           }
@@ -557,8 +602,10 @@ class AIService {
         }
 
         // Check if it's a rate limit error (429)
-        if (e.toString().contains('429') || e.toString().contains('Too Many Requests')) {
-          final delay = initialDelayMs * (1 << (attempt - 1)); // Exponential backoff
+        if (e.toString().contains('429') ||
+            e.toString().contains('Too Many Requests')) {
+          final delay =
+              initialDelayMs * (1 << (attempt - 1)); // Exponential backoff
           await Future.delayed(Duration(milliseconds: delay));
         } else {
           // For other errors, wait a shorter time
@@ -570,7 +617,6 @@ class AIService {
     return null;
   }
 
-  
   // Public method for testing connection - optimized for speed
   Future<String?> testConnection(String languageCode) async {
     try {
@@ -582,15 +628,21 @@ class AIService {
         final content = _extractContentFromResponse(data);
         return content;
       } else {
-        debugPrint('AIService: Test failed with status: ${response.statusCode}');
+        debugPrint(
+          'AIService: Test failed with status: ${response.statusCode}',
+        );
         return null;
       }
     } on DioException catch (e) {
       debugPrint('AIService: Connection test error: ${e.type} - ${e.message}');
       if (e.type == DioExceptionType.connectionError) {
-        debugPrint('AIService: Connection refused - check if Ollama is running on the correct port');
+        debugPrint(
+          'AIService: Connection refused - check if Ollama is running on the correct port',
+        );
       } else if (e.type == DioExceptionType.connectionTimeout) {
-        debugPrint('AIService: Connection timeout - server may be slow or unreachable');
+        debugPrint(
+          'AIService: Connection timeout - server may be slow or unreachable',
+        );
       }
       return null;
     } catch (e) {
@@ -607,15 +659,10 @@ class AIService {
           'model': settings.modelName,
           'prompt': 'OK',
           'stream': false,
-          'options': {
-            'temperature': 0.0,
-            'num_predict': 5,
-          }
+          'options': {'temperature': 0.0, 'num_predict': 5},
         },
         options: Options(
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: {'Content-Type': 'application/json'},
           receiveTimeout: const Duration(seconds: 10),
           sendTimeout: const Duration(seconds: 10),
         ),
@@ -627,10 +674,7 @@ class AIService {
         data: {
           'model': settings.modelName,
           'messages': [
-            {
-              'role': 'user',
-              'content': 'OK',
-            }
+            {'role': 'user', 'content': 'OK'},
           ],
           'max_tokens': 5, // Minimal response
           'temperature': 0.0, // Deterministic
@@ -640,7 +684,9 @@ class AIService {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer ${settings.apiKey}',
           },
-          receiveTimeout: const Duration(seconds: 10), // Shorter timeout for testing
+          receiveTimeout: const Duration(
+            seconds: 10,
+          ), // Shorter timeout for testing
           sendTimeout: const Duration(seconds: 10),
         ),
       );

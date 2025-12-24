@@ -536,6 +536,7 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
 
   Future<void> _restoreFromFile(Map<String, dynamic> file) async {
     final fileName = file['fileName'] ?? _l10n.unknown;
+    final messenger = ScaffoldMessenger.of(context);
 
     // Show confirmation dialog
     final confirmed = await showDialog<bool>(
@@ -571,15 +572,11 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
 
       if (restoreResult['success']) {
         // Refresh all data in the TodoProvider
-        if (mounted) {
-          final todoProvider = Provider.of<TodoProvider>(
-            context,
-            listen: false,
-          );
-          await todoProvider.refreshAllData();
-        }
+        final todoProvider = Provider.of<TodoProvider>(context, listen: false);
+        await todoProvider.refreshAllData();
+        if (!mounted) return;
 
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text(
               '${_l10n.dataRestoredSuccess(fileName)} (${_l10n.restoreSuccessPrefix}${restoreResult['todosCount']}${_l10n.restoreSuccessSuffix})',
@@ -590,7 +587,7 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
 
         await _loadBackupInfo();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text('${_l10n.restoreFailed}: ${restoreResult['error']}'),
             backgroundColor: Colors.red,
@@ -599,7 +596,7 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text('${_l10n.restoreFailed}: ${e.toString()}'),
           backgroundColor: Colors.red,
@@ -615,6 +612,7 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
   }
 
   Future<void> _importBackup() async {
+    final messenger = ScaffoldMessenger.of(context);
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -628,7 +626,7 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
 
       final file = result.files.first;
       if (file.path == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text(_l10n.cannotAccessFile),
             backgroundColor: Colors.red,
@@ -640,9 +638,10 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
       // Validate file format
       final selectedFile = File(file.path!);
       final content = await selectedFile.readAsString();
+      if (!mounted) return;
 
       if (!_validateBackupFormat(content)) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text(_l10n.invalidBackupFormat),
             backgroundColor: Colors.red,
@@ -672,6 +671,7 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
       );
 
       if (confirmed != true) return;
+      if (!mounted) return;
 
       setState(() {
         _isLoading = true;
@@ -689,15 +689,11 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
 
       if (restoreResult['success']) {
         // Refresh all data in the TodoProvider
-        if (mounted) {
-          final todoProvider = Provider.of<TodoProvider>(
-            context,
-            listen: false,
-          );
-          await todoProvider.refreshAllData();
-        }
+        final todoProvider = Provider.of<TodoProvider>(context, listen: false);
+        await todoProvider.refreshAllData();
+        if (!mounted) return;
 
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text(
               '${_l10n.importSuccessPrefix}${restoreResult['todosCount']}${_l10n.restoreSuccessSuffix}',
@@ -709,7 +705,7 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
         // Refresh the backup files list
         await _loadBackupInfo();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text(
               '${_l10n.importFailedPrefix}${restoreResult['error']}',
@@ -720,7 +716,7 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text('${_l10n.importFailedPrefix}${e.toString()}'),
           backgroundColor: Colors.red,
@@ -752,9 +748,10 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
   Future<void> _shareBackupFile(Map<String, dynamic> file) async {
     final fileName = file['fileName'] ?? _l10n.unknown;
     final filePath = file['filePath'];
+    final messenger = ScaffoldMessenger.of(context);
 
     if (filePath == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(_l10n.invalidFilePath(fileName)),
           backgroundColor: Colors.red,
@@ -766,7 +763,8 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
     try {
       final backupFile = File(filePath);
       if (!await backupFile.exists()) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (!mounted) return;
+        messenger.showSnackBar(
           SnackBar(
             content: Text('${_l10n.backupFileNotFound}: $fileName'),
             backgroundColor: Colors.orange,
@@ -782,7 +780,7 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(_l10n.backupShareSuccess),
           backgroundColor: Colors.green,
@@ -790,7 +788,7 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text('${_l10n.shareFailedPrefix}${e.toString()}'),
           backgroundColor: Colors.red,

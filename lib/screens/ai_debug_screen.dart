@@ -62,10 +62,7 @@ class _AIDebugScreenState extends State<AIDebugScreen> {
                         ? l10n.notConfigured
                         : aiProvider.settings.apiEndpoint,
                   ),
-                  _buildInfoRow(
-                    l10n.modelName,
-                    aiProvider.settings.modelName,
-                  ),
+                  _buildInfoRow(l10n.modelName, aiProvider.settings.modelName),
                   _buildInfoRow(
                     l10n.apiKey,
                     aiProvider.settings.apiKey.isEmpty
@@ -110,15 +107,24 @@ class _AIDebugScreenState extends State<AIDebugScreen> {
                   ),
                   _buildInfoRow(
                     l10n.aiProcessedTodos,
-                    todoProvider.allTodos.where((t) => t.aiProcessed).length.toString(),
+                    todoProvider.allTodos
+                        .where((t) => t.aiProcessed)
+                        .length
+                        .toString(),
                   ),
                   _buildInfoRow(
                     l10n.todosWithAICategory,
-                    todoProvider.allTodos.where((t) => t.aiCategory != null).length.toString(),
+                    todoProvider.allTodos
+                        .where((t) => t.aiCategory != null)
+                        .length
+                        .toString(),
                   ),
                   _buildInfoRow(
                     l10n.todosWithAIPriority,
-                    todoProvider.allTodos.where((t) => t.aiPriority > 0).length.toString(),
+                    todoProvider.allTodos
+                        .where((t) => t.aiPriority > 0)
+                        .length
+                        .toString(),
                   ),
                 ],
               ),
@@ -149,25 +155,40 @@ class _AIDebugScreenState extends State<AIDebugScreen> {
                   if (aiProvider.isAIServiceValid) ...[
                     _buildInfoRow(
                       l10n.pendingRequests,
-                      aiProvider.getRequestManagerStats()['pending_requests']?.toString() ?? '0',
+                      aiProvider
+                              .getRequestManagerStats()['pending_requests']
+                              ?.toString() ??
+                          '0',
                     ),
                     _buildInfoRow(
                       l10n.currentWindowRequests,
-                      aiProvider.getRequestManagerStats()['current_window_requests']?.toString() ?? '0',
+                      aiProvider
+                              .getRequestManagerStats()['current_window_requests']
+                              ?.toString() ??
+                          '0',
                     ),
                     _buildInfoRow(
                       l10n.maxRequestsPerMinute,
-                      aiProvider.getRequestManagerStats()['max_requests_per_minute']?.toString() ?? '20',
+                      aiProvider
+                              .getRequestManagerStats()['max_requests_per_minute']
+                              ?.toString() ??
+                          '20',
                     ),
                     const SizedBox(height: 8),
                     _buildSubSection(
                       title: l10n.aiCurrentRequestQueue,
-                      child: _buildRequestQueueList(aiProvider.getRequestQueueInfo(), l10n),
+                      child: _buildRequestQueueList(
+                        aiProvider.getRequestQueueInfo(),
+                        l10n,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     _buildSubSection(
                       title: l10n.aiRecentRequests,
-                      child: _buildRecentRequestsList(aiProvider.getRecentRequests(), l10n),
+                      child: _buildRecentRequestsList(
+                        aiProvider.getRecentRequests(),
+                        l10n,
+                      ),
                     ),
                   ] else
                     _buildInfoRow(
@@ -180,12 +201,17 @@ class _AIDebugScreenState extends State<AIDebugScreen> {
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  final l10n = AppLocalizations.of(context)!;
                   await todoProvider.processUnprocessedTodosWithAI();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(AppLocalizations.of(context)!.processingUnprocessedTodos)),
+                  if (!context.mounted) return;
+                  messenger.showSnackBar(
+                    SnackBar(content: Text(l10n.processingUnprocessedTodos)),
                   );
                 },
-                child: Text(AppLocalizations.of(context)!.processAllTodosWithAI),
+                child: Text(
+                  AppLocalizations.of(context)!.processAllTodosWithAI,
+                ),
               ),
             ],
           );
@@ -194,10 +220,15 @@ class _AIDebugScreenState extends State<AIDebugScreen> {
     );
   }
 
-  Widget _buildSection({required String title, required List<Widget> children}) {
+  Widget _buildSection({
+    required String title,
+    required List<Widget> children,
+  }) {
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+        ),
         borderRadius: BorderRadius.circular(8),
         color: Theme.of(context).colorScheme.surfaceContainer,
       ),
@@ -209,7 +240,9 @@ class _AIDebugScreenState extends State<AIDebugScreen> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(8),
+              ),
             ),
             child: Text(
               title,
@@ -232,7 +265,9 @@ class _AIDebugScreenState extends State<AIDebugScreen> {
   Widget _buildSubSection({required String title, required Widget child}) {
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+        ),
         borderRadius: BorderRadius.circular(6),
         color: Theme.of(context).colorScheme.surfaceContainerLow,
       ),
@@ -244,7 +279,9 @@ class _AIDebugScreenState extends State<AIDebugScreen> {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainerLowest,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(6),
+              ),
             ),
             child: Text(
               title,
@@ -255,22 +292,24 @@ class _AIDebugScreenState extends State<AIDebugScreen> {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: child,
-          ),
+          Padding(padding: const EdgeInsets.all(8), child: child),
         ],
       ),
     );
   }
 
-  Widget _buildRequestQueueList(List<Map<String, dynamic>> queue, AppLocalizations l10n) {
+  Widget _buildRequestQueueList(
+    List<Map<String, dynamic>> queue,
+    AppLocalizations l10n,
+  ) {
     if (queue.isEmpty) {
       return Text(
         l10n.noPendingRequests,
         style: TextStyle(
           fontStyle: FontStyle.italic,
-          color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+          color: Theme.of(
+            context,
+          ).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
         ),
       );
     }
@@ -281,9 +320,15 @@ class _AIDebugScreenState extends State<AIDebugScreen> {
           margin: const EdgeInsets.only(bottom: 4),
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            border: Border.all(color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.5)),
+            border: Border.all(
+              color: Theme.of(
+                context,
+              ).colorScheme.tertiary.withValues(alpha: 0.5),
+            ),
             borderRadius: BorderRadius.circular(4),
-            color: Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: 0.2),
+            color: Theme.of(
+              context,
+            ).colorScheme.tertiaryContainer.withValues(alpha: 0.2),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,26 +356,38 @@ class _AIDebugScreenState extends State<AIDebugScreen> {
     );
   }
 
-  Widget _buildRecentRequestsList(List<Map<String, dynamic>> requests, AppLocalizations l10n) {
+  Widget _buildRecentRequestsList(
+    List<Map<String, dynamic>> requests,
+    AppLocalizations l10n,
+  ) {
     if (requests.isEmpty) {
       return Text(
         l10n.noRecentRequests,
         style: TextStyle(
           fontStyle: FontStyle.italic,
-          color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+          color: Theme.of(
+            context,
+          ).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
         ),
       );
     }
 
     return Column(
-      children: requests.take(5).map((request) { // Show only last 5 requests
+      children: requests.take(5).map((request) {
+        // Show only last 5 requests
         return Container(
           margin: const EdgeInsets.only(bottom: 4),
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)),
+            border: Border.all(
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.5),
+            ),
             borderRadius: BorderRadius.circular(4),
-            color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.2),
+            color: Theme.of(
+              context,
+            ).colorScheme.primaryContainer.withValues(alpha: 0.2),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -380,7 +437,9 @@ class _AIDebugScreenState extends State<AIDebugScreen> {
             child: Text(
               value,
               style: TextStyle(
-                color: isError ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.onSurfaceVariant,
+                color: isError
+                    ? Theme.of(context).colorScheme.error
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ),

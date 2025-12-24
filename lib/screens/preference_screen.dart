@@ -6,6 +6,7 @@ import 'package:easy_todo/providers/todo_provider.dart';
 import 'package:easy_todo/providers/language_provider.dart';
 import 'package:easy_todo/providers/theme_provider.dart';
 import 'package:easy_todo/providers/app_settings_provider.dart';
+import 'package:easy_todo/providers/pomodoro_provider.dart';
 import 'package:easy_todo/screens/language_settings_screen.dart';
 import 'package:easy_todo/services/backup_restore_service.dart';
 import 'package:easy_todo/services/file_service.dart';
@@ -52,10 +53,10 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
 
   Future<void> _loadStorageStats() async {
     final stats = await _backupService.getStorageStats();
-    if(mounted) {
+    if (mounted) {
       setState(() {
-      _storageStats = stats;
-    });
+        _storageStats = stats;
+      });
     }
     _loadPackageInfo();
   }
@@ -74,7 +75,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final appSettingsProvider = Provider.of<AppSettingsProvider>(context);
     final aiProvider = Provider.of<AIProvider>(context);
-    
+
     return Scaffold(
       appBar: AppBar(title: Text(l10n.preferences), centerTitle: true),
       body: ListView(
@@ -83,17 +84,17 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l10n.appSettings,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.appSettings,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   _buildPreferenceItem(
                     icon: Icons.notifications_outlined,
                     title: l10n.notifications,
@@ -152,11 +153,14 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                       );
                     },
                   ),
-                    const Divider(),
+                  const Divider(),
                   _buildPreferenceItem(
                     icon: Icons.language_outlined,
                     title: l10n.language,
-                    subtitle: _getCurrentLanguageName(languageProvider.locale.languageCode, l10n),
+                    subtitle: _getCurrentLanguageName(
+                      languageProvider.locale.languageCode,
+                      l10n,
+                    ),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -178,11 +182,11 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l10n.viewSettings,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.viewSettings,
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -204,13 +208,13 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                   ),
                 ],
               ),
-            )
+            ),
           ),
           const SizedBox(height: 16),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
-            child: Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -262,7 +266,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
-            child: Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -307,7 +311,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
-            child: Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -525,6 +529,16 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
           ),
           TextButton(
             onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final todoProvider = Provider.of<TodoProvider>(
+                context,
+                listen: false,
+              );
+              final pomodoroProvider = Provider.of<PomodoroProvider>(
+                context,
+                listen: false,
+              );
+
               Navigator.of(dialogContext).pop();
 
               // 仅在开启生物识别验证时需要验证
@@ -533,46 +547,40 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                     .authenticateForSensitiveOperation(
                       reason: l10n.authenticateToClearData,
                     );
+                if (!context.mounted) return;
 
                 if (!authenticated) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(l10n.fingerprintAuthenticationFailed),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(l10n.fingerprintAuthenticationFailed),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
                   return;
                 }
               }
 
               // 生物识别通过或未开启生物识别验证，继续清除数据
               try {
-                final provider = Provider.of<TodoProvider>(
-                  context,
-                  listen: false,
-                );
-                await provider.clearAllData(context: context);
+                await todoProvider.clearAllData();
+                pomodoroProvider.resetAllState();
                 await _loadStorageStats();
+                if (!context.mounted) return;
 
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(l10n.dataClearedSuccess),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(l10n.dataClearedSuccess),
+                    backgroundColor: Colors.green,
+                  ),
+                );
               } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${l10n.clearDataFailed}: ${e.toString()}'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
+                if (!context.mounted) return;
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text('${l10n.clearDataFailed}: ${e.toString()}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
               }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -603,17 +611,17 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
       trailing: Switch(
         value: provider.autoUpdateEnabled,
         onChanged: (value) async {
+          final messenger = ScaffoldMessenger.of(context);
           await provider.setAutoUpdate(value);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  value ? l10n.autoUpdateEnabled : l10n.autoUpdateDisabled,
-                ),
-                backgroundColor: Colors.green,
+          if (!context.mounted) return;
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(
+                value ? l10n.autoUpdateEnabled : l10n.autoUpdateDisabled,
               ),
-            );
-          }
+              backgroundColor: Colors.green,
+            ),
+          );
         },
       ),
     );
@@ -654,13 +662,16 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
           trailing: Switch(
             value: provider.biometricLockEnabled,
             onChanged: (value) async {
+              final messenger = ScaffoldMessenger.of(context);
               final success = await provider.setFingerprintLock(
                 value,
                 enableReason: l10n.authenticateToEnableFingerprint,
                 disableReason: l10n.authenticateToDisableFingerprint,
               );
-              if (success && mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
+              if (!context.mounted) return;
+
+              if (success) {
+                messenger.showSnackBar(
                   SnackBar(
                     content: Text(
                       value
@@ -670,14 +681,15 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                     backgroundColor: Colors.green,
                   ),
                 );
-              } else if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(l10n.fingerprintAuthenticationFailed),
-                    backgroundColor: Colors.red,
-                  ),
-                );
+                return;
               }
+
+              messenger.showSnackBar(
+                SnackBar(
+                  content: Text(l10n.fingerprintAuthenticationFailed),
+                  backgroundColor: Colors.red,
+                ),
+              );
             },
           ),
         );
@@ -685,8 +697,6 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
     );
   }
 
-  
-  
   Widget _buildUpdateSection(AppLocalizations l10n) {
     return Column(
       children: [
@@ -825,7 +835,9 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
             SnackBar(
               content: Text(
                 l10n.updateAvailable,
-                style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
               ),
               backgroundColor: Theme.of(context).colorScheme.primary,
             ),
@@ -837,7 +849,9 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
             SnackBar(
               content: Text(
                 l10n.youHaveLatestVersion,
-                style: TextStyle(color: Theme.of(context).colorScheme.onSecondary),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSecondary,
+                ),
               ),
               backgroundColor: Theme.of(context).colorScheme.secondary,
             ),
@@ -1020,6 +1034,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
 
     // Request install unknown apps permission for Android 8+
     final status = await Permission.requestInstallPackages.request();
+    if (!context.mounted) return false;
 
     if (status == PermissionStatus.granted) {
       return true;
@@ -1029,16 +1044,16 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
       bool shouldOpenSettings =
           await showDialog<bool>(
             context: context,
-            builder: (context) => AlertDialog(
+            builder: (dialogContext) => AlertDialog(
               title: Text(l10n.installPermissionRequired),
               content: Text(l10n.installPermissionDescription),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
                   child: Text(l10n.cancel),
                 ),
                 ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(true),
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
                   child: Text(l10n.openSettings),
                 ),
               ],
@@ -1051,14 +1066,14 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
       }
     }
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.needInstallPermission),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+    if (!context.mounted) return false;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.needInstallPermission),
+        backgroundColor: Colors.red,
+      ),
+    );
 
     return false;
   }

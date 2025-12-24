@@ -11,8 +11,6 @@ import 'package:easy_todo/services/notification_service.dart';
 import 'package:easy_todo/providers/filter_provider.dart';
 import 'package:easy_todo/providers/ai_provider.dart';
 import 'package:easy_todo/providers/language_provider.dart';
-import 'package:easy_todo/providers/pomodoro_provider.dart';
-import 'package:provider/provider.dart';
 import 'package:easy_todo/utils/ai_status_constants.dart';
 
 class TodoProvider extends ChangeNotifier {
@@ -59,7 +57,6 @@ class TodoProvider extends ChangeNotifier {
   TodoProvider() {
     // 延迟初始化以避免在构建期间调用 notifyListeners()
     Future.delayed(Duration.zero, () async {
-
       // 初始化AI缓存服务
       await _aiCacheService.init();
 
@@ -117,9 +114,12 @@ class TodoProvider extends ChangeNotifier {
   Set<String> get selectedCategories => _selectedCategories;
 
   // AI processing status getters
-  bool isRepeatTodoProcessingAI(String repeatTodoId) => _processingRepeatTodos.contains(repeatTodoId);
-  bool isRepeatTodoAILoading(String repeatTodoId) => _repeatTodoAILoading[repeatTodoId] ?? false;
-  String? getRepeatTodoAIStatus(String repeatTodoId) => _repeatTodoAIStatus[repeatTodoId];
+  bool isRepeatTodoProcessingAI(String repeatTodoId) =>
+      _processingRepeatTodos.contains(repeatTodoId);
+  bool isRepeatTodoAILoading(String repeatTodoId) =>
+      _repeatTodoAILoading[repeatTodoId] ?? false;
+  String? getRepeatTodoAIStatus(String repeatTodoId) =>
+      _repeatTodoAIStatus[repeatTodoId];
   bool isAnyRepeatTodoProcessingAI() => _processingRepeatTodos.isNotEmpty;
 
   int get activeTodosCount => _todos.where((todo) => !todo.isCompleted).length;
@@ -147,8 +147,7 @@ class TodoProvider extends ChangeNotifier {
 
   // Verify and restore AI labels that may have been lost due to persistence issues
   Future<void> _verifyAndRestoreAILabels() async {
-    if (_aiProvider != null) {
-    }
+    if (_aiProvider != null) {}
 
     final todosBox = _hiveService.todosBox;
     bool needsUpdate = false;
@@ -168,8 +167,8 @@ class TodoProvider extends ChangeNotifier {
 
       // 修复：对重复生成的任务，如果AI数据不一致，直接从重复任务源恢复
       if (todo.isGeneratedFromRepeat && todo.repeatTodoId != null) {
-        if (todo.aiProcessed && (todo.aiCategory == null || todo.aiPriority == 0)) {
-
+        if (todo.aiProcessed &&
+            (todo.aiCategory == null || todo.aiPriority == 0)) {
           // 尝试从重复任务恢复AI数据
           RepeatTodoModel? repeatTodo;
           try {
@@ -177,11 +176,16 @@ class TodoProvider extends ChangeNotifier {
               (rt) => rt.id == todo.repeatTodoId,
             );
           } catch (e) {
-            repeatTodo = RepeatTodoModel.create(title: '', repeatType: RepeatType.daily);
+            repeatTodo = RepeatTodoModel.create(
+              title: '',
+              repeatType: RepeatType.daily,
+            );
           }
 
           // 只有当重复任务有有效AI数据时才恢复
-          if (repeatTodo.aiProcessed && repeatTodo.aiCategory != null && repeatTodo.aiPriority > 0) {
+          if (repeatTodo.aiProcessed &&
+              repeatTodo.aiCategory != null &&
+              repeatTodo.aiPriority > 0) {
             final restoredTodo = todo.copyWith(
               aiCategory: repeatTodo.aiCategory,
               aiPriority: repeatTodo.aiPriority,
@@ -191,19 +195,21 @@ class TodoProvider extends ChangeNotifier {
             await todosBox.put(restoredTodo.id, restoredTodo);
             _todos[i] = restoredTodo;
             needsUpdate = true;
-
-          } else {
-          }
+          } else {}
         }
         continue; // 跳过重复生成任务的其他处理
       }
 
       // Check if todo has AI processed flag but missing AI data
-      if (todo.aiProcessed && (todo.aiCategory == null || todo.aiPriority == 0)) {
-
+      if (todo.aiProcessed &&
+          (todo.aiCategory == null || todo.aiPriority == 0)) {
         // Only reset if we're missing data for enabled features
-        final needsCategory = _aiProvider!.settings.enableAutoCategorization && (todo.aiCategory == null || todo.aiCategory!.isEmpty);
-        final needsPriority = _aiProvider!.settings.enablePrioritySorting && (todo.aiPriority == 0);
+        final needsCategory =
+            _aiProvider!.settings.enableAutoCategorization &&
+            (todo.aiCategory == null || todo.aiCategory!.isEmpty);
+        final needsPriority =
+            _aiProvider!.settings.enablePrioritySorting &&
+            (todo.aiPriority == 0);
 
         if (needsCategory || needsPriority) {
           // Reset aiProcessed flag only for missing enabled features
@@ -211,37 +217,41 @@ class TodoProvider extends ChangeNotifier {
           await todosBox.put(resetTodo.id, resetTodo);
           _todos[i] = resetTodo;
           needsUpdate = true;
-
         } else {
           // If features are disabled but data is partially missing, mark as processed with existing data
           final resetTodo = todo.copyWith(aiProcessed: true);
           await todosBox.put(resetTodo.id, resetTodo);
           _todos[i] = resetTodo;
           needsUpdate = true;
-
         }
         continue;
       }
 
       // Try to restore missing AI data for incomplete todos
       // Additional check: only process if actually missing required data
-      final needsCategory = _aiProvider!.settings.enableAutoCategorization && (todo.aiCategory == null || todo.aiCategory!.isEmpty);
-      final needsPriority = _aiProvider!.settings.enablePrioritySorting && (todo.aiPriority == 0);
+      final needsCategory =
+          _aiProvider!.settings.enableAutoCategorization &&
+          (todo.aiCategory == null || todo.aiCategory!.isEmpty);
+      final needsPriority =
+          _aiProvider!.settings.enablePrioritySorting && (todo.aiPriority == 0);
 
-      if (!todo.aiProcessed && (needsCategory || needsPriority) && _aiProvider!.isAIServiceValid) {
-
+      if (!todo.aiProcessed &&
+          (needsCategory || needsPriority) &&
+          _aiProvider!.isAIServiceValid) {
         try {
           String? restoredCategory = todo.aiCategory;
           int? restoredPriority = todo.aiPriority;
           bool madeChanges = false;
 
-
           // Only process if we actually need something that's enabled (already checked in if condition)
           if (needsCategory || needsPriority) {
-
             // Try to restore category if missing and categorization is enabled
-            if (_aiProvider!.settings.enableAutoCategorization && (todo.aiCategory == null || todo.aiCategory!.isEmpty)) {
-              final category = await _aiProvider!.categorizeTask(todo, forceRefresh: false);
+            if (_aiProvider!.settings.enableAutoCategorization &&
+                (todo.aiCategory == null || todo.aiCategory!.isEmpty)) {
+              final category = await _aiProvider!.categorizeTask(
+                todo,
+                forceRefresh: false,
+              );
               if (category != null && category.isNotEmpty) {
                 restoredCategory = category;
                 madeChanges = true;
@@ -249,8 +259,12 @@ class TodoProvider extends ChangeNotifier {
             }
 
             // Try to restore priority if missing and priority sorting is enabled
-            if (_aiProvider!.settings.enablePrioritySorting && (todo.aiPriority == 0)) {
-              final priority = await _aiProvider!.assessPriority(todo, forceRefresh: false);
+            if (_aiProvider!.settings.enablePrioritySorting &&
+                (todo.aiPriority == 0)) {
+              final priority = await _aiProvider!.assessPriority(
+                todo,
+                forceRefresh: false,
+              );
               if (priority != null && priority > 0) {
                 restoredPriority = priority;
                 madeChanges = true;
@@ -260,8 +274,12 @@ class TodoProvider extends ChangeNotifier {
             // Only update if we actually restored something
             if (madeChanges) {
               // Mark as processed only if the enabled features are successfully restored
-              final categoryOk = !_aiProvider!.settings.enableAutoCategorization || restoredCategory?.isNotEmpty == true;
-              final priorityOk = !_aiProvider!.settings.enablePrioritySorting || restoredPriority > 0;
+              final categoryOk =
+                  !_aiProvider!.settings.enableAutoCategorization ||
+                  restoredCategory?.isNotEmpty == true;
+              final priorityOk =
+                  !_aiProvider!.settings.enablePrioritySorting ||
+                  restoredPriority > 0;
 
               final updatedTodo = todo.copyWith(
                 aiCategory: restoredCategory,
@@ -272,7 +290,6 @@ class TodoProvider extends ChangeNotifier {
               await todosBox.put(updatedTodo.id, updatedTodo);
               _todos[i] = updatedTodo;
               needsUpdate = true;
-
             }
           } else {
             // No features need processing, mark as processed with existing data
@@ -281,11 +298,12 @@ class TodoProvider extends ChangeNotifier {
               await todosBox.put(updatedTodo.id, updatedTodo);
               _todos[i] = updatedTodo;
               needsUpdate = true;
-
             }
           }
         } catch (e) {
-          debugPrint('TodoProvider: Error restoring AI data for todo "${todo.title}": $e');
+          debugPrint(
+            'TodoProvider: Error restoring AI data for todo "${todo.title}": $e',
+          );
         }
       }
     }
@@ -301,7 +319,6 @@ class TodoProvider extends ChangeNotifier {
 
   // Verify and restore AI labels for repeat todos
   Future<void> _verifyAndRestoreRepeatTodoAILabels() async {
-
     final repeatTodosBox = _hiveService.repeatTodosBox;
     bool needsUpdate = false;
 
@@ -314,11 +331,15 @@ class TodoProvider extends ChangeNotifier {
       final repeatTodo = _repeatTodos[i];
 
       // Check if repeat todo has AI processed flag but missing AI data
-      if (repeatTodo.aiProcessed && (repeatTodo.aiCategory == null || repeatTodo.aiPriority == 0)) {
-
+      if (repeatTodo.aiProcessed &&
+          (repeatTodo.aiCategory == null || repeatTodo.aiPriority == 0)) {
         // Only reset if we're missing data for enabled features
-        final needsCategory = _aiProvider!.settings.enableAutoCategorization && (repeatTodo.aiCategory == null || repeatTodo.aiCategory!.isEmpty);
-        final needsPriority = _aiProvider!.settings.enablePrioritySorting && (repeatTodo.aiPriority == 0);
+        final needsCategory =
+            _aiProvider!.settings.enableAutoCategorization &&
+            (repeatTodo.aiCategory == null || repeatTodo.aiCategory!.isEmpty);
+        final needsPriority =
+            _aiProvider!.settings.enablePrioritySorting &&
+            (repeatTodo.aiPriority == 0);
 
         if (needsCategory || needsPriority) {
           // Reset aiProcessed flag only for missing enabled features
@@ -326,24 +347,28 @@ class TodoProvider extends ChangeNotifier {
           await repeatTodosBox.put(resetRepeatTodo.id, resetRepeatTodo);
           _repeatTodos[i] = resetRepeatTodo;
           needsUpdate = true;
-
         } else {
           // If features are disabled but data is partially missing, mark as processed with existing data
           final resetRepeatTodo = repeatTodo.copyWith(aiProcessed: true);
           await repeatTodosBox.put(resetRepeatTodo.id, resetRepeatTodo);
           _repeatTodos[i] = resetRepeatTodo;
           needsUpdate = true;
-
         }
         continue;
       }
 
       // Try to restore missing AI data for incomplete repeat todos
       // Additional check: only process if actually missing required data
-      final needsCategory = _aiProvider!.settings.enableAutoCategorization && (repeatTodo.aiCategory == null || repeatTodo.aiCategory!.isEmpty);
-      final needsPriority = _aiProvider!.settings.enablePrioritySorting && (repeatTodo.aiPriority == 0);
+      final needsCategory =
+          _aiProvider!.settings.enableAutoCategorization &&
+          (repeatTodo.aiCategory == null || repeatTodo.aiCategory!.isEmpty);
+      final needsPriority =
+          _aiProvider!.settings.enablePrioritySorting &&
+          (repeatTodo.aiPriority == 0);
 
-      if (!repeatTodo.aiProcessed && (needsCategory || needsPriority) && _aiProvider!.isAIServiceValid) {
+      if (!repeatTodo.aiProcessed &&
+          (needsCategory || needsPriority) &&
+          _aiProvider!.isAIServiceValid) {
         // Set UI status for startup processing
         _repeatTodoAILoading[repeatTodo.id] = true;
         _repeatTodoAIStatus[repeatTodo.id] = AIStatusConstants.processingAI;
@@ -364,11 +389,17 @@ class TodoProvider extends ChangeNotifier {
             );
 
             // Try to restore category if missing and categorization is enabled
-            if (_aiProvider!.settings.enableAutoCategorization && (repeatTodo.aiCategory == null || repeatTodo.aiCategory!.isEmpty)) {
-              _repeatTodoAIStatus[repeatTodo.id] = AIStatusConstants.categorizingTask;
+            if (_aiProvider!.settings.enableAutoCategorization &&
+                (repeatTodo.aiCategory == null ||
+                    repeatTodo.aiCategory!.isEmpty)) {
+              _repeatTodoAIStatus[repeatTodo.id] =
+                  AIStatusConstants.categorizingTask;
               notifyListeners();
 
-              final category = await _aiProvider!.categorizeTask(tempTodo, forceRefresh: false);
+              final category = await _aiProvider!.categorizeTask(
+                tempTodo,
+                forceRefresh: false,
+              );
               if (category != null && category.isNotEmpty) {
                 restoredCategory = category;
                 madeChanges = true;
@@ -376,13 +407,17 @@ class TodoProvider extends ChangeNotifier {
             }
 
             // Try to restore priority if missing and priority sorting is enabled
-            if (_aiProvider!.settings.enablePrioritySorting && (repeatTodo.aiPriority == 0)) {
+            if (_aiProvider!.settings.enablePrioritySorting &&
+                (repeatTodo.aiPriority == 0)) {
               _repeatTodoAIStatus[repeatTodo.id] = 'Assessing priority...';
               notifyListeners();
 
               // Add delay between category and priority requests to avoid rate limiting
               await Future.delayed(const Duration(milliseconds: 1000));
-              final priority = await _aiProvider!.assessPriority(tempTodo, forceRefresh: false);
+              final priority = await _aiProvider!.assessPriority(
+                tempTodo,
+                forceRefresh: false,
+              );
               if (priority != null && priority > 0) {
                 restoredPriority = priority;
                 madeChanges = true;
@@ -392,8 +427,12 @@ class TodoProvider extends ChangeNotifier {
             // Only update if we actually restored something
             if (madeChanges) {
               // Mark as processed only if the enabled features are successfully restored
-              final categoryOk = !_aiProvider!.settings.enableAutoCategorization || restoredCategory?.isNotEmpty == true;
-              final priorityOk = !_aiProvider!.settings.enablePrioritySorting || restoredPriority > 0;
+              final categoryOk =
+                  !_aiProvider!.settings.enableAutoCategorization ||
+                  restoredCategory?.isNotEmpty == true;
+              final priorityOk =
+                  !_aiProvider!.settings.enablePrioritySorting ||
+                  restoredPriority > 0;
 
               final updatedRepeatTodo = repeatTodo.copyWith(
                 aiCategory: restoredCategory,
@@ -404,7 +443,6 @@ class TodoProvider extends ChangeNotifier {
               await repeatTodosBox.put(updatedRepeatTodo.id, updatedRepeatTodo);
               _repeatTodos[i] = updatedRepeatTodo;
               needsUpdate = true;
-
             }
           } else {
             // No features need processing, mark as processed with existing data
@@ -412,7 +450,6 @@ class TodoProvider extends ChangeNotifier {
             await repeatTodosBox.put(updatedRepeatTodo.id, updatedRepeatTodo);
             _repeatTodos[i] = updatedRepeatTodo;
             needsUpdate = true;
-
           }
 
           // Clear UI status after processing
@@ -428,7 +465,9 @@ class TodoProvider extends ChangeNotifier {
 
           notifyListeners();
         } catch (e) {
-          debugPrint('TodoProvider: Error restoring AI data for repeat todo "${repeatTodo.title}": $e');
+          debugPrint(
+            'TodoProvider: Error restoring AI data for repeat todo "${repeatTodo.title}": $e',
+          );
 
           // Clear UI status on error
           _repeatTodoAILoading[repeatTodo.id] = false;
@@ -454,23 +493,28 @@ class TodoProvider extends ChangeNotifier {
   Future<void> processMissingCategorization() async {
     if (_aiProvider == null || !_aiProvider!.isAIServiceValid) return;
 
-    final unprocessedTodos = _todos.where((todo) =>
-      !todo.isCompleted &&
-      !todo.isGeneratedFromRepeat &&
-      (todo.aiCategory == null || !todo.aiProcessed)
-    ).toList();
+    final unprocessedTodos = _todos
+        .where(
+          (todo) =>
+              !todo.isCompleted &&
+              !todo.isGeneratedFromRepeat &&
+              (todo.aiCategory == null || !todo.aiProcessed),
+        )
+        .toList();
 
     if (unprocessedTodos.isEmpty) return;
 
     _isProcessingCategories = true;
     notifyListeners();
 
-
     try {
       for (final todo in unprocessedTodos) {
         try {
           final languageCode = _languageProvider?.currentLanguageCode ?? 'en';
-          final category = await _aiProvider!.aiService?.categorizeTask(todo, languageCode);
+          final category = await _aiProvider!.aiService?.categorizeTask(
+            todo,
+            languageCode,
+          );
 
           if (category != null) {
             final updatedTodo = todo.copyWith(
@@ -488,7 +532,9 @@ class TodoProvider extends ChangeNotifier {
             }
           }
         } catch (e) {
-          debugPrint('Error processing categorization for todo ${todo.title}: $e');
+          debugPrint(
+            'Error processing categorization for todo ${todo.title}: $e',
+          );
         }
       }
     } catch (e) {
@@ -504,23 +550,28 @@ class TodoProvider extends ChangeNotifier {
   Future<void> processMissingPriority() async {
     if (_aiProvider == null || !_aiProvider!.isAIServiceValid) return;
 
-    final unprocessedTodos = _todos.where((todo) =>
-      !todo.isCompleted &&
-      !todo.isGeneratedFromRepeat &&
-      (todo.aiPriority == 0 || !todo.aiProcessed)
-    ).toList();
+    final unprocessedTodos = _todos
+        .where(
+          (todo) =>
+              !todo.isCompleted &&
+              !todo.isGeneratedFromRepeat &&
+              (todo.aiPriority == 0 || !todo.aiProcessed),
+        )
+        .toList();
 
     if (unprocessedTodos.isEmpty) return;
 
     _isProcessingPriorities = true;
     notifyListeners();
 
-
     try {
       for (final todo in unprocessedTodos) {
         try {
           final languageCode = _languageProvider?.currentLanguageCode ?? 'en';
-          final priority = await _aiProvider!.aiService?.assessPriority(todo, languageCode);
+          final priority = await _aiProvider!.aiService?.assessPriority(
+            todo,
+            languageCode,
+          );
 
           if (priority != null) {
             final updatedTodo = todo.copyWith(
@@ -568,8 +619,7 @@ class TodoProvider extends ChangeNotifier {
         if (hiveTodo != null) {
           if (hiveTodo.aiPriority != todo.aiPriority ||
               hiveTodo.aiProcessed != todo.aiProcessed ||
-              hiveTodo.aiCategory != todo.aiCategory) {
-          }
+              hiveTodo.aiCategory != todo.aiCategory) {}
         }
       }
 
@@ -583,14 +633,15 @@ class TodoProvider extends ChangeNotifier {
       bool isCacheValid = false;
       if (cachedTodos != null && cachedTodos.length == _todos.length) {
         // 详细验证：检查ID、完成状态和AI数据是否匹配
-        isCacheValid = cachedTodos.every((cachedTodo) =>
-          _todos.any((todo) =>
-            todo.id == cachedTodo.id &&
-            todo.isCompleted == cachedTodo.isCompleted &&
-            todo.aiProcessed == cachedTodo.aiProcessed &&
-            todo.aiCategory == cachedTodo.aiCategory &&
-            todo.aiPriority == cachedTodo.aiPriority
-          )
+        isCacheValid = cachedTodos.every(
+          (cachedTodo) => _todos.any(
+            (todo) =>
+                todo.id == cachedTodo.id &&
+                todo.isCompleted == cachedTodo.isCompleted &&
+                todo.aiProcessed == cachedTodo.aiProcessed &&
+                todo.aiCategory == cachedTodo.aiCategory &&
+                todo.aiPriority == cachedTodo.aiPriority,
+          ),
         );
       }
 
@@ -723,7 +774,9 @@ class TodoProvider extends ChangeNotifier {
 
       // Trigger AI classification for the new todo if AI features are enabled
       // Skip AI processing for todos generated from repeat templates (they inherit AI data from template)
-      if (_aiProvider != null && _aiProvider!.isAIServiceValid && !newTodo.isGeneratedFromRepeat) {
+      if (_aiProvider != null &&
+          _aiProvider!.isAIServiceValid &&
+          !newTodo.isGeneratedFromRepeat) {
         // Add a small delay to ensure the todo is properly saved before processing
         Future.delayed(const Duration(milliseconds: 500), () {
           processMissingAIDataForTodo(newTodo);
@@ -744,7 +797,9 @@ class TodoProvider extends ChangeNotifier {
       final todosBox = _hiveService.todosBox;
 
       // Get the original todo for comparison
-      final originalTodoIndex = _todos.indexWhere((todo) => todo.id == updatedTodo.id);
+      final originalTodoIndex = _todos.indexWhere(
+        (todo) => todo.id == updatedTodo.id,
+      );
       TodoModel? originalTodo;
       if (originalTodoIndex != -1) {
         originalTodo = _todos[originalTodoIndex];
@@ -753,8 +808,9 @@ class TodoProvider extends ChangeNotifier {
       // Check if reminder-related fields changed
       bool reminderChanged = false;
       if (originalTodo != null) {
-        reminderChanged = originalTodo.reminderEnabled != updatedTodo.reminderEnabled ||
-                         originalTodo.reminderTime != updatedTodo.reminderTime;
+        reminderChanged =
+            originalTodo.reminderEnabled != updatedTodo.reminderEnabled ||
+            originalTodo.reminderTime != updatedTodo.reminderTime;
       }
 
       // Cancel existing notification if needed
@@ -817,7 +873,6 @@ class TodoProvider extends ChangeNotifier {
 
       // Additional delay to ensure any pending AI operations are fully cancelled
       await Future.delayed(const Duration(milliseconds: 100));
-
     } catch (e) {
       debugPrint('Error deleting todo: $e');
     }
@@ -837,7 +892,10 @@ class TodoProvider extends ChangeNotifier {
           (rt) => rt.id == todo.repeatTodoId,
         );
       } catch (e) {
-        repeatTodo = RepeatTodoModel.create(title: '', repeatType: RepeatType.daily);
+        repeatTodo = RepeatTodoModel.create(
+          title: '',
+          repeatType: RepeatType.daily,
+        );
       }
 
       if (repeatTodo.dataStatisticsEnabled && !todo.isCompleted) {
@@ -863,7 +921,7 @@ class TodoProvider extends ChangeNotifier {
     if (todo.isGeneratedFromRepeat && todo.isCompleted) {
       // Remove statistics data when uncompleting to prevent duplicate recording
       final existingDataIndex = _statisticsData.indexWhere(
-        (data) => data.todoId == todo.id
+        (data) => data.todoId == todo.id,
       );
       if (existingDataIndex != -1) {
         final statsDataBox = _hiveService.statisticsDataBox;
@@ -902,12 +960,15 @@ class TodoProvider extends ChangeNotifier {
           (rt) => rt.id == todo.repeatTodoId,
         );
       } catch (e) {
-        repeatTodo = RepeatTodoModel.create(title: '', repeatType: RepeatType.daily);
+        repeatTodo = RepeatTodoModel.create(
+          title: '',
+          repeatType: RepeatType.daily,
+        );
       }
 
       // Check if there's already statistics data for this todo
       final existingDataIndex = _statisticsData.indexWhere(
-        (data) => data.todoId == todo.id
+        (data) => data.todoId == todo.id,
       );
 
       StatisticsDataModel statisticsData;
@@ -919,7 +980,8 @@ class TodoProvider extends ChangeNotifier {
         statisticsData = existingData.copyWith(
           value: value,
           unit: repeatTodo.dataUnit ?? '',
-          date: _getLocalDateTime(), // Update timestamp to reflect when data was modified
+          date:
+              _getLocalDateTime(), // Update timestamp to reflect when data was modified
         );
 
         await statsDataBox.put(statisticsData.id, statisticsData);
@@ -949,13 +1011,18 @@ class TodoProvider extends ChangeNotifier {
     await updateTodo(updatedTodo);
   }
 
-  List<StatisticsDataModel> getStatisticsDataForRepeatTodo(String repeatTodoId) {
+  List<StatisticsDataModel> getStatisticsDataForRepeatTodo(
+    String repeatTodoId,
+  ) {
     return _statisticsData
         .where((data) => data.repeatTodoId == repeatTodoId)
         .toList();
   }
 
-  List<StatisticsDataModel> getStatisticsDataForDateRange(DateTime start, DateTime end) {
+  List<StatisticsDataModel> getStatisticsDataForDateRange(
+    DateTime start,
+    DateTime end,
+  ) {
     return _statisticsData
         .where((data) => data.date.isAfter(start) && data.date.isBefore(end))
         .toList();
@@ -1054,8 +1121,9 @@ class TodoProvider extends ChangeNotifier {
 
       bool matchesCategory = true;
       if (_selectedCategories.isNotEmpty) {
-        matchesCategory = todo.aiCategory != null &&
-                         _selectedCategories.contains(todo.aiCategory);
+        matchesCategory =
+            todo.aiCategory != null &&
+            _selectedCategories.contains(todo.aiCategory);
       }
 
       return matchesSearch && matchesFilter && matchesDate && matchesCategory;
@@ -1200,7 +1268,7 @@ class TodoProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> clearAllData({BuildContext? context}) async {
+  Future<void> clearAllData() async {
     try {
       debugPrint('Starting to clear all data...');
 
@@ -1237,17 +1305,6 @@ class TodoProvider extends ChangeNotifier {
       // 清除所有缓存
       await _invalidateTodoCache();
 
-      // 重置PomodoroProvider的状态以确保数据一致性
-      if (context != null) {
-        try {
-          final pomodoroProvider = Provider.of<PomodoroProvider>(context, listen: false);
-          pomodoroProvider.resetAllState();
-          debugPrint('PomodoroProvider state reset after clearing all data');
-        } catch (e) {
-          debugPrint('Warning: Could not reset PomodoroProvider state: $e');
-        }
-      }
-
       notifyListeners();
     } catch (e) {
       debugPrint('Error clearing all data: $e');
@@ -1259,9 +1316,12 @@ class TodoProvider extends ChangeNotifier {
   // Repeat Todo Management
 
   // Process repeat todo AI in background
-  Future<void> _processRepeatTodoAIInBackground(String repeatTodoId, String? createdTodoId, {bool isUpdate = false}) async {
+  Future<void> _processRepeatTodoAIInBackground(
+    String repeatTodoId,
+    String? createdTodoId, {
+    bool isUpdate = false,
+  }) async {
     try {
-
       // Update status
       _repeatTodoAIStatus[repeatTodoId] = 'Analyzing task...';
       notifyListeners();
@@ -1289,17 +1349,21 @@ class TodoProvider extends ChangeNotifier {
 
       // Process category with status updates
       String? category = repeatTodo.aiCategory;
-      if (_aiProvider!.settings.enableAutoCategorization && (repeatTodo.aiCategory == null || repeatTodo.aiCategory!.isEmpty)) {
+      if (_aiProvider!.settings.enableAutoCategorization &&
+          (repeatTodo.aiCategory == null || repeatTodo.aiCategory!.isEmpty)) {
         _repeatTodoAIStatus[repeatTodoId] = AIStatusConstants.categorizingTask;
         notifyListeners();
 
         category = await _aiProvider!.categorizeTask(tempTodo);
-        await Future.delayed(const Duration(milliseconds: 500)); // Small delay for status update
+        await Future.delayed(
+          const Duration(milliseconds: 500),
+        ); // Small delay for status update
       }
 
       // Process priority with status updates
       int? priority = repeatTodo.aiPriority;
-      if (_aiProvider!.settings.enablePrioritySorting && repeatTodo.aiPriority == 0) {
+      if (_aiProvider!.settings.enablePrioritySorting &&
+          repeatTodo.aiPriority == 0) {
         _repeatTodoAIStatus[repeatTodoId] = 'Assessing priority...';
         notifyListeners();
 
@@ -1307,7 +1371,6 @@ class TodoProvider extends ChangeNotifier {
         await Future.delayed(const Duration(milliseconds: 1000));
         priority = await _aiProvider!.assessPriority(tempTodo);
       }
-
 
       // Update the repeat todo with AI results
       final processedRepeatTodo = repeatTodo.copyWith(
@@ -1333,7 +1396,11 @@ class TodoProvider extends ChangeNotifier {
 
       // If this is an update, sync changes to existing generated todos (including completed ones)
       if (isUpdate) {
-        await _syncRepeatTodoChangesToGeneratedTodos(repeatTodo, processedRepeatTodo, includeCompleted: true);
+        await _syncRepeatTodoChangesToGeneratedTodos(
+          repeatTodo,
+          processedRepeatTodo,
+          includeCompleted: true,
+        );
       }
 
       // Clear processing status
@@ -1348,19 +1415,20 @@ class TodoProvider extends ChangeNotifier {
       });
 
       notifyListeners();
-
     } catch (e) {
-      debugPrint('TodoProvider: Error in background AI processing for repeat todo $repeatTodoId: $e');
+      debugPrint(
+        'TodoProvider: Error in background AI processing for repeat todo $repeatTodoId: $e',
+      );
 
       // Clear processing status with error
       _repeatTodoAILoading[repeatTodoId] = false;
-      _repeatTodoAIStatus[repeatTodoId] = 'Error: ${e.toString().substring(0, 50)}...';
+      _repeatTodoAIStatus[repeatTodoId] =
+          'Error: ${e.toString().substring(0, 50)}...';
       _processingRepeatTodos.remove(repeatTodoId);
       notifyListeners();
     }
   }
 
-  
   Future<void> addRepeatTodo(RepeatTodoModel repeatTodo) async {
     try {
       final repeatTodosBox = _hiveService.repeatTodosBox;
@@ -1388,16 +1456,22 @@ class TodoProvider extends ChangeNotifier {
         createdTodoId = await _generateTodoFromRepeat(finalRepeatTodo);
 
         // Update last generated date to today
-        final updatedRepeatTodo = finalRepeatTodo.copyWith(lastGeneratedDate: now);
+        final updatedRepeatTodo = finalRepeatTodo.copyWith(
+          lastGeneratedDate: now,
+        );
         await repeatTodosBox.put(updatedRepeatTodo.id, updatedRepeatTodo);
-        final index = _repeatTodos.indexWhere((rt) => rt.id == finalRepeatTodo.id);
+        final index = _repeatTodos.indexWhere(
+          (rt) => rt.id == finalRepeatTodo.id,
+        );
         if (index != -1) {
           _repeatTodos[index] = updatedRepeatTodo;
         }
       }
 
       // Process AI in background without blocking UI
-      unawaited(_processRepeatTodoAIInBackground(finalRepeatTodo.id, createdTodoId));
+      unawaited(
+        _processRepeatTodoAIInBackground(finalRepeatTodo.id, createdTodoId),
+      );
 
       notifyListeners();
     } catch (e) {
@@ -1405,7 +1479,10 @@ class TodoProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> updateRepeatTodo(RepeatTodoModel updatedRepeatTodo, {bool skipAIProcessing = false}) async {
+  Future<void> updateRepeatTodo(
+    RepeatTodoModel updatedRepeatTodo, {
+    bool skipAIProcessing = false,
+  }) async {
     try {
       // Get the original repeat todo for comparison
       final originalRepeatTodo = _repeatTodos.firstWhere(
@@ -1427,10 +1504,14 @@ class TodoProvider extends ChangeNotifier {
 
       // Check if we need to process AI (title or description changed and not skipped)
       final titleChanged = originalRepeatTodo.title != updatedRepeatTodo.title;
-      final descriptionChanged = originalRepeatTodo.description != updatedRepeatTodo.description;
-      final needsAIProcessing = !skipAIProcessing && (titleChanged || descriptionChanged);
+      final descriptionChanged =
+          originalRepeatTodo.description != updatedRepeatTodo.description;
+      final needsAIProcessing =
+          !skipAIProcessing && (titleChanged || descriptionChanged);
 
-      if (needsAIProcessing && _aiProvider != null && _aiProvider!.isAIServiceValid) {
+      if (needsAIProcessing &&
+          _aiProvider != null &&
+          _aiProvider!.isAIServiceValid) {
         // Set AI processing status
         _repeatTodoAILoading[updatedRepeatTodo.id] = true;
         _repeatTodoAIStatus[updatedRepeatTodo.id] = 'Updating AI...';
@@ -1438,10 +1519,19 @@ class TodoProvider extends ChangeNotifier {
         notifyListeners();
 
         // Process AI in background
-        unawaited(_processRepeatTodoAIInBackground(updatedRepeatTodo.id, null, isUpdate: true));
+        unawaited(
+          _processRepeatTodoAIInBackground(
+            updatedRepeatTodo.id,
+            null,
+            isUpdate: true,
+          ),
+        );
       } else if (!skipAIProcessing) {
         // Sync changes to existing generated todos if critical fields changed
-        await _syncRepeatTodoChangesToGeneratedTodos(originalRepeatTodo, updatedRepeatTodo);
+        await _syncRepeatTodoChangesToGeneratedTodos(
+          originalRepeatTodo,
+          updatedRepeatTodo,
+        );
       }
 
       notifyListeners();
@@ -1511,11 +1601,16 @@ class TodoProvider extends ChangeNotifier {
 
     // 检查是否日期变化了（新的本地日期开始）
     final lastCheckDate = _lastRepeatCheck != null
-        ? DateTime(_lastRepeatCheck!.year, _lastRepeatCheck!.month, _lastRepeatCheck!.day)
+        ? DateTime(
+            _lastRepeatCheck!.year,
+            _lastRepeatCheck!.month,
+            _lastRepeatCheck!.day,
+          )
         : null;
     final currentDate = DateTime(now.year, now.month, now.day);
 
-    final isNewDay = lastCheckDate == null || !currentDate.isAtSameMomentAs(lastCheckDate);
+    final isNewDay =
+        lastCheckDate == null || !currentDate.isAtSameMomentAs(lastCheckDate);
     // debugPrint('Is new day: $isNewDay, Last check date: $lastCheckDate, Current date: $currentDate');
     // debugPrint('Current hour: ${now.hour}, Current minute: ${now.minute}');
 
@@ -1530,7 +1625,8 @@ class TodoProvider extends ChangeNotifier {
       }
 
       // 检查是否需要生成任务
-      final shouldCheckGeneration = isNewDay || repeatTodo.shouldGenerateTodo(now);
+      final shouldCheckGeneration =
+          isNewDay || repeatTodo.shouldGenerateTodo(now);
 
       if (shouldCheckGeneration) {
         // 检查今天是否已经为这个重复模板生成了任务
@@ -1543,7 +1639,9 @@ class TodoProvider extends ChangeNotifier {
           if (shouldGenerateToday) {
             await _generateTodoFromRepeat(repeatTodo);
             // Update last generated date (skip AI processing for this metadata update)
-            final updatedRepeatTodo = repeatTodo.copyWith(lastGeneratedDate: now);
+            final updatedRepeatTodo = repeatTodo.copyWith(
+              lastGeneratedDate: now,
+            );
             await updateRepeatTodo(updatedRepeatTodo, skipAIProcessing: true);
           }
         }
@@ -1584,14 +1682,17 @@ class TodoProvider extends ChangeNotifier {
 
         if (!hasGeneratedToday) {
           // 检查今天是否符合重复条件
-          final shouldGenerateToday = _shouldGenerateForToday(repeatTodo, now) ||
-                                     repeatTodo.shouldGenerateTodo(now) ||
-                                     _shouldHaveGeneratedEarlier(repeatTodo, now);
+          final shouldGenerateToday =
+              _shouldGenerateForToday(repeatTodo, now) ||
+              repeatTodo.shouldGenerateTodo(now) ||
+              _shouldHaveGeneratedEarlier(repeatTodo, now);
 
           if (shouldGenerateToday) {
             await _generateTodoFromRepeat(repeatTodo);
             // Update last generated date (skip AI processing for this metadata update)
-            final updatedRepeatTodo = repeatTodo.copyWith(lastGeneratedDate: now);
+            final updatedRepeatTodo = repeatTodo.copyWith(
+              lastGeneratedDate: now,
+            );
             await updateRepeatTodo(updatedRepeatTodo, skipAIProcessing: true);
           }
         }
@@ -1628,13 +1729,21 @@ class TodoProvider extends ChangeNotifier {
             await _generateTodoFromRepeat(repeatTodo);
 
             // Update last generated date to today (skip AI processing for this metadata update)
-            final updatedRepeatTodo = repeatTodo.copyWith(lastGeneratedDate: now);
+            final updatedRepeatTodo = repeatTodo.copyWith(
+              lastGeneratedDate: now,
+            );
             await updateRepeatTodo(updatedRepeatTodo, skipAIProcessing: true);
           } else {
             // 如果不应该在今天生成，但有未来的 lastGeneratedDate，重置它
-            if (repeatTodo.lastGeneratedDate != null && repeatTodo.lastGeneratedDate!.isAfter(now)) {
-              final correctedRepeatTodo = repeatTodo.copyWith(lastGeneratedDate: null);
-              await updateRepeatTodo(correctedRepeatTodo, skipAIProcessing: true);
+            if (repeatTodo.lastGeneratedDate != null &&
+                repeatTodo.lastGeneratedDate!.isAfter(now)) {
+              final correctedRepeatTodo = repeatTodo.copyWith(
+                lastGeneratedDate: null,
+              );
+              await updateRepeatTodo(
+                correctedRepeatTodo,
+                skipAIProcessing: true,
+              );
             }
           }
         }
@@ -1645,7 +1754,9 @@ class TodoProvider extends ChangeNotifier {
   // 只刷新今天的重复任务：删除今天的任务并重新生成（如果应该生成）
   Future<void> refreshTodayRepeatTasks() async {
     final now = _getLocalDateTime();
-    debugPrint('refreshTodayRepeatTasks called at: $now (local hour: ${now.hour}:${now.minute})');
+    debugPrint(
+      'refreshTodayRepeatTasks called at: $now (local hour: ${now.hour}:${now.minute})',
+    );
     _lastRepeatCheck = now;
 
     // 清理今天的过期重复任务
@@ -1672,40 +1783,65 @@ class TodoProvider extends ChangeNotifier {
         // 检查今天是否已经为这个重复模板生成了任务
         final hasGeneratedToday = _hasGeneratedTodoForToday(repeatTodo, now);
 
-        debugPrint('Refresh: Repeat task "${repeatTodo.title}" - hasGeneratedToday: $hasGeneratedToday');
+        debugPrint(
+          'Refresh: Repeat task "${repeatTodo.title}" - hasGeneratedToday: $hasGeneratedToday',
+        );
 
         if (!hasGeneratedToday) {
           // 检查重复任务是否应该在今天生成
           final shouldGenerate = _shouldGenerateForToday(repeatTodo, now);
 
-          debugPrint('Repeat task "${repeatTodo.title}" - should generate today: $shouldGenerate');
+          debugPrint(
+            'Repeat task "${repeatTodo.title}" - should generate today: $shouldGenerate',
+          );
           debugPrint('  - Repeat type: ${repeatTodo.repeatType}');
           debugPrint('  - Current date: $now');
-          debugPrint('  - Current local time: ${now.hour}:${now.minute}:${now.second}');
+          debugPrint(
+            '  - Current local time: ${now.hour}:${now.minute}:${now.second}',
+          );
           debugPrint('  - Start date: ${repeatTodo.startDate}');
           debugPrint('  - End date: ${repeatTodo.endDate}');
           debugPrint('  - Last generated: ${repeatTodo.lastGeneratedDate}');
 
           if (shouldGenerate) {
             // 在生成前，再次检查以确保没有重复
-            final hasGenerated = _hasGeneratedTodoForRepeatToday(repeatTodo, now);
+            final hasGenerated = _hasGeneratedTodoForRepeatToday(
+              repeatTodo,
+              now,
+            );
             if (!hasGenerated) {
-              debugPrint('Generating todo for repeat task "${repeatTodo.title}" at ${now.hour}:${now.minute}');
+              debugPrint(
+                'Generating todo for repeat task "${repeatTodo.title}" at ${now.hour}:${now.minute}',
+              );
               await _generateTodoFromRepeat(repeatTodo);
 
               // Update last generated date to today (skip AI processing for this metadata update)
-              final updatedRepeatTodo = repeatTodo.copyWith(lastGeneratedDate: now);
+              final updatedRepeatTodo = repeatTodo.copyWith(
+                lastGeneratedDate: now,
+              );
               await updateRepeatTodo(updatedRepeatTodo, skipAIProcessing: true);
             } else {
-              debugPrint('Task already generated for today for "${repeatTodo.title}"');
+              debugPrint(
+                'Task already generated for today for "${repeatTodo.title}"',
+              );
             }
           } else {
-            debugPrint('Should not generate today for "${repeatTodo.title}" - current time ${now.hour}:${now.minute} may not meet repeat conditions');
+            debugPrint(
+              'Should not generate today for "${repeatTodo.title}" - current time ${now.hour}:${now.minute} may not meet repeat conditions',
+            );
             // 如果不应该在今天生成，但有未来的 lastGeneratedDate，重置它
-            if (repeatTodo.lastGeneratedDate != null && repeatTodo.lastGeneratedDate!.isAfter(now)) {
-              debugPrint('Resetting future lastGeneratedDate for "${repeatTodo.title}"');
-              final correctedRepeatTodo = repeatTodo.copyWith(lastGeneratedDate: null);
-              await updateRepeatTodo(correctedRepeatTodo, skipAIProcessing: true);
+            if (repeatTodo.lastGeneratedDate != null &&
+                repeatTodo.lastGeneratedDate!.isAfter(now)) {
+              debugPrint(
+                'Resetting future lastGeneratedDate for "${repeatTodo.title}"',
+              );
+              final correctedRepeatTodo = repeatTodo.copyWith(
+                lastGeneratedDate: null,
+              );
+              await updateRepeatTodo(
+                correctedRepeatTodo,
+                skipAIProcessing: true,
+              );
             }
           }
         } else {
@@ -1716,14 +1852,21 @@ class TodoProvider extends ChangeNotifier {
   }
 
   // 检查重复任务是否应该在今天生成
-  bool _shouldGenerateForToday(RepeatTodoModel repeatTodo, DateTime currentDate) {
+  bool _shouldGenerateForToday(
+    RepeatTodoModel repeatTodo,
+    DateTime currentDate,
+  ) {
     // 使用本地时间进行判断
     final localDate = _getLocalDateTime();
     final today = DateTime(localDate.year, localDate.month, localDate.day);
 
     // 检查是否已过开始日期
     if (repeatTodo.startDate != null) {
-      final startDate = DateTime(repeatTodo.startDate!.year, repeatTodo.startDate!.month, repeatTodo.startDate!.day);
+      final startDate = DateTime(
+        repeatTodo.startDate!.year,
+        repeatTodo.startDate!.month,
+        repeatTodo.startDate!.day,
+      );
       if (today.isBefore(startDate)) {
         return false;
       }
@@ -1731,7 +1874,11 @@ class TodoProvider extends ChangeNotifier {
 
     // 检查是否已过结束日期
     if (repeatTodo.endDate != null) {
-      final endDate = DateTime(repeatTodo.endDate!.year, repeatTodo.endDate!.month, repeatTodo.endDate!.day);
+      final endDate = DateTime(
+        repeatTodo.endDate!.year,
+        repeatTodo.endDate!.month,
+        repeatTodo.endDate!.day,
+      );
       if (today.isAfter(endDate)) {
         return false;
       }
@@ -1743,7 +1890,9 @@ class TodoProvider extends ChangeNotifier {
         return true; // 每天都生成
 
       case RepeatType.weekly:
-        if (repeatTodo.weekDays == null || repeatTodo.weekDays!.isEmpty) return false;
+        if (repeatTodo.weekDays == null || repeatTodo.weekDays!.isEmpty) {
+          return false;
+        }
         // 使用本地时间的星期几进行判断
         return repeatTodo.weekDays!.contains(localDate.weekday);
 
@@ -1757,7 +1906,8 @@ class TodoProvider extends ChangeNotifier {
 
         // 如果指定的日期超过了本月的最大天数，则在本月的最后一天生成
         final lastDayOfMonth = DateTime(today.year, today.month + 1, 0).day;
-        if (repeatTodo.dayOfMonth! > lastDayOfMonth && today.day == lastDayOfMonth) {
+        if (repeatTodo.dayOfMonth! > lastDayOfMonth &&
+            today.day == lastDayOfMonth) {
           return true;
         }
 
@@ -1765,17 +1915,19 @@ class TodoProvider extends ChangeNotifier {
 
       case RepeatType.weekdays:
         return localDate.weekday <= 5; // 周一到周五
-
     }
   }
 
   // 检查是否应该更早生成了任务
-  bool _shouldHaveGeneratedEarlier(RepeatTodoModel repeatTodo, DateTime currentDate) {
+  bool _shouldHaveGeneratedEarlier(
+    RepeatTodoModel repeatTodo,
+    DateTime currentDate,
+  ) {
     if (repeatTodo.lastGeneratedDate == null) {
       // If never generated, check if we should have started by now
       return repeatTodo.startDate == null ||
-             currentDate.isAfter(repeatTodo.startDate!) ||
-             _isSameDay(currentDate, repeatTodo.startDate!);
+          currentDate.isAfter(repeatTodo.startDate!) ||
+          _isSameDay(currentDate, repeatTodo.startDate!);
     }
 
     // Check if we missed any expected generation dates
@@ -1790,12 +1942,22 @@ class TodoProvider extends ChangeNotifier {
         }
         // Also check if dates are different even if difference is less than 1 day
         // This handles the case where lastGenDate was late at night and currentDate is early morning
-        final lastGenDay = DateTime(lastGenDate.year, lastGenDate.month, lastGenDate.day);
-        final currentDay = DateTime(currentDate.year, currentDate.month, currentDate.day);
+        final lastGenDay = DateTime(
+          lastGenDate.year,
+          lastGenDate.month,
+          lastGenDate.day,
+        );
+        final currentDay = DateTime(
+          currentDate.year,
+          currentDate.month,
+          currentDate.day,
+        );
         return !currentDay.isAtSameMomentAs(lastGenDay);
 
       case RepeatType.weekly:
-        if (repeatTodo.weekDays == null || repeatTodo.weekDays!.isEmpty) return false;
+        if (repeatTodo.weekDays == null || repeatTodo.weekDays!.isEmpty) {
+          return false;
+        }
         // 使用本地时间进行判断
         final localDate = _getLocalDateTime();
         return repeatTodo.weekDays!.contains(localDate.weekday);
@@ -1804,16 +1966,20 @@ class TodoProvider extends ChangeNotifier {
         if (repeatTodo.dayOfMonth == null) return false;
 
         // Check if we missed any expected month days
-        final monthsSinceLastGen = (currentDate.year - lastGenDate.year) * 12 +
-                                  (currentDate.month - lastGenDate.month);
+        final monthsSinceLastGen =
+            (currentDate.year - lastGenDate.year) * 12 +
+            (currentDate.month - lastGenDate.month);
 
         for (int i = 1; i <= monthsSinceLastGen; i++) {
-          final checkYear = lastGenDate.year + ((lastGenDate.month + i - 1) ~/ 12);
+          final checkYear =
+              lastGenDate.year + ((lastGenDate.month + i - 1) ~/ 12);
           final checkMonth = (lastGenDate.month + i - 1) % 12 + 1;
 
           // Check if this month has the target day
           final maxDay = DateTime(checkYear, checkMonth + 1, 0).day;
-          final adjustedDay = repeatTodo.dayOfMonth! > maxDay ? maxDay : repeatTodo.dayOfMonth!;
+          final adjustedDay = repeatTodo.dayOfMonth! > maxDay
+              ? maxDay
+              : repeatTodo.dayOfMonth!;
 
           final checkDate = DateTime(checkYear, checkMonth, adjustedDay);
           if (!checkDate.isAfter(currentDate)) {
@@ -1832,7 +1998,6 @@ class TodoProvider extends ChangeNotifier {
           }
         }
         return false;
-
     }
   }
 
@@ -1884,7 +2049,10 @@ class TodoProvider extends ChangeNotifier {
   }
 
   // 检查是否已经为指定的重复模板在今天生成了任务（更严格检查）
-  bool _hasGeneratedTodoForRepeatToday(RepeatTodoModel repeatTodo, DateTime currentDate) {
+  bool _hasGeneratedTodoForRepeatToday(
+    RepeatTodoModel repeatTodo,
+    DateTime currentDate,
+  ) {
     // 检查今天是否已经为这个重复模板生成了任务
     final localDate = _getLocalDateTime();
     final today = DateTime(localDate.year, localDate.month, localDate.day);
@@ -1905,7 +2073,9 @@ class TodoProvider extends ChangeNotifier {
   Future<String?> _generateTodoFromRepeat(RepeatTodoModel repeatTodo) async {
     final now = _getLocalDateTime();
     debugPrint('Generating todo from repeat template at local time: $now');
-    debugPrint('Current local time details - Hour: ${now.hour}, Minute: ${now.minute}, Second: ${now.second}');
+    debugPrint(
+      'Current local time details - Hour: ${now.hour}, Minute: ${now.minute}, Second: ${now.second}',
+    );
 
     // 直接继承重复任务模板的AI数据，不进行重新处理
     String? inheritedCategory = repeatTodo.aiCategory;
@@ -1925,12 +2095,13 @@ class TodoProvider extends ChangeNotifier {
       aiProcessed: inheritedProcessed,
     );
 
-
     // 确保创建的任务使用实际的本地时间（避免标准化为00:00）
     final correctedTodo = newTodo.copyWith(createdAt: now);
 
     debugPrint('Todo created with timestamp: ${correctedTodo.createdAt}');
-    debugPrint('Todo creation time - Hour: ${correctedTodo.createdAt.hour}, Minute: ${correctedTodo.createdAt.minute}');
+    debugPrint(
+      'Todo creation time - Hour: ${correctedTodo.createdAt.hour}, Minute: ${correctedTodo.createdAt.minute}',
+    );
 
     final todosBox = _hiveService.todosBox;
     await todosBox.put(correctedTodo.id, correctedTodo);
@@ -1949,26 +2120,37 @@ class TodoProvider extends ChangeNotifier {
   }
 
   // 同步重复任务模板的变更到已生成的待办事项
-  Future<void> _syncRepeatTodoChangesToGeneratedTodos(RepeatTodoModel originalTodo, RepeatTodoModel updatedTodo, {bool includeCompleted = false}) async {
+  Future<void> _syncRepeatTodoChangesToGeneratedTodos(
+    RepeatTodoModel originalTodo,
+    RepeatTodoModel updatedTodo, {
+    bool includeCompleted = false,
+  }) async {
     // 检查关键字段是否有变更
     final titleChanged = originalTodo.title != updatedTodo.title;
-    final descriptionChanged = originalTodo.description != updatedTodo.description;
+    final descriptionChanged =
+        originalTodo.description != updatedTodo.description;
     final categoryChanged = originalTodo.aiCategory != updatedTodo.aiCategory;
     final priorityChanged = originalTodo.aiPriority != updatedTodo.aiPriority;
     final dataUnitChanged = originalTodo.dataUnit != updatedTodo.dataUnit;
 
     // 如果没有关键字段变更，则不需要同步
-    if (!titleChanged && !descriptionChanged && !categoryChanged && !priorityChanged && !dataUnitChanged) {
+    if (!titleChanged &&
+        !descriptionChanged &&
+        !categoryChanged &&
+        !priorityChanged &&
+        !dataUnitChanged) {
       return;
     }
 
-
     // 获取所有已生成的待办事项（根据参数决定是否包含已完成任务）
-    final generatedTodos = _todos.where(
-      (todo) => todo.repeatTodoId == updatedTodo.id &&
-                todo.isGeneratedFromRepeat &&
-                (includeCompleted || !todo.isCompleted)
-    ).toList();
+    final generatedTodos = _todos
+        .where(
+          (todo) =>
+              todo.repeatTodoId == updatedTodo.id &&
+              todo.isGeneratedFromRepeat &&
+              (includeCompleted || !todo.isCompleted),
+        )
+        .toList();
 
     if (generatedTodos.isEmpty) {
       return;
@@ -1981,27 +2163,38 @@ class TodoProvider extends ChangeNotifier {
       TodoModel updatedGeneratedTodo = todo;
 
       if (titleChanged) {
-        updatedGeneratedTodo = updatedGeneratedTodo.copyWith(title: updatedTodo.title);
+        updatedGeneratedTodo = updatedGeneratedTodo.copyWith(
+          title: updatedTodo.title,
+        );
       }
       if (descriptionChanged) {
-        updatedGeneratedTodo = updatedGeneratedTodo.copyWith(description: updatedTodo.description);
+        updatedGeneratedTodo = updatedGeneratedTodo.copyWith(
+          description: updatedTodo.description,
+        );
       }
       if (categoryChanged) {
-        updatedGeneratedTodo = updatedGeneratedTodo.copyWith(aiCategory: updatedTodo.aiCategory);
+        updatedGeneratedTodo = updatedGeneratedTodo.copyWith(
+          aiCategory: updatedTodo.aiCategory,
+        );
       }
       if (priorityChanged) {
-        updatedGeneratedTodo = updatedGeneratedTodo.copyWith(aiPriority: updatedTodo.aiPriority);
+        updatedGeneratedTodo = updatedGeneratedTodo.copyWith(
+          aiPriority: updatedTodo.aiPriority,
+        );
       }
       if (dataUnitChanged) {
-        updatedGeneratedTodo = updatedGeneratedTodo.copyWith(dataUnit: updatedTodo.dataUnit);
+        updatedGeneratedTodo = updatedGeneratedTodo.copyWith(
+          dataUnit: updatedTodo.dataUnit,
+        );
       }
 
       // 更新AI处理状态
       if (categoryChanged || priorityChanged) {
-        final isCategoryValid = updatedGeneratedTodo.aiCategory?.isNotEmpty == true;
+        final isCategoryValid =
+            updatedGeneratedTodo.aiCategory?.isNotEmpty == true;
         final isPriorityValid = updatedGeneratedTodo.aiPriority > 0;
         updatedGeneratedTodo = updatedGeneratedTodo.copyWith(
-          aiProcessed: isCategoryValid && isPriorityValid
+          aiProcessed: isCategoryValid && isPriorityValid,
         );
       }
 
@@ -2013,16 +2206,17 @@ class TodoProvider extends ChangeNotifier {
       if (index != -1) {
         _todos[index] = updatedGeneratedTodo;
       }
-
     }
 
     _applyFilters();
     await _invalidateTodoCache();
   }
 
-  
   // 同步AI数据到刚创建的任务
-  Future<void> _syncAIToCreatedTodo(String todoId, RepeatTodoModel processedTemplate) async {
+  Future<void> _syncAIToCreatedTodo(
+    String todoId,
+    RepeatTodoModel processedTemplate,
+  ) async {
     try {
       final todosBox = _hiveService.todosBox;
       final todo = todosBox.get(todoId);
@@ -2047,7 +2241,6 @@ class TodoProvider extends ChangeNotifier {
         _applyFilters();
       }
 
-
       // 通知UI更新
       notifyListeners();
     } catch (e) {
@@ -2059,30 +2252,36 @@ class TodoProvider extends ChangeNotifier {
   Future<void> _ensureRepeatTodoConsistency(String repeatTodoId) async {
     RepeatTodoModel? repeatTodo;
     try {
-      repeatTodo = _repeatTodos.firstWhere(
-        (rt) => rt.id == repeatTodoId,
-      );
+      repeatTodo = _repeatTodos.firstWhere((rt) => rt.id == repeatTodoId);
     } catch (e) {
-      debugPrint('TodoProvider: Repeat todo not found for id $repeatTodoId in _ensureRepeatTodoConsistency, creating default: $e');
-      repeatTodo = RepeatTodoModel.create(title: '', repeatType: RepeatType.daily);
+      debugPrint(
+        'TodoProvider: Repeat todo not found for id $repeatTodoId in _ensureRepeatTodoConsistency, creating default: $e',
+      );
+      repeatTodo = RepeatTodoModel.create(
+        title: '',
+        repeatType: RepeatType.daily,
+      );
     }
 
     // 获取该重复任务生成的所有任务
     final generatedTodos = _todos
-        .where((todo) => todo.repeatTodoId == repeatTodoId && todo.isGeneratedFromRepeat)
+        .where(
+          (todo) =>
+              todo.repeatTodoId == repeatTodoId && todo.isGeneratedFromRepeat,
+        )
         .toList();
 
     if (generatedTodos.isNotEmpty) {
       // 找到最新的生成任务
       final latestGenerated = generatedTodos.reduce(
-        (a, b) => a.createdAt.isAfter(b.createdAt) ? a : b
+        (a, b) => a.createdAt.isAfter(b.createdAt) ? a : b,
       );
 
       // 确保重复任务的 lastGeneratedDate 不晚于最新生成的任务
       if (repeatTodo.lastGeneratedDate == null ||
           repeatTodo.lastGeneratedDate!.isBefore(latestGenerated.createdAt)) {
         final updatedRepeatTodo = repeatTodo.copyWith(
-          lastGeneratedDate: latestGenerated.createdAt
+          lastGeneratedDate: latestGenerated.createdAt,
         );
         await updateRepeatTodo(updatedRepeatTodo);
       }
@@ -2159,7 +2358,9 @@ class TodoProvider extends ChangeNotifier {
 
   // Process missing AI data for a specific todo
   void processMissingAIDataForTodo(TodoModel todo) {
-    if (_aiProvider == null || !_aiProvider!.isAIServiceValid || todo.isCompleted) {
+    if (_aiProvider == null ||
+        !_aiProvider!.isAIServiceValid ||
+        todo.isCompleted) {
       return;
     }
 
@@ -2173,7 +2374,9 @@ class TodoProvider extends ChangeNotifier {
     if (_lastRateLimitError != null) {
       final timeSinceRateLimit = now.difference(_lastRateLimitError!);
       if (timeSinceRateLimit.inMinutes < 2) {
-        debugPrint('Skipping all AI processing due to recent rate limit error (${timeSinceRateLimit.inMinutes}m ago)');
+        debugPrint(
+          'Skipping all AI processing due to recent rate limit error (${timeSinceRateLimit.inMinutes}m ago)',
+        );
         return;
       }
     }
@@ -2186,7 +2389,9 @@ class TodoProvider extends ChangeNotifier {
     if (lastFailure != null) {
       final timeSinceFailure = now.difference(lastFailure);
       if (timeSinceFailure.inMinutes < 5) {
-        debugPrint('Skipping AI processing for ${todo.id} due to recent failure (${timeSinceFailure.inMinutes}m ago)');
+        debugPrint(
+          'Skipping AI processing for ${todo.id} due to recent failure (${timeSinceFailure.inMinutes}m ago)',
+        );
         return;
       }
     }
@@ -2196,7 +2401,9 @@ class TodoProvider extends ChangeNotifier {
     if (lastRequest != null) {
       final timeSinceRequest = now.difference(lastRequest);
       if (timeSinceRequest.inSeconds < 30) {
-        debugPrint('Skipping AI processing for ${todo.id} due to recent request (${timeSinceRequest.inSeconds}s ago)');
+        debugPrint(
+          'Skipping AI processing for ${todo.id} due to recent request (${timeSinceRequest.inSeconds}s ago)',
+        );
         return;
       }
     }
@@ -2240,15 +2447,21 @@ class TodoProvider extends ChangeNotifier {
       bool needsUpdate = false;
 
       // Check what needs to be processed
-      bool needsCategory = _aiProvider!.settings.enableAutoCategorization && (todo.aiCategory == null || todo.aiCategory!.isEmpty);
-      bool needsPriority = _aiProvider!.settings.enablePrioritySorting && (todo.aiPriority == 0);
+      bool needsCategory =
+          _aiProvider!.settings.enableAutoCategorization &&
+          (todo.aiCategory == null || todo.aiCategory!.isEmpty);
+      bool needsPriority =
+          _aiProvider!.settings.enablePrioritySorting && (todo.aiPriority == 0);
 
       if (!needsCategory && !needsPriority) return; // Nothing to process
 
       // Process categorization if needed
       String? newCategory;
       if (needsCategory) {
-        final category = await _aiProvider!.aiService?.categorizeTask(todo, languageCode);
+        final category = await _aiProvider!.aiService?.categorizeTask(
+          todo,
+          languageCode,
+        );
         if (category != null && category.isNotEmpty) {
           newCategory = category;
           needsUpdate = true;
@@ -2258,7 +2471,10 @@ class TodoProvider extends ChangeNotifier {
       // Process priority if needed
       int? newPriority;
       if (needsPriority) {
-        final priority = await _aiProvider!.aiService?.assessPriority(todo, languageCode);
+        final priority = await _aiProvider!.aiService?.assessPriority(
+          todo,
+          languageCode,
+        );
         if (priority != null && priority > 0) {
           newPriority = priority;
           needsUpdate = true;
@@ -2273,17 +2489,20 @@ class TodoProvider extends ChangeNotifier {
       // Update if we made changes
       if (needsUpdate) {
         // Only mark as processed if both required fields are properly set
-        final categoryOk = (newCategory != null && newCategory.isNotEmpty) ||
-                          (todo.aiCategory != null && todo.aiCategory!.isNotEmpty && !needsCategory);
-        final priorityOk = (newPriority != null && newPriority > 0) ||
-                          (todo.aiPriority > 0 && !needsPriority);
+        final categoryOk =
+            (newCategory != null && newCategory.isNotEmpty) ||
+            (todo.aiCategory != null &&
+                todo.aiCategory!.isNotEmpty &&
+                !needsCategory);
+        final priorityOk =
+            (newPriority != null && newPriority > 0) ||
+            (todo.aiPriority > 0 && !needsPriority);
 
         final updatedTodo = todo.copyWith(
           aiCategory: newCategory ?? todo.aiCategory,
           aiPriority: newPriority ?? todo.aiPriority,
           aiProcessed: categoryOk && priorityOk,
         );
-
 
         // Save to Hive database
         await todosBox.put(updatedTodo.id, updatedTodo);
@@ -2307,7 +2526,8 @@ class TodoProvider extends ChangeNotifier {
       _failedAiRequests[todo.id] = DateTime.now();
 
       // Check if this is a rate limit error (429)
-      if (e.toString().contains('429') || e.toString().contains('Too Many Requests')) {
+      if (e.toString().contains('429') ||
+          e.toString().contains('Too Many Requests')) {
         debugPrint('Rate limit detected, setting global cooldown');
         _lastRateLimitError = DateTime.now();
       }
@@ -2322,7 +2542,8 @@ class TodoProvider extends ChangeNotifier {
     final now = DateTime.now();
     _failedAiRequests.removeWhere((todoId, failureTime) {
       final timeSinceFailure = now.difference(failureTime);
-      return timeSinceFailure.inMinutes >= 10; // Remove records older than 10 minutes
+      return timeSinceFailure.inMinutes >=
+          10; // Remove records older than 10 minutes
     });
   }
 
@@ -2335,12 +2556,14 @@ class TodoProvider extends ChangeNotifier {
     bool needsPriority = false;
 
     // Check if AI features are enabled and if the todo is missing information
-    if (_aiProvider!.settings.enableAutoCategorization && (todo.aiCategory == null || !todo.aiProcessed)) {
+    if (_aiProvider!.settings.enableAutoCategorization &&
+        (todo.aiCategory == null || !todo.aiProcessed)) {
       needsCategory = true;
       needsProcessing = true;
     }
 
-    if (_aiProvider!.settings.enablePrioritySorting && (todo.aiPriority == 0 || !todo.aiProcessed)) {
+    if (_aiProvider!.settings.enablePrioritySorting &&
+        (todo.aiPriority == 0 || !todo.aiProcessed)) {
       needsPriority = true;
       needsProcessing = true;
     }
@@ -2356,7 +2579,10 @@ class TodoProvider extends ChangeNotifier {
       // Process categorization if needed
       String? newCategory;
       if (needsCategory) {
-        final category = await _aiProvider!.aiService?.categorizeTask(todo, languageCode);
+        final category = await _aiProvider!.aiService?.categorizeTask(
+          todo,
+          languageCode,
+        );
         if (category != null) {
           newCategory = category;
           needsUpdate = true;
@@ -2366,7 +2592,10 @@ class TodoProvider extends ChangeNotifier {
       // Process priority if needed
       int? newPriority;
       if (needsPriority) {
-        final priority = await _aiProvider!.aiService?.assessPriority(todo, languageCode);
+        final priority = await _aiProvider!.aiService?.assessPriority(
+          todo,
+          languageCode,
+        );
         if (priority != null) {
           newPriority = priority;
           needsUpdate = true;
@@ -2376,17 +2605,20 @@ class TodoProvider extends ChangeNotifier {
       // Update if we made changes
       if (needsUpdate) {
         // Only mark as processed if both required fields are properly set
-        final categoryOk = (newCategory != null && newCategory.isNotEmpty) ||
-                          (todo.aiCategory != null && todo.aiCategory!.isNotEmpty && !needsCategory);
-        final priorityOk = (newPriority != null && newPriority > 0) ||
-                          (todo.aiPriority > 0 && !needsPriority);
+        final categoryOk =
+            (newCategory != null && newCategory.isNotEmpty) ||
+            (todo.aiCategory != null &&
+                todo.aiCategory!.isNotEmpty &&
+                !needsCategory);
+        final priorityOk =
+            (newPriority != null && newPriority > 0) ||
+            (todo.aiPriority > 0 && !needsPriority);
 
         final updatedTodo = todo.copyWith(
           aiCategory: newCategory ?? todo.aiCategory,
           aiPriority: newPriority ?? todo.aiPriority,
           aiProcessed: categoryOk && priorityOk,
         );
-
 
         // Save to Hive database
         await todosBox.put(updatedTodo.id, updatedTodo);
@@ -2409,8 +2641,6 @@ class TodoProvider extends ChangeNotifier {
     }
   }
 
-  
-  
   // Batch process unprocessed todos with AI
   Future<void> processUnprocessedTodosWithAI() async {
     final isAiProviderNull = _aiProvider == null;
@@ -2418,16 +2648,18 @@ class TodoProvider extends ChangeNotifier {
 
     if (isAiProviderNull || !isAiServiceValid) {
       // Add more detailed debugging
-      if (_aiProvider != null) {
-      }
+      if (_aiProvider != null) {}
       return;
     }
 
-    final unprocessedTodos = _todos.where((todo) =>
-      !todo.aiProcessed &&
-      !todo.isCompleted &&
-      !(todo.isGeneratedFromRepeat && todo.repeatTodoId != null)
-    ).toList();
+    final unprocessedTodos = _todos
+        .where(
+          (todo) =>
+              !todo.aiProcessed &&
+              !todo.isCompleted &&
+              !(todo.isGeneratedFromRepeat && todo.repeatTodoId != null),
+        )
+        .toList();
     if (unprocessedTodos.isEmpty) return;
 
     try {
@@ -2448,7 +2680,6 @@ class TodoProvider extends ChangeNotifier {
           final category = result['category'] as String?;
           final priority = (result['priority'] as int?) ?? 0;
 
-
           // Only mark as processed if both category and priority are valid
           final isCategoryValid = category?.isNotEmpty == true;
           final isPriorityValid = priority > 0;
@@ -2458,7 +2689,6 @@ class TodoProvider extends ChangeNotifier {
             aiPriority: priority,
             aiProcessed: isCategoryValid && isPriorityValid,
           );
-
 
           final todosBox = _hiveService.todosBox;
           await todosBox.put(updatedTodo.id, updatedTodo);
@@ -2474,7 +2704,9 @@ class TodoProvider extends ChangeNotifier {
           if (savedTodo?.aiCategory != updatedTodo.aiCategory ||
               savedTodo?.aiPriority != updatedTodo.aiPriority ||
               savedTodo?.aiProcessed != updatedTodo.aiProcessed) {
-            debugPrint('TodoProvider: *** BATCH SAVE VERIFICATION FAILED FOR TODO: ${todo.title} ***');
+            debugPrint(
+              'TodoProvider: *** BATCH SAVE VERIFICATION FAILED FOR TODO: ${todo.title} ***',
+            );
           }
         } catch (e) {
           debugPrint('Error processing AI result for todo: $e');
@@ -2491,12 +2723,17 @@ class TodoProvider extends ChangeNotifier {
   }
 
   // Get AI-generated motivational message for statistics
-  Future<String?> getMotivationalMessageForStatistics(StatisticsModel statistics) async {
+  Future<String?> getMotivationalMessageForStatistics(
+    StatisticsModel statistics,
+  ) async {
     if (_aiProvider == null || !_aiProvider!.isAIServiceValid) return null;
 
     try {
       final languageCode = _languageProvider?.currentLanguageCode;
-      return await _aiProvider!.generateMotivationalMessage(statistics, languageCode: languageCode);
+      return await _aiProvider!.generateMotivationalMessage(
+        statistics,
+        languageCode: languageCode,
+      );
     } catch (e) {
       // Error generating motivational message
       return null;
@@ -2526,7 +2763,10 @@ class TodoProvider extends ChangeNotifier {
 
     try {
       final languageCode = _languageProvider?.currentLanguageCode;
-      return await _aiProvider!.generateSmartNotification(todo, languageCode: languageCode);
+      return await _aiProvider!.generateSmartNotification(
+        todo,
+        languageCode: languageCode,
+      );
     } catch (e) {
       debugPrint('Error generating smart notification: $e');
       return null;
@@ -2544,12 +2784,19 @@ class TodoProvider extends ChangeNotifier {
       for (final key in todosBox.keys) {
         final hiveTodo = todosBox.get(key);
         if (hiveTodo != null) {
-          final memoryTodo = _todos.firstWhere((t) => t.id == hiveTodo.id, orElse: () => hiveTodo);
+          final memoryTodo = _todos.firstWhere(
+            (t) => t.id == hiveTodo.id,
+            orElse: () => hiveTodo,
+          );
 
           debugPrint('Todo ID: ${hiveTodo.id}');
           debugPrint('  Title: ${hiveTodo.title}');
-          debugPrint('  Hive - Category: ${hiveTodo.aiCategory}, Priority: ${hiveTodo.aiPriority}, Processed: ${hiveTodo.aiProcessed}');
-          debugPrint('  Memory - Category: ${memoryTodo.aiCategory}, Priority: ${memoryTodo.aiPriority}, Processed: ${memoryTodo.aiProcessed}');
+          debugPrint(
+            '  Hive - Category: ${hiveTodo.aiCategory}, Priority: ${hiveTodo.aiPriority}, Processed: ${hiveTodo.aiProcessed}',
+          );
+          debugPrint(
+            '  Memory - Category: ${memoryTodo.aiCategory}, Priority: ${memoryTodo.aiPriority}, Processed: ${memoryTodo.aiProcessed}',
+          );
 
           if (hiveTodo.aiCategory != memoryTodo.aiCategory ||
               hiveTodo.aiPriority != memoryTodo.aiPriority ||
@@ -2589,4 +2836,10 @@ enum TodoFilter { all, active, completed }
 
 enum TimeFilter { all, today, yesterday, threeDays, week, month }
 
-enum SortOrder { timeAscending, timeDescending, alphabetical, importanceAscending, importanceDescending }
+enum SortOrder {
+  timeAscending,
+  timeDescending,
+  alphabetical,
+  importanceAscending,
+  importanceDescending,
+}

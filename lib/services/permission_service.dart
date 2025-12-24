@@ -49,7 +49,9 @@ class PermissionService {
   }
 
   // 检查并请求忽略电池优化权限
-  static Future<bool> checkAndRequestBatteryOptimizationPermission(BuildContext context) async {
+  static Future<bool> checkAndRequestBatteryOptimizationPermission(
+    BuildContext context,
+  ) async {
     try {
       final status = await Permission.ignoreBatteryOptimizations.status;
       if (status.isGranted) {
@@ -64,6 +66,7 @@ class PermissionService {
       }
 
       // 如果权限被拒绝，显示引导对话框
+      if (!context.mounted) return false;
       await _showBatteryOptimizationDialog(context);
       return false;
     } catch (e) {
@@ -73,7 +76,9 @@ class PermissionService {
   }
 
   // 显示电池优化权限引导对话框
-  static Future<void> _showBatteryOptimizationDialog(BuildContext context) async {
+  static Future<void> _showBatteryOptimizationDialog(
+    BuildContext context,
+  ) async {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -103,7 +108,9 @@ class PermissionService {
   }
 
   // 显示精确闹钟权限引导对话框
-  static Future<void> showExactAlarmPermissionDialog(BuildContext context) async {
+  static Future<void> showExactAlarmPermissionDialog(
+    BuildContext context,
+  ) async {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -139,6 +146,7 @@ class PermissionService {
 
     // 检查通知权限
     final notificationGranted = await checkAndRequestNotificationPermission();
+    if (!context.mounted) return;
     if (!notificationGranted) {
       debugPrint('$_tag: Notification permission denied');
     }
@@ -157,7 +165,8 @@ class PermissionService {
   static Future<Map<String, bool>> getPermissionStatus() async {
     try {
       final notificationStatus = await Permission.notification.status;
-      final batteryOptimizationStatus = await Permission.ignoreBatteryOptimizations.status;
+      final batteryOptimizationStatus =
+          await Permission.ignoreBatteryOptimizations.status;
 
       return {
         'notification': notificationStatus.isGranted,
@@ -165,10 +174,7 @@ class PermissionService {
       };
     } catch (e) {
       debugPrint('$_tag: Error getting permission status: $e');
-      return {
-        'notification': false,
-        'batteryOptimization': false,
-      };
+      return {'notification': false, 'batteryOptimization': false};
     }
   }
 }

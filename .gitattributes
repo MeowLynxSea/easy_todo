@@ -1,0 +1,23 @@
+* text=auto eol=lf
+
+*.sh text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+
+*.ttf binary
+*.otf binary
+
+*.jar binary
+*.keystore binary
+*.jks binary

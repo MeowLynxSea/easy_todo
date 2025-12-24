@@ -4,12 +4,17 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:open_filex/open_filex.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
 class UpdateService {
-  final Dio _dio = Dio();
+  final Dio _dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(minutes: 2),
+      sendTimeout: const Duration(seconds: 15),
+    ),
+  );
   final String _serverUrl =
       'https://update.0v0.live'; // Update this with your server URL
 
@@ -110,8 +115,18 @@ class UpdateService {
   }) async {
     final l10n = AppLocalizations.of(context)!;
     try {
-      // Request storage permission with user explanation
-      if (!await _requestStoragePermissionWithDialog(context)) {
+      if (!Platform.isAndroid) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                l10n.updateCheckFailed,
+                style: TextStyle(color: Theme.of(context).colorScheme.onError),
+              ),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        }
         return false;
       }
 
@@ -124,29 +139,23 @@ class UpdateService {
         fullDownloadUrl = '$_serverUrl/$downloadUrl';
       }
 
-      // Get download directory - use app-specific directory for Android 10+
-      Directory? directory;
-      if (Platform.isAndroid) {
-        // For Android 10+, use application-specific directory
-        directory = await getApplicationDocumentsDirectory();
-      } else {
-        directory = await getExternalStorageDirectory();
+      final uri = Uri.tryParse(fullDownloadUrl);
+      if (uri == null || uri.host.isEmpty) {
+        throw Exception('Invalid download URL');
       }
 
-      if (directory == null) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                l10n.cannotAccessStorage,
-                style: TextStyle(color: Theme.of(context).colorScheme.onError),
-              ),
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-          );
-        }
-        return false;
+      // Prefer HTTPS; allow HTTP only for localhost for development/testing.
+      final isLocalhost =
+          uri.host == 'localhost' ||
+          uri.host == '127.0.0.1' ||
+          uri.host == '::1';
+      final isAllowedScheme =
+          uri.scheme == 'https' || (isLocalhost && uri.scheme == 'http');
+      if (!isAllowedScheme) {
+        throw Exception('Insecure download URL scheme (HTTPS required)');
       }
+
+      final directory = await getApplicationDocumentsDirectory();
 
       final savePath = '${directory.path}/easy_todo_update.apk';
 
@@ -193,142 +202,6 @@ class UpdateService {
       }
       return false;
     }
-  }
-
-  Future<bool> _requestStoragePermissionWithDialog(BuildContext context) async {
-    final l10n = AppLocalizations.of(context)!;
-
-    if (Platform.isAndroid) {
-      // For Android 10+, we can use app-specific directories without special permissions
-      // For older Android versions, we need storage permission
-      if (await _isAndroid10OrHigher()) {
-        return true; // No permission needed for app-specific directories
-      }
-
-      // Check if permissions are already granted for older Android versions
-      bool storageGranted = await Permission.storage.isGranted;
-
-      if (storageGranted) {
-        return true;
-      }
-
-      // Show explanation dialog for older Android versions
-      bool userApproved =
-          await showDialog<bool>(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => AlertDialog(
-              title: Text(l10n.storagePermissionTitle),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(l10n.storagePermissionDescription),
-                  SizedBox(height: 8),
-                  Text(l10n.permissionNote),
-                  SizedBox(height: 4),
-                  Text(l10n.accessDeviceStorage),
-                  Text(l10n.downloadFilesToDevice),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: Text(l10n.cancel),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: Text(l10n.allow),
-                ),
-              ],
-            ),
-          ) ??
-          false;
-
-      if (!userApproved) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                l10n.storagePermissionDenied,
-                style: TextStyle(color: Theme.of(context).colorScheme.onError),
-              ),
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-          );
-        }
-        return false;
-      }
-
-      // Request storage permission (standard permission)
-      PermissionStatus status = await Permission.storage.request();
-
-      if (status == PermissionStatus.granted) {
-        return true;
-      }
-
-      // If permission is permanently denied, show dialog to open settings
-      if (status == PermissionStatus.permanentlyDenied) {
-        bool shouldOpenSettings =
-            await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: Text(l10n.permissionDenied),
-                content: Text(l10n.permissionDeniedMessage),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    child: Text(l10n.cancel),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    child: Text(l10n.openSettings),
-                  ),
-                ],
-              ),
-            ) ??
-            false;
-
-        if (shouldOpenSettings) {
-          // Open app settings
-          bool opened = await openAppSettings();
-          if (!opened && context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  l10n.cannotOpenSettings,
-                  style: TextStyle(color: Theme.of(context).colorScheme.onError),
-                ),
-                backgroundColor: Theme.of(context).colorScheme.error,
-              ),
-            );
-          }
-        }
-      }
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              l10n.storagePermissionDenied,
-              style: TextStyle(color: Theme.of(context).colorScheme.onError),
-            ),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-
-      return false;
-    }
-    return true;
-  }
-
-  Future<bool> _isAndroid10OrHigher() async {
-    if (!Platform.isAndroid) return false;
-
-    // For Android 10 (API 29) and higher, use scoped storage
-    // We don't need special permissions for app-specific directories
-    return true; // Assume Android 10+ by default, most devices are
   }
 
   // Note: showUpdateDialog is deprecated in favor of the expandable update section

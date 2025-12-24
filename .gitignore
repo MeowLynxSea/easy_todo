@@ -38,6 +38,7 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+untranslated_messages.txt
 
 # Common release artifacts
 *.apk

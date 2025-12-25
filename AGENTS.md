@@ -11,7 +11,6 @@
 - `assets/l10n/`: ARB localization files (e.g. `app_en.arb`, `app_zh.arb`).
 - `test/`: Dart unit/widget tests (currently minimal; add tests here).
 - Platform folders: `android/`, `ios/`, `macos/`, `linux/`, `windows/`, `web/`.
-- `update_server/`: companion update service (keep app and server changes in separate PRs when possible).
 
 ## Build, Test, and Development Commands
 

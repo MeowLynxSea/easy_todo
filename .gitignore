@@ -73,11 +73,3 @@ app.*.map.json
 **/Flutter/App.framework
 **/*.xcuserstate
 **/xcuserdata/
-
-# update_server runtime artifacts (keep code/templates tracked)
-update_server/uploads/
-update_server/updates.db
-update_server/config.yaml
-update_server/release/uploads/
-update_server/release/config.yaml
-update_server/release/update_server_*

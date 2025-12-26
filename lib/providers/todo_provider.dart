@@ -12,6 +12,7 @@ import 'package:easy_todo/providers/filter_provider.dart';
 import 'package:easy_todo/providers/ai_provider.dart';
 import 'package:easy_todo/providers/language_provider.dart';
 import 'package:easy_todo/utils/ai_status_constants.dart';
+import 'package:easy_todo/utils/repeat_backfill_utils.dart';
 
 class TodoProvider extends ChangeNotifier {
   final HiveService _hiveService = HiveService();
@@ -1533,6 +1534,34 @@ class TodoProvider extends ChangeNotifier {
         _repeatTodos.sort((a, b) => a.order.compareTo(b.order));
       }
 
+      bool sameDayOrBothNull(DateTime? a, DateTime? b) {
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+        return _normalizeDay(a).isAtSameMomentAs(_normalizeDay(b));
+      }
+
+      final startDateChanged = !sameDayOrBothNull(
+        originalRepeatTodo.startDate,
+        updatedRepeatTodo.startDate,
+      );
+      final endDateChanged = !sameDayOrBothNull(
+        originalRepeatTodo.endDate,
+        updatedRepeatTodo.endDate,
+      );
+      final backfillWindowChanged =
+          originalRepeatTodo.backfillEnabled !=
+              updatedRepeatTodo.backfillEnabled ||
+          originalRepeatTodo.backfillDays != updatedRepeatTodo.backfillDays;
+
+      // If the backfill window changed, remove previously backfilled instances
+      // that are now outside the new range.
+      if (startDateChanged || endDateChanged || backfillWindowChanged) {
+        await _pruneOutOfRangeBackfilledTodosForRepeat(
+          updatedRepeatTodo,
+          _getLocalDateTime(),
+        );
+      }
+
       // Check if we need to process AI (title or description changed and not skipped)
       final titleChanged = originalRepeatTodo.title != updatedRepeatTodo.title;
       final descriptionChanged =
@@ -1856,6 +1885,12 @@ class TodoProvider extends ChangeNotifier {
                 BackfillStartBasis.startDate;
           }
         }
+
+        await _pruneOutOfRangeBackfilledTodosForRepeat(
+          repeatTodo,
+          now,
+          startBasis: startBasis,
+        );
 
         final backfilledLatestDay = await _backfillRepeatTodosIfNeeded(
           repeatTodo,
@@ -2191,6 +2226,83 @@ class TodoProvider extends ChangeNotifier {
 
   DateTime _normalizeDay(DateTime dateTime) =>
       DateTime(dateTime.year, dateTime.month, dateTime.day);
+
+  bool _isLikelyBackfilledRepeatTodoInstance(TodoModel todo) {
+    if (!todo.isGeneratedFromRepeat || todo.repeatTodoId == null) return false;
+    return isLikelyBackfilledRepeatTodoInstance(
+      todoId: todo.id,
+      todoCreatedAt: todo.createdAt,
+    );
+  }
+
+  Future<void> _deleteTodosBatch(Iterable<TodoModel> todos) async {
+    final todosBox = _hiveService.todosBox;
+    if (_todos.isEmpty && todosBox.isNotEmpty) {
+      _todos = todosBox.values.toList();
+      _todos.sort((a, b) => a.order.compareTo(b.order));
+    }
+
+    final todoList = todos.toList(growable: false);
+    if (todoList.isEmpty) return;
+
+    for (final todo in todoList) {
+      final id = todo.id;
+      _debounceTimers[id]?.cancel();
+      _debounceTimers.remove(id);
+      _processingTodos.remove(id);
+      _failedAiRequests.remove(id);
+      _lastRequestTime.remove(id);
+      await _notificationService.cancelTodoReminder(id);
+    }
+
+    final idsToDelete = todoList.map((t) => t.id).toList(growable: false);
+    await todosBox.deleteAll(idsToDelete);
+
+    final idSet = idsToDelete.toSet();
+    _todos.removeWhere((todo) => idSet.contains(todo.id));
+
+    _applyFilters();
+    await _updateStatistics();
+    await _invalidateTodoCache();
+    notifyListeners();
+  }
+
+  Future<int> _pruneOutOfRangeBackfilledTodosForRepeat(
+    RepeatTodoModel repeatTodo,
+    DateTime now, {
+    BackfillStartBasis startBasis = BackfillStartBasis.startDate,
+  }) async {
+    final todosBox = _hiveService.todosBox;
+    if (_todos.isEmpty && todosBox.isNotEmpty) {
+      _todos = todosBox.values.toList();
+      _todos.sort((a, b) => a.order.compareTo(b.order));
+    }
+
+    final window = computeBackfillWindow(
+      repeatTodo: repeatTodo,
+      now: now,
+      startBasis: startBasis,
+    );
+
+    final start = window.start;
+    final end = window.end;
+
+    final toDelete = _todos
+        .where((todo) {
+          if (todo.repeatTodoId != repeatTodo.id) return false;
+          if (!_isLikelyBackfilledRepeatTodoInstance(todo)) return false;
+
+          final day = _normalizeDay(todo.createdAt);
+          if (start != null && day.isBefore(start)) return true;
+          if (day.isAfter(end)) return true;
+          return false;
+        })
+        .toList(growable: false);
+
+    if (toDelete.isEmpty) return 0;
+    await _deleteTodosBatch(toDelete);
+    return toDelete.length;
+  }
 
   bool _hasGeneratedTodoForDate(RepeatTodoModel repeatTodo, DateTime dateTime) {
     final date = _normalizeDay(dateTime);

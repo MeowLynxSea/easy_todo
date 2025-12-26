@@ -385,6 +385,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
   void _onTabTapped(int index) {
     if (_currentIndex == index) return;
 
+    final currentPageIndex = _pageController.hasClients &&
+            _pageController.page != null
+        ? _pageController.page!.round()
+        : _currentIndex;
+    final distance = (currentPageIndex - index).abs();
+
     setState(() {
       _currentIndex = index;
     });
@@ -394,10 +400,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       return;
     }
 
+    // 在非相邻 tab 之间切换时，`animateToPage` 会滚动经过中间所有页面，
+    // 触发多次 `onPageChanged` 和大量重绘，移动端/移动 Web 上很容易卡顿。
+    // 这里对非相邻跳转改为直接跳转，保留相邻切换的轻量动画。
+    if (distance > 1) {
+      _pageController.jumpToPage(index);
+      return;
+    }
+
     _pageController.animateToPage(
       index,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOutCubic,
     );
   }
 

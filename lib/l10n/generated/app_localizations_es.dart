@@ -243,6 +243,25 @@ class AppLocalizationsEs extends AppLocalizations {
   String get noEndDate => 'No End Date';
 
   @override
+  String get timeRange => 'Rango de tiempo';
+
+  @override
+  String get startTime => 'Hora de inicio';
+
+  @override
+  String get endTime => 'Hora de fin';
+
+  @override
+  String get noStartTimeSet => 'Sin hora de inicio';
+
+  @override
+  String get noEndTimeSet => 'Sin hora de fin';
+
+  @override
+  String get invalidTimeRange =>
+      'La hora de fin debe ser posterior a la hora de inicio';
+
+  @override
   String get repeatEnabled => 'Repeat Enabled';
 
   @override

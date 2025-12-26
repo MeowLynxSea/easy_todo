@@ -85,12 +85,16 @@ class _TodoListScreenState extends State<TodoListScreen> {
               description, {
               reminderTime,
               reminderEnabled = false,
+              startTime,
+              endTime,
             }) async {
               await provider.addTodo(
                 title,
                 description: description,
                 reminderTime: reminderTime,
                 reminderEnabled: reminderEnabled,
+                startTime: startTime,
+                endTime: endTime,
               );
             },
         onAddRepeat: (repeatTodo) async {
@@ -113,10 +117,14 @@ class _TodoListScreenState extends State<TodoListScreen> {
               description, {
               reminderTime,
               reminderEnabled = false,
+              startTime,
+              endTime,
             }) async {
               final updatedTodo = todo.copyWith(
                 reminderTime: reminderTime,
                 reminderEnabled: reminderEnabled,
+                startTime: startTime,
+                endTime: endTime,
               );
               await provider.updateTodo(updatedTodo);
             },

@@ -570,6 +570,42 @@ abstract class AppLocalizations {
   /// **'No End Date'**
   String get noEndDate;
 
+  /// No description provided for @timeRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Time Range'**
+  String get timeRange;
+
+  /// No description provided for @startTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Time'**
+  String get startTime;
+
+  /// No description provided for @endTime.
+  ///
+  /// In en, this message translates to:
+  /// **'End Time'**
+  String get endTime;
+
+  /// No description provided for @noStartTimeSet.
+  ///
+  /// In en, this message translates to:
+  /// **'No start time set'**
+  String get noStartTimeSet;
+
+  /// No description provided for @noEndTimeSet.
+  ///
+  /// In en, this message translates to:
+  /// **'No end time set'**
+  String get noEndTimeSet;
+
+  /// No description provided for @invalidTimeRange.
+  ///
+  /// In en, this message translates to:
+  /// **'End time must be after start time'**
+  String get invalidTimeRange;
+
   /// No description provided for @repeatEnabled.
   ///
   /// In en, this message translates to:

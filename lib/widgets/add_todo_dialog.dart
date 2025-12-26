@@ -12,6 +12,8 @@ class AddTodoDialog extends StatefulWidget {
     String? description, {
     DateTime? reminderTime,
     bool reminderEnabled,
+    DateTime? startTime,
+    DateTime? endTime,
   })
   onAdd;
   final Function(RepeatTodoModel repeatTodo)? onAddRepeat;
@@ -35,6 +37,8 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
   bool _isLoading = false;
   bool _reminderEnabled = false;
   DateTime? _reminderTime;
+  DateTime? _startTime;
+  DateTime? _endTime;
 
   @override
   void initState() {
@@ -44,6 +48,8 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
       _descriptionController.text = widget.todo!.description ?? '';
       _reminderEnabled = widget.todo!.reminderEnabled;
       _reminderTime = widget.todo!.reminderTime;
+      _startTime = widget.todo!.startTime;
+      _endTime = widget.todo!.endTime;
     }
   }
 
@@ -57,6 +63,17 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_startTime != null && _endTime != null && _endTime!.isBefore(_startTime!)) {
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.invalidTimeRange),
+          backgroundColor: AppTheme.error,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -67,6 +84,8 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
             : _descriptionController.text.trim(),
         reminderTime: _reminderTime,
         reminderEnabled: _reminderEnabled,
+        startTime: _startTime,
+        endTime: _endTime,
       );
 
       if (mounted) {
@@ -184,6 +203,8 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
                           : Colors.grey,
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  _buildTimeRangeSection(l10n),
                   if (_reminderEnabled) ...[
                     const SizedBox(height: 16),
                     ListTile(
@@ -277,6 +298,109 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
         _reminderTime = selectedDateTime;
       });
     }
+  }
+
+  Widget _buildTimeRangeSection(AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.timeRange,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        ListTile(
+          title: Text(l10n.startTime),
+          subtitle: _startTime != null
+              ? Text(_formatDateTime(_startTime!))
+              : Text(l10n.noStartTimeSet),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_startTime != null)
+                IconButton(
+                  tooltip: l10n.clear,
+                  onPressed: () => setState(() => _startTime = null),
+                  icon: const Icon(Icons.clear),
+                ),
+              const Icon(Icons.event),
+            ],
+          ),
+          onTap: () => _selectDateTime(isStart: true),
+        ),
+        ListTile(
+          title: Text(l10n.endTime),
+          subtitle: _endTime != null
+              ? Text(_formatDateTime(_endTime!))
+              : Text(l10n.noEndTimeSet),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_endTime != null)
+                IconButton(
+                  tooltip: l10n.clear,
+                  onPressed: () => setState(() => _endTime = null),
+                  icon: const Icon(Icons.clear),
+                ),
+              const Icon(Icons.event_available),
+            ],
+          ),
+          onTap: () => _selectDateTime(isStart: false),
+        ),
+      ],
+    );
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    final local = dateTime.toLocal();
+    final yyyy = local.year.toString().padLeft(4, '0');
+    final mm = local.month.toString().padLeft(2, '0');
+    final dd = local.day.toString().padLeft(2, '0');
+    final hh = local.hour.toString().padLeft(2, '0');
+    final min = local.minute.toString().padLeft(2, '0');
+    return '$yyyy-$mm-$dd $hh:$min';
+  }
+
+  Future<void> _selectDateTime({required bool isStart}) async {
+    final currentValue = isStart ? _startTime : _endTime;
+    final now = DateTime.now();
+    final initialDate = currentValue ?? now;
+
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(now.year - 5),
+      lastDate: DateTime(now.year + 5),
+    );
+
+    if (!mounted) return;
+    if (pickedDate == null) return;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: currentValue != null
+          ? TimeOfDay(hour: currentValue.hour, minute: currentValue.minute)
+          : TimeOfDay.fromDateTime(now),
+    );
+
+    if (!mounted) return;
+    if (pickedTime == null) return;
+
+    final combined = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    setState(() {
+      if (isStart) {
+        _startTime = combined;
+      } else {
+        _endTime = combined;
+      }
+    });
   }
 
   void _showRepeatTodoDialog() {

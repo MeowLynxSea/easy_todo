@@ -30,6 +30,8 @@ class _RepeatTodoDialogState extends State<RepeatTodoDialog> {
   bool _dataStatisticsEnabled = false;
   List<StatisticsMode> _selectedStatisticsModes = [];
   final _dataUnitController = TextEditingController();
+  int? _startTimeMinutes;
+  int? _endTimeMinutes;
 
   @override
   void initState() {
@@ -47,6 +49,8 @@ class _RepeatTodoDialogState extends State<RepeatTodoDialog> {
       _dataStatisticsEnabled = widget.repeatTodo!.dataStatisticsEnabled;
       _selectedStatisticsModes = widget.repeatTodo!.statisticsModes ?? [];
       _dataUnitController.text = widget.repeatTodo!.dataUnit ?? '';
+      _startTimeMinutes = widget.repeatTodo!.startTimeMinutes;
+      _endTimeMinutes = widget.repeatTodo!.endTimeMinutes;
     }
   }
 
@@ -60,6 +64,19 @@ class _RepeatTodoDialogState extends State<RepeatTodoDialog> {
 
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_startTimeMinutes != null &&
+        _endTimeMinutes != null &&
+        _endTimeMinutes! < _startTimeMinutes!) {
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.invalidTimeRange),
+          backgroundColor: AppTheme.error,
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -88,6 +105,8 @@ class _RepeatTodoDialogState extends State<RepeatTodoDialog> {
                       ? null
                       : _dataUnitController.text.trim()
                 : null,
+            startTimeMinutes: _startTimeMinutes,
+            endTimeMinutes: _endTimeMinutes,
           ).copyWith(
             id: widget.repeatTodo?.id,
             isActive: _repeatEnabled,
@@ -204,6 +223,8 @@ class _RepeatTodoDialogState extends State<RepeatTodoDialog> {
                     _buildRepeatTypeSpecificOptions(),
                     const SizedBox(height: 16),
                     _buildDateOptions(),
+                    const SizedBox(height: 16),
+                    _buildTimeRangeOptions(),
                     const SizedBox(height: 16),
                     _buildDataStatisticsOptions(),
                   ],
@@ -409,6 +430,85 @@ class _RepeatTodoDialogState extends State<RepeatTodoDialog> {
         ],
       ],
     );
+  }
+
+  Widget _buildTimeRangeOptions() {
+    final l10n = AppLocalizations.of(context)!;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l10n.timeRange, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        ListTile(
+          title: Text(l10n.startTime),
+          subtitle: _startTimeMinutes != null
+              ? Text(_formatMinutesAsTime(_startTimeMinutes!, l10n))
+              : Text(l10n.noStartTimeSet),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_startTimeMinutes != null)
+                IconButton(
+                  tooltip: l10n.clear,
+                  onPressed: () => setState(() => _startTimeMinutes = null),
+                  icon: const Icon(Icons.clear),
+                ),
+              const Icon(Icons.access_time),
+            ],
+          ),
+          onTap: () => _selectTime(isStart: true),
+        ),
+        ListTile(
+          title: Text(l10n.endTime),
+          subtitle: _endTimeMinutes != null
+              ? Text(_formatMinutesAsTime(_endTimeMinutes!, l10n))
+              : Text(l10n.noEndTimeSet),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_endTimeMinutes != null)
+                IconButton(
+                  tooltip: l10n.clear,
+                  onPressed: () => setState(() => _endTimeMinutes = null),
+                  icon: const Icon(Icons.clear),
+                ),
+              const Icon(Icons.access_time),
+            ],
+          ),
+          onTap: () => _selectTime(isStart: false),
+        ),
+      ],
+    );
+  }
+
+  String _formatMinutesAsTime(int minutesFromMidnight, AppLocalizations l10n) {
+    final hours = (minutesFromMidnight ~/ 60).toString().padLeft(2, '0');
+    final minutes = (minutesFromMidnight % 60).toString().padLeft(2, '0');
+    return l10n.timeFormat(hours, minutes);
+  }
+
+  Future<void> _selectTime({required bool isStart}) async {
+    final currentMinutes = isStart ? _startTimeMinutes : _endTimeMinutes;
+    final initialTime = currentMinutes != null
+        ? TimeOfDay(hour: currentMinutes ~/ 60, minute: currentMinutes % 60)
+        : TimeOfDay.now();
+
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+    );
+
+    if (picked == null) return;
+
+    final minutes = picked.hour * 60 + picked.minute;
+    setState(() {
+      if (isStart) {
+        _startTimeMinutes = minutes;
+      } else {
+        _endTimeMinutes = minutes;
+      }
+    });
   }
 
   Future<void> _selectStartDate() async {

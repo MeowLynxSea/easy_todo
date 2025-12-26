@@ -240,6 +240,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get noEndDate => '无结束日期';
 
   @override
+  String get timeRange => '时间范围';
+
+  @override
+  String get startTime => '开始时间';
+
+  @override
+  String get endTime => '结束时间';
+
+  @override
+  String get noStartTimeSet => '未设置开始时间';
+
+  @override
+  String get noEndTimeSet => '未设置结束时间';
+
+  @override
+  String get invalidTimeRange => '结束时间必须晚于开始时间';
+
+  @override
   String get repeatEnabled => '启用重复';
 
   @override

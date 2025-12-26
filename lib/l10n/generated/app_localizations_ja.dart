@@ -241,6 +241,24 @@ class AppLocalizationsJa extends AppLocalizations {
   String get noEndDate => '終了日なし';
 
   @override
+  String get timeRange => '時間範囲';
+
+  @override
+  String get startTime => '開始時刻';
+
+  @override
+  String get endTime => '終了時刻';
+
+  @override
+  String get noStartTimeSet => '開始時刻未設定';
+
+  @override
+  String get noEndTimeSet => '終了時刻未設定';
+
+  @override
+  String get invalidTimeRange => '終了時刻は開始時刻より後にしてください';
+
+  @override
   String get repeatEnabled => '繰り返し有効';
 
   @override

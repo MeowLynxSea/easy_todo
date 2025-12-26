@@ -750,6 +750,8 @@ class TodoProvider extends ChangeNotifier {
     String? description,
     DateTime? reminderTime,
     bool reminderEnabled = false,
+    DateTime? startTime,
+    DateTime? endTime,
   }) async {
     try {
       final newTodo = TodoModel.create(
@@ -758,6 +760,8 @@ class TodoProvider extends ChangeNotifier {
         order: _todos.length,
         reminderTime: reminderTime,
         reminderEnabled: reminderEnabled,
+        startTime: startTime,
+        endTime: endTime,
       );
 
       final todosBox = _hiveService.todosBox;

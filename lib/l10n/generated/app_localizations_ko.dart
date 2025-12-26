@@ -241,6 +241,24 @@ class AppLocalizationsKo extends AppLocalizations {
   String get noEndDate => '종료일 없음';
 
   @override
+  String get timeRange => '시간 범위';
+
+  @override
+  String get startTime => '시작 시간';
+
+  @override
+  String get endTime => '종료 시간';
+
+  @override
+  String get noStartTimeSet => '시작 시간 미설정';
+
+  @override
+  String get noEndTimeSet => '종료 시간 미설정';
+
+  @override
+  String get invalidTimeRange => '종료 시간은 시작 시간 이후여야 합니다';
+
+  @override
   String get repeatEnabled => '반복 활성화';
 
   @override

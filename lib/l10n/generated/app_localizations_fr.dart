@@ -245,6 +245,25 @@ class AppLocalizationsFr extends AppLocalizations {
   String get noEndDate => 'Pas de date de fin';
 
   @override
+  String get timeRange => 'Plage horaire';
+
+  @override
+  String get startTime => 'Heure de début';
+
+  @override
+  String get endTime => 'Heure de fin';
+
+  @override
+  String get noStartTimeSet => 'Aucune heure de début';
+
+  @override
+  String get noEndTimeSet => 'Aucune heure de fin';
+
+  @override
+  String get invalidTimeRange =>
+      'L\'heure de fin doit être après l\'heure de début';
+
+  @override
   String get repeatEnabled => 'Répétition activée';
 
   @override

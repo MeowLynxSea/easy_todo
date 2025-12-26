@@ -76,11 +76,41 @@ class _RepeatTasksScreenState extends State<RepeatTasksScreen> {
       // 重新加载以确保数据一致性
       await todoProvider.loadTodos();
 
+      final beforeGeneratedTodoIds = todoProvider.allTodos
+          .where((todo) => todo.isGeneratedFromRepeat)
+          .map((todo) => todo.id)
+          .toSet();
+
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+
       // 直接调用强制刷新方法，而不是refreshTodayRepeatTasks
-      await todoProvider.forceRefreshAllRepeatTasks();
+      await todoProvider.forceRefreshAllRepeatTasks(
+        onBackfillStartConflict: (repeatTodo, startDate, backfillStartDate) {
+          return _showBackfillStartConflictDialog(
+            repeatTodo: repeatTodo,
+            startDate: startDate,
+            backfillStartDate: backfillStartDate,
+          );
+        },
+      );
 
       // 再次加载以显示新生成的任务
       await todoProvider.loadTodos();
+
+      final createdGeneratedTodos = todoProvider.allTodos
+          .where(
+            (todo) =>
+                todo.isGeneratedFromRepeat &&
+                !beforeGeneratedTodoIds.contains(todo.id),
+          )
+          .toList(growable: false);
+
+      final createdCount = createdGeneratedTodos.length;
+      final createdTodayCount = createdGeneratedTodos
+          .where((todo) => _isSameDay(todo.createdAt, today))
+          .length;
+      final createdBackfillCount = createdCount - createdTodayCount;
 
       setState(() {
         _isLoading = false;
@@ -90,7 +120,10 @@ class _RepeatTasksScreenState extends State<RepeatTasksScreen> {
         final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(l10n.repeatTasksRefreshedSuccessfully),
+            content: Text(
+              '${l10n.repeatTasksRefreshedSuccessfully} '
+              '(+$createdCount, ${l10n.today}: $createdTodayCount, ${l10n.backfillMode}: $createdBackfillCount)',
+            ),
             duration: const Duration(seconds: 2),
           ),
         );
@@ -156,6 +189,50 @@ class _RepeatTasksScreenState extends State<RepeatTasksScreen> {
     final normalizedDate1 = DateTime(date1.year, date1.month, date1.day);
     final normalizedDate2 = DateTime(date2.year, date2.month, date2.day);
     return normalizedDate1.isAtSameMomentAs(normalizedDate2);
+  }
+
+  Future<BackfillStartBasis?> _showBackfillStartConflictDialog({
+    required RepeatTodoModel repeatTodo,
+    required DateTime startDate,
+    required DateTime backfillStartDate,
+  }) async {
+    final l10n = AppLocalizations.of(context)!;
+
+    final startDateText = startDate.toLocal().toString().split(' ')[0];
+    final backfillStartDateText = backfillStartDate.toLocal().toString().split(
+      ' ',
+    )[0];
+
+    return showDialog<BackfillStartBasis>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(l10n.backfillConflictTitle),
+          content: Text(
+            l10n.backfillConflictMessage(
+              repeatTodo.title,
+              startDateText,
+              backfillStartDateText,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(BackfillStartBasis.startDate);
+              },
+              child: Text(l10n.useStartDate),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).pop(BackfillStartBasis.backfillDays);
+              },
+              child: Text(l10n.useBackfillDays),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override

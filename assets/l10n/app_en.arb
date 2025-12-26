@@ -84,6 +84,23 @@
   "invalidTimeRange": "End time must be after start time",
   "repeatEnabled": "Repeat Enabled",
   "repeatDescription": "Create recurring tasks automatically",
+  "backfillMode": "Catch-up mode",
+  "backfillModeDescription": "Create missed recurring todos for previous days",
+  "backfillDays": "Look-back days",
+  "backfillDaysDescription": "Max days to look back (1-365, not including today)",
+  "backfillAutoComplete": "Auto-complete backfilled todos",
+  "backfillDaysRangeError": "Look-back days must be between 1 and 365",
+  "backfillConflictTitle": "Backfill conflict",
+  "backfillConflictMessage": "Task \"{title}\" starts on {startDate}, but catch-up would look back to {backfillStartDate}. Which should be used as the earliest generation date for this refresh?",
+  "@backfillConflictMessage": {
+    "placeholders": {
+      "title": {},
+      "startDate": {},
+      "backfillStartDate": {}
+    }
+  },
+  "useStartDate": "Use start date",
+  "useBackfillDays": "Use catch-up range",
   "activeRepeatTasks": "Active Repeat Tasks",
   "noRepeatTasks": "No repeat tasks yet",
   "pauseRepeat": "Pause",

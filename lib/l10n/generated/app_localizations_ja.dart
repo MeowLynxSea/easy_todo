@@ -265,6 +265,42 @@ class AppLocalizationsJa extends AppLocalizations {
   String get repeatDescription => '定期的なタスクを自動的に作成';
 
   @override
+  String get backfillMode => '補完モード';
+
+  @override
+  String get backfillModeDescription => '過去に作成されなかった定期タスクを作成します';
+
+  @override
+  String get backfillDays => '遡る日数';
+
+  @override
+  String get backfillDaysDescription => '遡って確認する最大日数（1～365、今日を除く）';
+
+  @override
+  String get backfillAutoComplete => '補完したタスクを自動で完了にする';
+
+  @override
+  String get backfillDaysRangeError => '日数は1～365の間で指定してください';
+
+  @override
+  String get backfillConflictTitle => '補完範囲の競合';
+
+  @override
+  String backfillConflictMessage(
+    Object title,
+    Object startDate,
+    Object backfillStartDate,
+  ) {
+    return '「$title」の開始日は $startDate ですが、補完モードでは $backfillStartDate まで遡ります。今回の強制更新で最も早い生成日としてどちらを使用しますか？';
+  }
+
+  @override
+  String get useStartDate => '開始日を使用';
+
+  @override
+  String get useBackfillDays => '補完範囲を使用';
+
+  @override
   String get activeRepeatTasks => 'アクティブな繰り返しタスク';
 
   @override

@@ -32,6 +32,9 @@ class _RepeatTodoDialogState extends State<RepeatTodoDialog> {
   final _dataUnitController = TextEditingController();
   int? _startTimeMinutes;
   int? _endTimeMinutes;
+  bool _backfillEnabled = false;
+  bool _backfillAutoComplete = false;
+  final _backfillDaysController = TextEditingController(text: '7');
 
   @override
   void initState() {
@@ -51,6 +54,9 @@ class _RepeatTodoDialogState extends State<RepeatTodoDialog> {
       _dataUnitController.text = widget.repeatTodo!.dataUnit ?? '';
       _startTimeMinutes = widget.repeatTodo!.startTimeMinutes;
       _endTimeMinutes = widget.repeatTodo!.endTimeMinutes;
+      _backfillEnabled = widget.repeatTodo!.backfillEnabled;
+      _backfillAutoComplete = widget.repeatTodo!.backfillAutoComplete;
+      _backfillDaysController.text = widget.repeatTodo!.backfillDays.toString();
     }
   }
 
@@ -59,6 +65,7 @@ class _RepeatTodoDialogState extends State<RepeatTodoDialog> {
     _titleController.dispose();
     _descriptionController.dispose();
     _dataUnitController.dispose();
+    _backfillDaysController.dispose();
     super.dispose();
   }
 
@@ -81,6 +88,20 @@ class _RepeatTodoDialogState extends State<RepeatTodoDialog> {
     setState(() => _isLoading = true);
 
     try {
+      final backfillDays = int.tryParse(_backfillDaysController.text.trim());
+      if (_repeatEnabled && _backfillEnabled) {
+        if (backfillDays == null || backfillDays < 1 || backfillDays > 365) {
+          final l10n = AppLocalizations.of(context)!;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.backfillDaysRangeError),
+              backgroundColor: AppTheme.error,
+            ),
+          );
+          return;
+        }
+      }
+
       final repeatTodo =
           RepeatTodoModel.create(
             title: _titleController.text.trim(),
@@ -107,6 +128,9 @@ class _RepeatTodoDialogState extends State<RepeatTodoDialog> {
                 : null,
             startTimeMinutes: _startTimeMinutes,
             endTimeMinutes: _endTimeMinutes,
+            backfillEnabled: _backfillEnabled,
+            backfillDays: backfillDays ?? 7,
+            backfillAutoComplete: _backfillAutoComplete,
           ).copyWith(
             id: widget.repeatTodo?.id,
             isActive: _repeatEnabled,
@@ -225,6 +249,8 @@ class _RepeatTodoDialogState extends State<RepeatTodoDialog> {
                     _buildDateOptions(),
                     const SizedBox(height: 16),
                     _buildTimeRangeOptions(),
+                    const SizedBox(height: 16),
+                    _buildBackfillOptions(),
                     const SizedBox(height: 16),
                     _buildDataStatisticsOptions(),
                   ],
@@ -665,5 +691,58 @@ class _RepeatTodoDialogState extends State<RepeatTodoDialog> {
       case StatisticsMode.sum:
         return l10n.total; // Using "Total" for sum mode
     }
+  }
+
+  Widget _buildBackfillOptions() {
+    final l10n = AppLocalizations.of(context)!;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SwitchListTile(
+          title: Text(l10n.backfillMode),
+          subtitle: Text(l10n.backfillModeDescription),
+          value: _backfillEnabled,
+          onChanged: (value) {
+            setState(() {
+              _backfillEnabled = value;
+            });
+          },
+          secondary: Icon(
+            Icons.history,
+            color: _backfillEnabled
+                ? Theme.of(context).colorScheme.primary
+                : Colors.grey,
+          ),
+        ),
+        if (_backfillEnabled) ...[
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _backfillDaysController,
+            decoration: InputDecoration(
+              labelText: l10n.backfillDays,
+              helperText: l10n.backfillDaysDescription,
+            ),
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 8),
+          SwitchListTile(
+            title: Text(l10n.backfillAutoComplete),
+            value: _backfillAutoComplete,
+            onChanged: (value) {
+              setState(() {
+                _backfillAutoComplete = value;
+              });
+            },
+            secondary: Icon(
+              Icons.done_all,
+              color: _backfillAutoComplete
+                  ? Theme.of(context).colorScheme.primary
+                  : Colors.grey,
+            ),
+          ),
+        ],
+      ],
+    );
   }
 }

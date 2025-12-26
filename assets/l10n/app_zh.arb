@@ -84,6 +84,23 @@
   "invalidTimeRange": "结束时间必须晚于开始时间",
   "repeatEnabled": "启用重复",
   "repeatDescription": "自动创建重复任务",
+  "backfillMode": "补漏模式",
+  "backfillModeDescription": "为之前错过的日期自动创建重复任务",
+  "backfillDays": "向前补漏天数",
+  "backfillDaysDescription": "最大向前扫描天数（1-365，不含今天）",
+  "backfillAutoComplete": "补漏任务自动标记为已完成",
+  "backfillDaysRangeError": "补漏天数必须在 1 到 365 之间",
+  "backfillConflictTitle": "补漏范围冲突",
+  "backfillConflictMessage": "「{title}」的开始日期为 {startDate}，但按补漏天数会向前补到 {backfillStartDate}。本次强制刷新以哪个为最早可生成日期？",
+  "@backfillConflictMessage": {
+    "placeholders": {
+      "title": {},
+      "startDate": {},
+      "backfillStartDate": {}
+    }
+  },
+  "useStartDate": "以开始日期为准",
+  "useBackfillDays": "以补漏天数为准",
   "activeRepeatTasks": "活跃的重复任务",
   "noRepeatTasks": "暂无重复任务",
   "pauseRepeat": "暂停",

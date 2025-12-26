@@ -78,6 +78,23 @@
   "invalidTimeRange": "L'heure de fin doit être après l'heure de début",
   "repeatEnabled": "Répétition activée",
   "repeatDescription": "Créer automatiquement des tâches récurrentes",
+  "backfillMode": "Mode de rattrapage",
+  "backfillModeDescription": "Crée les tâches récurrentes manquées pour les jours précédents",
+  "backfillDays": "Jours à remonter",
+  "backfillDaysDescription": "Nombre maximal de jours à remonter (1–365, sans inclure aujourd'hui)",
+  "backfillAutoComplete": "Marquer automatiquement comme terminées",
+  "backfillDaysRangeError": "Le nombre de jours doit être compris entre 1 et 365",
+  "backfillConflictTitle": "Conflit de rattrapage",
+  "backfillConflictMessage": "La tâche \"{title}\" commence le {startDate}, mais le mode de rattrapage remonterait jusqu'au {backfillStartDate}. Quelle date doit être utilisée comme date la plus ancienne pour cette actualisation ?",
+  "@backfillConflictMessage": {
+    "placeholders": {
+      "title": {},
+      "startDate": {},
+      "backfillStartDate": {}
+    }
+  },
+  "useStartDate": "Utiliser la date de début",
+  "useBackfillDays": "Utiliser la plage de rattrapage",
   "activeRepeatTasks": "Tâches répétitives actives",
   "noRepeatTasks": "Aucune tâche répétitive pour l'instant",
   "pauseRepeat": "Pause",

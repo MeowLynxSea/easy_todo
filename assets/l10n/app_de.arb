@@ -78,6 +78,23 @@
   "invalidTimeRange": "Endzeit muss nach der Startzeit liegen",
   "repeatEnabled": "Wiederholung aktiviert",
   "repeatDescription": "Automatisch wiederkehrende Aufgaben erstellen",
+  "backfillMode": "Nachholmodus",
+  "backfillModeDescription": "Erstellt verpasste wiederkehrende Aufgaben für vergangene Tage",
+  "backfillDays": "Zurückliegende Tage",
+  "backfillDaysDescription": "Maximale Anzahl zurückliegender Tage (1–365, ohne heute)",
+  "backfillAutoComplete": "Nachgeholte Aufgaben automatisch abschließen",
+  "backfillDaysRangeError": "Die Anzahl der Tage muss zwischen 1 und 365 liegen",
+  "backfillConflictTitle": "Konflikt beim Nachholen",
+  "backfillConflictMessage": "Die Aufgabe „{title}“ beginnt am {startDate}, aber der Nachholmodus würde bis {backfillStartDate} zurückgehen. Welches Datum soll für diese Aktualisierung als frühestes Erstellungsdatum verwendet werden?",
+  "@backfillConflictMessage": {
+    "placeholders": {
+      "title": {},
+      "startDate": {},
+      "backfillStartDate": {}
+    }
+  },
+  "useStartDate": "Startdatum verwenden",
+  "useBackfillDays": "Nachholbereich verwenden",
   "activeRepeatTasks": "Aktive wiederkehrende Aufgaben",
   "noRepeatTasks": "Noch keine wiederkehrenden Aufgaben",
   "pauseRepeat": "Pausieren",

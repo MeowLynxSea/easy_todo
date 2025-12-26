@@ -618,6 +618,70 @@ abstract class AppLocalizations {
   /// **'Create recurring tasks automatically'**
   String get repeatDescription;
 
+  /// No description provided for @backfillMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Catch-up mode'**
+  String get backfillMode;
+
+  /// No description provided for @backfillModeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Create missed recurring todos for previous days'**
+  String get backfillModeDescription;
+
+  /// No description provided for @backfillDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Look-back days'**
+  String get backfillDays;
+
+  /// No description provided for @backfillDaysDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Max days to look back (1-365, not including today)'**
+  String get backfillDaysDescription;
+
+  /// No description provided for @backfillAutoComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-complete backfilled todos'**
+  String get backfillAutoComplete;
+
+  /// No description provided for @backfillDaysRangeError.
+  ///
+  /// In en, this message translates to:
+  /// **'Look-back days must be between 1 and 365'**
+  String get backfillDaysRangeError;
+
+  /// No description provided for @backfillConflictTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Backfill conflict'**
+  String get backfillConflictTitle;
+
+  /// No description provided for @backfillConflictMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Task \"{title}\" starts on {startDate}, but catch-up would look back to {backfillStartDate}. Which should be used as the earliest generation date for this refresh?'**
+  String backfillConflictMessage(
+    Object title,
+    Object startDate,
+    Object backfillStartDate,
+  );
+
+  /// No description provided for @useStartDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Use start date'**
+  String get useStartDate;
+
+  /// No description provided for @useBackfillDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Use catch-up range'**
+  String get useBackfillDays;
+
   /// No description provided for @activeRepeatTasks.
   ///
   /// In en, this message translates to:

@@ -78,6 +78,23 @@
   "invalidTimeRange": "終了時刻は開始時刻より後にしてください",
   "repeatEnabled": "繰り返し有効",
   "repeatDescription": "定期的なタスクを自動的に作成",
+  "backfillMode": "補完モード",
+  "backfillModeDescription": "過去に作成されなかった定期タスクを作成します",
+  "backfillDays": "遡る日数",
+  "backfillDaysDescription": "遡って確認する最大日数（1～365、今日を除く）",
+  "backfillAutoComplete": "補完したタスクを自動で完了にする",
+  "backfillDaysRangeError": "日数は1～365の間で指定してください",
+  "backfillConflictTitle": "補完範囲の競合",
+  "backfillConflictMessage": "「{title}」の開始日は {startDate} ですが、補完モードでは {backfillStartDate} まで遡ります。今回の強制更新で最も早い生成日としてどちらを使用しますか？",
+  "@backfillConflictMessage": {
+    "placeholders": {
+      "title": {},
+      "startDate": {},
+      "backfillStartDate": {}
+    }
+  },
+  "useStartDate": "開始日を使用",
+  "useBackfillDays": "補完範囲を使用",
   "activeRepeatTasks": "アクティブな繰り返しタスク",
   "noRepeatTasks": "繰り返しタスクはまだありません",
   "pauseRepeat": "一時停止",

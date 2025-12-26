@@ -264,6 +264,42 @@ class AppLocalizationsZh extends AppLocalizations {
   String get repeatDescription => '自动创建重复任务';
 
   @override
+  String get backfillMode => '补漏模式';
+
+  @override
+  String get backfillModeDescription => '为之前错过的日期自动创建重复任务';
+
+  @override
+  String get backfillDays => '向前补漏天数';
+
+  @override
+  String get backfillDaysDescription => '最大向前扫描天数（1-365，不含今天）';
+
+  @override
+  String get backfillAutoComplete => '补漏任务自动标记为已完成';
+
+  @override
+  String get backfillDaysRangeError => '补漏天数必须在 1 到 365 之间';
+
+  @override
+  String get backfillConflictTitle => '补漏范围冲突';
+
+  @override
+  String backfillConflictMessage(
+    Object title,
+    Object startDate,
+    Object backfillStartDate,
+  ) {
+    return '「$title」的开始日期为 $startDate，但按补漏天数会向前补到 $backfillStartDate。本次强制刷新以哪个为最早可生成日期？';
+  }
+
+  @override
+  String get useStartDate => '以开始日期为准';
+
+  @override
+  String get useBackfillDays => '以补漏天数为准';
+
+  @override
   String get activeRepeatTasks => '活跃的重复任务';
 
   @override

@@ -267,6 +267,45 @@ class AppLocalizationsEn extends AppLocalizations {
   String get repeatDescription => 'Create recurring tasks automatically';
 
   @override
+  String get backfillMode => 'Catch-up mode';
+
+  @override
+  String get backfillModeDescription =>
+      'Create missed recurring todos for previous days';
+
+  @override
+  String get backfillDays => 'Look-back days';
+
+  @override
+  String get backfillDaysDescription =>
+      'Max days to look back (1-365, not including today)';
+
+  @override
+  String get backfillAutoComplete => 'Auto-complete backfilled todos';
+
+  @override
+  String get backfillDaysRangeError =>
+      'Look-back days must be between 1 and 365';
+
+  @override
+  String get backfillConflictTitle => 'Backfill conflict';
+
+  @override
+  String backfillConflictMessage(
+    Object title,
+    Object startDate,
+    Object backfillStartDate,
+  ) {
+    return 'Task \"$title\" starts on $startDate, but catch-up would look back to $backfillStartDate. Which should be used as the earliest generation date for this refresh?';
+  }
+
+  @override
+  String get useStartDate => 'Use start date';
+
+  @override
+  String get useBackfillDays => 'Use catch-up range';
+
+  @override
   String get activeRepeatTasks => 'Active Repeat Tasks';
 
   @override

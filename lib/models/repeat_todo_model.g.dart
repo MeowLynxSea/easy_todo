@@ -37,13 +37,16 @@ class RepeatTodoModelAdapter extends TypeAdapter<RepeatTodoModel> {
       aiProcessed: fields[17] == null ? false : fields[17] as bool,
       startTimeMinutes: fields[18] as int?,
       endTimeMinutes: fields[19] as int?,
+      backfillEnabled: fields[20] == null ? false : fields[20] as bool,
+      backfillDays: fields[21] == null ? 7 : fields[21] as int,
+      backfillAutoComplete: fields[22] == null ? false : fields[22] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, RepeatTodoModel obj) {
     writer
-      ..writeByte(20)
+      ..writeByte(23)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -83,7 +86,13 @@ class RepeatTodoModelAdapter extends TypeAdapter<RepeatTodoModel> {
       ..writeByte(18)
       ..write(obj.startTimeMinutes)
       ..writeByte(19)
-      ..write(obj.endTimeMinutes);
+      ..write(obj.endTimeMinutes)
+      ..writeByte(20)
+      ..write(obj.backfillEnabled)
+      ..writeByte(21)
+      ..write(obj.backfillDays)
+      ..writeByte(22)
+      ..write(obj.backfillAutoComplete);
   }
 
   @override

@@ -78,6 +78,23 @@
   "invalidTimeRange": "종료 시간은 시작 시간 이후여야 합니다",
   "repeatEnabled": "반복 활성화",
   "repeatDescription": "자동으로 반복 작업 생성",
+  "backfillMode": "누락 보완 모드",
+  "backfillModeDescription": "이전 날짜에 놓친 반복 작업을 생성합니다",
+  "backfillDays": "되돌아볼 일수",
+  "backfillDaysDescription": "되돌아볼 최대 일수(1~365, 오늘 제외)",
+  "backfillAutoComplete": "보완된 작업을 자동으로 완료로 표시",
+  "backfillDaysRangeError": "일수는 1~365 사이여야 합니다",
+  "backfillConflictTitle": "누락 보완 범위 충돌",
+  "backfillConflictMessage": "\"{title}\"의 시작 날짜는 {startDate}이지만, 누락 보완 모드는 {backfillStartDate}까지 되돌아갑니다. 이번 강제 새로고침에서 어떤 날짜를 가장 이른 생성 기준으로 사용할까요?",
+  "@backfillConflictMessage": {
+    "placeholders": {
+      "title": {},
+      "startDate": {},
+      "backfillStartDate": {}
+    }
+  },
+  "useStartDate": "시작 날짜 사용",
+  "useBackfillDays": "보완 범위 사용",
   "activeRepeatTasks": "활성 반복 작업",
   "noRepeatTasks": "아직 반복 작업이 없습니다",
   "pauseRepeat": "일시 정지",

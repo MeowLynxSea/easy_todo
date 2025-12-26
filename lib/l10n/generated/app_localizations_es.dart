@@ -268,6 +268,45 @@ class AppLocalizationsEs extends AppLocalizations {
   String get repeatDescription => 'Create recurring tasks automatically';
 
   @override
+  String get backfillMode => 'Modo de recuperación';
+
+  @override
+  String get backfillModeDescription =>
+      'Crea tareas recurrentes perdidas de días anteriores';
+
+  @override
+  String get backfillDays => 'Días hacia atrás';
+
+  @override
+  String get backfillDaysDescription =>
+      'Máximo de días hacia atrás (1-365, sin incluir hoy)';
+
+  @override
+  String get backfillAutoComplete =>
+      'Completar automáticamente las tareas recuperadas';
+
+  @override
+  String get backfillDaysRangeError => 'Los días deben estar entre 1 y 365';
+
+  @override
+  String get backfillConflictTitle => 'Conflicto de recuperación';
+
+  @override
+  String backfillConflictMessage(
+    Object title,
+    Object startDate,
+    Object backfillStartDate,
+  ) {
+    return 'La tarea \"$title\" comienza el $startDate, pero el modo de recuperación retrocedería hasta $backfillStartDate. ¿Cuál debe usarse como la fecha más temprana para generar en esta actualización?';
+  }
+
+  @override
+  String get useStartDate => 'Usar fecha de inicio';
+
+  @override
+  String get useBackfillDays => 'Usar rango de recuperación';
+
+  @override
   String get activeRepeatTasks => 'Active Repeat Tasks';
 
   @override

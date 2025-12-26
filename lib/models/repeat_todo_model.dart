@@ -68,6 +68,18 @@ class RepeatTodoModel extends HiveObject {
   @HiveField(19)
   int? endTimeMinutes;
 
+  // Backfill (catch-up) options.
+  @HiveField(20, defaultValue: false)
+  bool backfillEnabled;
+
+  /// Max days to look back when backfilling (not including today).
+  @HiveField(21, defaultValue: 7)
+  int backfillDays;
+
+  /// If enabled, backfilled todos are created as completed.
+  @HiveField(22, defaultValue: false)
+  bool backfillAutoComplete;
+
   RepeatTodoModel({
     required this.id,
     required this.title,
@@ -89,6 +101,9 @@ class RepeatTodoModel extends HiveObject {
     this.aiProcessed = false,
     this.startTimeMinutes,
     this.endTimeMinutes,
+    this.backfillEnabled = false,
+    this.backfillDays = 7,
+    this.backfillAutoComplete = false,
   });
 
   factory RepeatTodoModel.create({
@@ -107,6 +122,9 @@ class RepeatTodoModel extends HiveObject {
     bool aiProcessed = false,
     int? startTimeMinutes,
     int? endTimeMinutes,
+    bool backfillEnabled = false,
+    int backfillDays = 7,
+    bool backfillAutoComplete = false,
   }) {
     // 使用与每日任务相同的系统时间
     final now = DateTime.now();
@@ -133,6 +151,9 @@ class RepeatTodoModel extends HiveObject {
       aiProcessed: aiProcessed,
       startTimeMinutes: startTimeMinutes,
       endTimeMinutes: endTimeMinutes,
+      backfillEnabled: backfillEnabled,
+      backfillDays: backfillDays,
+      backfillAutoComplete: backfillAutoComplete,
     );
   }
 
@@ -157,6 +178,9 @@ class RepeatTodoModel extends HiveObject {
     bool? aiProcessed,
     int? startTimeMinutes,
     int? endTimeMinutes,
+    bool? backfillEnabled,
+    int? backfillDays,
+    bool? backfillAutoComplete,
   }) {
     return RepeatTodoModel(
       id: id ?? this.id,
@@ -180,6 +204,9 @@ class RepeatTodoModel extends HiveObject {
       aiProcessed: aiProcessed ?? this.aiProcessed,
       startTimeMinutes: startTimeMinutes ?? this.startTimeMinutes,
       endTimeMinutes: endTimeMinutes ?? this.endTimeMinutes,
+      backfillEnabled: backfillEnabled ?? this.backfillEnabled,
+      backfillDays: backfillDays ?? this.backfillDays,
+      backfillAutoComplete: backfillAutoComplete ?? this.backfillAutoComplete,
     );
   }
 
@@ -205,6 +232,9 @@ class RepeatTodoModel extends HiveObject {
       'aiProcessed': aiProcessed,
       'startTimeMinutes': startTimeMinutes,
       'endTimeMinutes': endTimeMinutes,
+      'backfillEnabled': backfillEnabled,
+      'backfillDays': backfillDays,
+      'backfillAutoComplete': backfillAutoComplete,
     };
   }
 
@@ -248,11 +278,59 @@ class RepeatTodoModel extends HiveObject {
       aiProcessed: json['aiProcessed'] ?? false,
       startTimeMinutes: json['startTimeMinutes'],
       endTimeMinutes: json['endTimeMinutes'],
+      backfillEnabled: json['backfillEnabled'] ?? false,
+      backfillDays: json['backfillDays'] ?? 7,
+      backfillAutoComplete: json['backfillAutoComplete'] ?? false,
     );
   }
 
+  /// Whether this repeat template should generate a todo on the given date.
+  ///
+  /// This checks:
+  /// - `isActive`
+  /// - `startDate` / `endDate` bounds (date-only)
+  /// - The repeat rule (daily/weekly/monthly/weekdays)
+  bool shouldGenerateForDate(
+    DateTime dateTime, {
+    bool ignoreStartDate = false,
+  }) {
+    if (!isActive) return false;
+
+    final date = _normalizeDay(dateTime);
+
+    if (!ignoreStartDate &&
+        startDate != null &&
+        date.isBefore(_normalizeDay(startDate!))) {
+      return false;
+    }
+
+    if (endDate != null && date.isAfter(_normalizeDay(endDate!))) {
+      return false;
+    }
+
+    switch (repeatType) {
+      case RepeatType.daily:
+        return true;
+
+      case RepeatType.weekly:
+        if (weekDays == null || weekDays!.isEmpty) return false;
+        return weekDays!.contains(date.weekday); // 1=Mon ... 7=Sun
+
+      case RepeatType.monthly:
+        if (dayOfMonth == null) return false;
+        final maxDay = _maxDayOfMonth(date.year, date.month);
+        final scheduledDay = dayOfMonth! > maxDay ? maxDay : dayOfMonth!;
+        return date.day == scheduledDay;
+
+      case RepeatType.weekdays:
+        return date.weekday <= DateTime.friday;
+    }
+  }
+
   DateTime? getNextGenerateDate(DateTime fromDate) {
-    if (!isActive || (endDate != null && fromDate.isAfter(endDate!))) {
+    if (!isActive ||
+        (endDate != null &&
+            _normalizeDay(fromDate).isAfter(_normalizeDay(endDate!)))) {
       return null;
     }
 
@@ -312,7 +390,8 @@ class RepeatTodoModel extends HiveObject {
     if (!isActive) return false;
 
     // Check if we have an end date and if we've passed it
-    if (endDate != null && currentDate.isAfter(endDate!)) {
+    if (endDate != null &&
+        _normalizeDay(currentDate).isAfter(_normalizeDay(endDate!))) {
       return false;
     }
 
@@ -355,9 +434,16 @@ class RepeatTodoModel extends HiveObject {
     final normalizedDate2 = DateTime(date2.year, date2.month, date2.day);
     return normalizedDate1.isAtSameMomentAs(normalizedDate2);
   }
+
+  DateTime _normalizeDay(DateTime dateTime) =>
+      DateTime(dateTime.year, dateTime.month, dateTime.day);
+
+  int _maxDayOfMonth(int year, int month) => DateTime(year, month + 1, 0).day;
 }
 
 enum RepeatType { daily, weekly, monthly, weekdays }
+
+enum BackfillStartBasis { startDate, backfillDays }
 
 extension RepeatTypeExtension on RepeatType {
   String get displayName {

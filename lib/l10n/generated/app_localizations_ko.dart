@@ -265,6 +265,42 @@ class AppLocalizationsKo extends AppLocalizations {
   String get repeatDescription => '자동으로 반복 작업 생성';
 
   @override
+  String get backfillMode => '누락 보완 모드';
+
+  @override
+  String get backfillModeDescription => '이전 날짜에 놓친 반복 작업을 생성합니다';
+
+  @override
+  String get backfillDays => '되돌아볼 일수';
+
+  @override
+  String get backfillDaysDescription => '되돌아볼 최대 일수(1~365, 오늘 제외)';
+
+  @override
+  String get backfillAutoComplete => '보완된 작업을 자동으로 완료로 표시';
+
+  @override
+  String get backfillDaysRangeError => '일수는 1~365 사이여야 합니다';
+
+  @override
+  String get backfillConflictTitle => '누락 보완 범위 충돌';
+
+  @override
+  String backfillConflictMessage(
+    Object title,
+    Object startDate,
+    Object backfillStartDate,
+  ) {
+    return '\"$title\"의 시작 날짜는 $startDate이지만, 누락 보완 모드는 $backfillStartDate까지 되돌아갑니다. 이번 강제 새로고침에서 어떤 날짜를 가장 이른 생성 기준으로 사용할까요?';
+  }
+
+  @override
+  String get useStartDate => '시작 날짜 사용';
+
+  @override
+  String get useBackfillDays => '보완 범위 사용';
+
+  @override
   String get activeRepeatTasks => '활성 반복 작업';
 
   @override

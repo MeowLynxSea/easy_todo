@@ -78,6 +78,23 @@
   "invalidTimeRange": "La hora de fin debe ser posterior a la hora de inicio",
   "repeatEnabled": "Repeat Enabled",
   "repeatDescription": "Create recurring tasks automatically",
+  "backfillMode": "Modo de recuperación",
+  "backfillModeDescription": "Crea tareas recurrentes perdidas de días anteriores",
+  "backfillDays": "Días hacia atrás",
+  "backfillDaysDescription": "Máximo de días hacia atrás (1-365, sin incluir hoy)",
+  "backfillAutoComplete": "Completar automáticamente las tareas recuperadas",
+  "backfillDaysRangeError": "Los días deben estar entre 1 y 365",
+  "backfillConflictTitle": "Conflicto de recuperación",
+  "backfillConflictMessage": "La tarea \"{title}\" comienza el {startDate}, pero el modo de recuperación retrocedería hasta {backfillStartDate}. ¿Cuál debe usarse como la fecha más temprana para generar en esta actualización?",
+  "@backfillConflictMessage": {
+    "placeholders": {
+      "title": {},
+      "startDate": {},
+      "backfillStartDate": {}
+    }
+  },
+  "useStartDate": "Usar fecha de inicio",
+  "useBackfillDays": "Usar rango de recuperación",
   "activeRepeatTasks": "Active Repeat Tasks",
   "noRepeatTasks": "No repeat tasks yet",
   "pauseRepeat": "Pause",

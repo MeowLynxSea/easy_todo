@@ -271,6 +271,45 @@ class AppLocalizationsFr extends AppLocalizations {
       'Créer automatiquement des tâches récurrentes';
 
   @override
+  String get backfillMode => 'Mode de rattrapage';
+
+  @override
+  String get backfillModeDescription =>
+      'Crée les tâches récurrentes manquées pour les jours précédents';
+
+  @override
+  String get backfillDays => 'Jours à remonter';
+
+  @override
+  String get backfillDaysDescription =>
+      'Nombre maximal de jours à remonter (1–365, sans inclure aujourd\'hui)';
+
+  @override
+  String get backfillAutoComplete => 'Marquer automatiquement comme terminées';
+
+  @override
+  String get backfillDaysRangeError =>
+      'Le nombre de jours doit être compris entre 1 et 365';
+
+  @override
+  String get backfillConflictTitle => 'Conflit de rattrapage';
+
+  @override
+  String backfillConflictMessage(
+    Object title,
+    Object startDate,
+    Object backfillStartDate,
+  ) {
+    return 'La tâche \"$title\" commence le $startDate, mais le mode de rattrapage remonterait jusqu\'au $backfillStartDate. Quelle date doit être utilisée comme date la plus ancienne pour cette actualisation ?';
+  }
+
+  @override
+  String get useStartDate => 'Utiliser la date de début';
+
+  @override
+  String get useBackfillDays => 'Utiliser la plage de rattrapage';
+
+  @override
   String get activeRepeatTasks => 'Tâches répétitives actives';
 
   @override

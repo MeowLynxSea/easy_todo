@@ -270,6 +270,46 @@ class AppLocalizationsDe extends AppLocalizations {
       'Automatisch wiederkehrende Aufgaben erstellen';
 
   @override
+  String get backfillMode => 'Nachholmodus';
+
+  @override
+  String get backfillModeDescription =>
+      'Erstellt verpasste wiederkehrende Aufgaben für vergangene Tage';
+
+  @override
+  String get backfillDays => 'Zurückliegende Tage';
+
+  @override
+  String get backfillDaysDescription =>
+      'Maximale Anzahl zurückliegender Tage (1–365, ohne heute)';
+
+  @override
+  String get backfillAutoComplete =>
+      'Nachgeholte Aufgaben automatisch abschließen';
+
+  @override
+  String get backfillDaysRangeError =>
+      'Die Anzahl der Tage muss zwischen 1 und 365 liegen';
+
+  @override
+  String get backfillConflictTitle => 'Konflikt beim Nachholen';
+
+  @override
+  String backfillConflictMessage(
+    Object title,
+    Object startDate,
+    Object backfillStartDate,
+  ) {
+    return 'Die Aufgabe „$title“ beginnt am $startDate, aber der Nachholmodus würde bis $backfillStartDate zurückgehen. Welches Datum soll für diese Aktualisierung als frühestes Erstellungsdatum verwendet werden?';
+  }
+
+  @override
+  String get useStartDate => 'Startdatum verwenden';
+
+  @override
+  String get useBackfillDays => 'Nachholbereich verwenden';
+
+  @override
   String get activeRepeatTasks => 'Aktive wiederkehrende Aufgaben';
 
   @override

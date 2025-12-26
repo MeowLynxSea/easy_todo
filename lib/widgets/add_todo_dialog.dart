@@ -112,6 +112,11 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final desktopWeb = isWebDesktop(context);
+    final isEditing = widget.todo != null;
+    final isRepeatGeneratedTodo = widget.todo?.isGeneratedFromRepeat ?? false;
+    final allowTitleEdit = !isEditing || !isRepeatGeneratedTodo;
+    final allowDescriptionEdit = !isEditing || !isRepeatGeneratedTodo;
+    final allowTimeRangeEdit = !isEditing || !isRepeatGeneratedTodo;
 
     return Dialog(
       insetPadding: const EdgeInsets.all(16),
@@ -148,11 +153,11 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
                       }
                       return null;
                     },
-                    readOnly: widget.todo != null,
-                    textInputAction: widget.todo == null
+                    readOnly: !allowTitleEdit,
+                    textInputAction: allowTitleEdit
                         ? TextInputAction.next
                         : TextInputAction.done,
-                    onFieldSubmitted: widget.todo == null
+                    onFieldSubmitted: allowTitleEdit
                         ? (_) {
                             FocusScope.of(context).nextFocus();
                           }
@@ -166,11 +171,11 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
                       hintText: l10n.todoDescription.toLowerCase(),
                     ),
                     maxLines: 3,
-                    readOnly: widget.todo != null,
-                    textInputAction: widget.todo == null
+                    readOnly: !allowDescriptionEdit,
+                    textInputAction: allowDescriptionEdit
                         ? TextInputAction.next
                         : TextInputAction.done,
-                    onFieldSubmitted: widget.todo == null
+                    onFieldSubmitted: allowDescriptionEdit
                         ? (_) {
                             FocusScope.of(context).nextFocus();
                           }
@@ -203,8 +208,10 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
                           : Colors.grey,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  _buildTimeRangeSection(l10n),
+                  if (allowTimeRangeEdit) ...[
+                    const SizedBox(height: 16),
+                    _buildTimeRangeSection(l10n),
+                  ],
                   if (_reminderEnabled) ...[
                     const SizedBox(height: 16),
                     ListTile(

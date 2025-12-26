@@ -504,7 +504,7 @@ class _TodoCardState extends State<TodoCard> {
           if (confirmed) {
             widget.onDelete();
           }
-        } else if (value == 'reminder' && widget.onEditReminder != null) {
+        } else if (value == 'edit' && widget.onEditReminder != null) {
           widget.onEditReminder!();
         } else if (value == 'pomodoro') {
           _startPomodoro(context);
@@ -513,24 +513,18 @@ class _TodoCardState extends State<TodoCard> {
       itemBuilder: (context) => [
         if (!widget.todo.isCompleted && widget.onEditReminder != null)
           PopupMenuItem(
-            value: 'reminder',
+            value: 'edit',
             child: Row(
               children: [
                 Icon(
-                  widget.todo.reminderEnabled ? Icons.alarm_off : Icons.alarm,
-                  color: widget.todo.reminderEnabled
-                      ? Colors.orange
-                      : Theme.of(context).colorScheme.primary,
+                  Icons.edit,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  widget.todo.reminderEnabled
-                      ? AppLocalizations.of(context)!.cancelReminder
-                      : AppLocalizations.of(context)!.setReminder,
+                  AppLocalizations.of(context)!.edit,
                   style: TextStyle(
-                    color: widget.todo.reminderEnabled
-                        ? Colors.orange
-                        : Theme.of(context).colorScheme.primary,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ],

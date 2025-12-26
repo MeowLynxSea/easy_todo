@@ -311,6 +311,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               endTime,
             }) async {
               final updatedTodo = todo.copyWith(
+                title: title,
+                description: description,
                 reminderTime: reminderTime,
                 reminderEnabled: reminderEnabled,
                 startTime: startTime,

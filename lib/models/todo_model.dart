@@ -4,6 +4,8 @@ part 'todo_model.g.dart';
 
 @HiveType(typeId: 0)
 class TodoModel extends HiveObject {
+  static const Object _unset = Object();
+
   @HiveField(0)
   String id;
 
@@ -133,12 +135,12 @@ class TodoModel extends HiveObject {
   TodoModel copyWith({
     String? id,
     String? title,
-    String? description,
+    Object? description = _unset,
     bool? isCompleted,
     DateTime? createdAt,
     DateTime? completedAt,
     int? order,
-    DateTime? reminderTime,
+    Object? reminderTime = _unset,
     bool? reminderEnabled,
     int? timeSpent,
     String? repeatTodoId,
@@ -148,18 +150,29 @@ class TodoModel extends HiveObject {
     String? aiCategory,
     int? aiPriority,
     bool? aiProcessed,
-    DateTime? startTime,
-    DateTime? endTime,
+    Object? startTime = _unset,
+    Object? endTime = _unset,
   }) {
+    final resolvedDescription = identical(description, _unset)
+        ? this.description
+        : description as String?;
+    final resolvedReminderTime = identical(reminderTime, _unset)
+        ? this.reminderTime
+        : reminderTime as DateTime?;
+    final resolvedStartTime =
+        identical(startTime, _unset) ? this.startTime : startTime as DateTime?;
+    final resolvedEndTime =
+        identical(endTime, _unset) ? this.endTime : endTime as DateTime?;
+
     return TodoModel(
       id: id ?? this.id,
       title: title ?? this.title,
-      description: description ?? this.description,
+      description: resolvedDescription,
       isCompleted: isCompleted ?? this.isCompleted,
       createdAt: createdAt ?? this.createdAt,
       completedAt: completedAt ?? this.completedAt,
       order: order ?? this.order,
-      reminderTime: reminderTime ?? this.reminderTime,
+      reminderTime: resolvedReminderTime,
       reminderEnabled: reminderEnabled ?? this.reminderEnabled,
       timeSpent: timeSpent ?? this.timeSpent,
       repeatTodoId: repeatTodoId ?? this.repeatTodoId,
@@ -170,8 +183,8 @@ class TodoModel extends HiveObject {
       aiCategory: aiCategory ?? this.aiCategory,
       aiPriority: aiPriority ?? this.aiPriority,
       aiProcessed: aiProcessed ?? this.aiProcessed,
-      startTime: startTime ?? this.startTime,
-      endTime: endTime ?? this.endTime,
+      startTime: resolvedStartTime,
+      endTime: resolvedEndTime,
     );
   }
 

@@ -11,6 +11,7 @@ import 'package:easy_todo/theme/app_theme.dart';
 import 'package:easy_todo/screens/data_statistics_screen.dart';
 import 'package:easy_todo/models/repeat_todo_model.dart';
 import 'package:easy_todo/widgets/web_desktop_content.dart';
+import 'package:easy_todo/utils/responsive.dart';
 
 // 数据统计按钮的内容组件
 class _DataStatsButtonContent extends StatelessWidget {
@@ -842,66 +843,87 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     PomodoroProvider pomodoroProvider,
     AppLocalizations l10n,
   ) {
+    final isDesktop = isWebDesktop(context);
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       crossAxisCount: 3,
       crossAxisSpacing: 12,
       mainAxisSpacing: 12,
+      childAspectRatio: isDesktop ? 2.8 : 1.0,
       children: [
         _buildStatsCard(
           l10n.totalTodos,
           todoProvider.allTodos.length.toString(),
           Icons.task_alt,
+          compact: isDesktop,
         ),
         _buildStatsCard(
           l10n.activeTodosCount,
           todoProvider.activeTodosCount.toString(),
           Icons.pending_actions,
+          compact: isDesktop,
         ),
         _buildStatsCard(
           l10n.completedTodosCount,
           todoProvider.completedTodosCount.toString(),
           Icons.check_circle,
+          compact: isDesktop,
         ),
         _buildStatsCard(
           l10n.completionRate,
           '${todoProvider.completionRate.toStringAsFixed(1)}%',
           Icons.trending_up,
+          compact: isDesktop,
         ),
         _buildStatsCard(
           l10n.pomodoroSessions,
           pomodoroProvider.completedSessionsCount.toString(),
           Icons.timer,
+          compact: isDesktop,
         ),
         _buildStatsCard(
           l10n.totalFocusTime,
           _formatDuration(pomodoroProvider.getTotalTimeSpent()),
           Icons.hourglass_top,
+          compact: isDesktop,
         ),
       ],
     );
   }
 
-  Widget _buildStatsCard(String title, String value, IconData icon) {
+  Widget _buildStatsCard(
+    String title,
+    String value,
+    IconData icon, {
+    required bool compact,
+  }) {
+    final padding = compact ? 6.0 : 10.0;
+    final iconSize = compact ? 20.0 : 24.0;
+    final valueFontSize = compact ? 14.0 : 16.0;
+    final titleFontSize = compact ? 8.0 : 9.0;
+
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(10),
+        padding: EdgeInsets.all(padding),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 24, color: AppTheme.primaryColor),
-            const SizedBox(height: 4),
+            Icon(icon, size: iconSize, color: AppTheme.primaryColor),
+            SizedBox(height: compact ? 2 : 4),
             Text(
               value,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: valueFontSize,
+                fontWeight: FontWeight.bold,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 2),
+            SizedBox(height: compact ? 1 : 2),
             Text(
               title,
-              style: TextStyle(fontSize: 9, color: Colors.grey[600]),
+              style: TextStyle(fontSize: titleFontSize, color: Colors.grey[600]),
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,

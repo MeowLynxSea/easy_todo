@@ -11,30 +11,21 @@ class ResponsiveWebFrame extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!isWebDesktop(context)) return child;
 
-    final colorScheme = Theme.of(context).colorScheme;
+    const maxWidth = 1440.0;
+
+    final theme = Theme.of(context);
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final horizontalPadding = screenWidth >= 1440 ? 32.0 : 20.0;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            colorScheme.surfaceContainerLowest,
-            colorScheme.surfaceContainer,
-          ],
-        ),
-      ),
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1440),
-            child: child,
-          ),
-        ),
-      ),
-    );
+
+    final framedChild = screenWidth > maxWidth
+        ? Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: maxWidth),
+              child: child,
+            ),
+          )
+        : child;
+
+    return ColoredBox(color: theme.scaffoldBackgroundColor, child: framedChild);
   }
 }

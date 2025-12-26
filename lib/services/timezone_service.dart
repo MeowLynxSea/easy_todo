@@ -204,7 +204,8 @@ class TimezoneService {
       final now = DateTime.now();
       final timeZoneName = now.timeZoneName.toUpperCase();
       final timeZoneOffset = now.timeZoneOffset;
-      final offsetInHours = timeZoneOffset.inHours + (timeZoneOffset.inMinutes % 60) / 60.0;
+      final offsetInHours =
+          timeZoneOffset.inHours + (timeZoneOffset.inMinutes % 60) / 60.0;
 
       // debugPrint('=== Enhanced Timezone Detection ===');
       // debugPrint('Device timezone name: $timeZoneName');
@@ -249,7 +250,9 @@ class TimezoneService {
   String? _tryDirectTimezoneName(String timeZoneName) {
     try {
       // Try to use the timezone name directly if it's a valid IANA timezone
-      if (timeZoneName.contains('/') && timeZoneName != 'GMT' && timeZoneName != 'UTC') {
+      if (timeZoneName.contains('/') &&
+          timeZoneName != 'GMT' &&
+          timeZoneName != 'UTC') {
         try {
           tz.getLocation(timeZoneName);
           return timeZoneName;
@@ -287,7 +290,8 @@ class TimezoneService {
 
       // Check for partial matches (e.g., "GMT+8" should match with "GMT")
       for (final entry in _timezoneAbbreviationMap.entries) {
-        if (timeZoneName.contains(entry.key) || entry.key.contains(timeZoneName)) {
+        if (timeZoneName.contains(entry.key) ||
+            entry.key.contains(timeZoneName)) {
           return entry.value;
         }
       }
@@ -305,7 +309,9 @@ class TimezoneService {
       final gmtPattern = RegExp(r'GMT([+-])(\d+)(?::?(\d+))?');
       final utcPattern = RegExp(r'UTC([+-])(\d+)(?::?(\d+))?');
 
-      RegExpMatch? match = gmtPattern.firstMatch(timeZoneName) ?? utcPattern.firstMatch(timeZoneName);
+      RegExpMatch? match =
+          gmtPattern.firstMatch(timeZoneName) ??
+          utcPattern.firstMatch(timeZoneName);
 
       if (match != null) {
         final sign = match.group(1) == '+' ? 1 : -1;
@@ -361,10 +367,21 @@ class TimezoneService {
     // Return the most commonly used timezone for this offset
     // Priority order: major cities > regions
     final preferredOrder = [
-      'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
-      'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Moscow',
-      'Asia/Shanghai', 'Asia/Tokyo', 'Asia/Seoul', 'Asia/Singapore', 'Asia/Kolkata',
-      'Australia/Sydney', 'Pacific/Auckland'
+      'America/New_York',
+      'America/Chicago',
+      'America/Denver',
+      'America/Los_Angeles',
+      'Europe/London',
+      'Europe/Paris',
+      'Europe/Berlin',
+      'Europe/Moscow',
+      'Asia/Shanghai',
+      'Asia/Tokyo',
+      'Asia/Seoul',
+      'Asia/Singapore',
+      'Asia/Kolkata',
+      'Australia/Sydney',
+      'Pacific/Auckland',
     ];
 
     for (final preferred in preferredOrder) {
@@ -444,9 +461,7 @@ class TimezoneService {
       };
     } catch (e) {
       debugPrint('Error getting timezone info: $e');
-      return {
-        'error': e.toString(),
-      };
+      return {'error': e.toString()};
     }
   }
 
@@ -468,12 +483,30 @@ class TimezoneService {
   /// Get list of supported timezones
   List<String> getSupportedTimezones() {
     return [
-      'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
-      'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Moscow',
-      'Asia/Shanghai', 'Asia/Tokyo', 'Asia/Seoul', 'Asia/Singapore', 'Asia/Kolkata',
-      'Australia/Sydney', 'Pacific/Auckland', 'America/Toronto', 'America/Vancouver',
-      'America/Mexico_City', 'America/Sao_Paulo', 'America/Buenos_Aires',
-      'Africa/Cairo', 'Africa/Johannesburg', 'Pacific/Honolulu', 'Asia/Dubai',
+      'America/New_York',
+      'America/Chicago',
+      'America/Denver',
+      'America/Los_Angeles',
+      'Europe/London',
+      'Europe/Paris',
+      'Europe/Berlin',
+      'Europe/Moscow',
+      'Asia/Shanghai',
+      'Asia/Tokyo',
+      'Asia/Seoul',
+      'Asia/Singapore',
+      'Asia/Kolkata',
+      'Australia/Sydney',
+      'Pacific/Auckland',
+      'America/Toronto',
+      'America/Vancouver',
+      'America/Mexico_City',
+      'America/Sao_Paulo',
+      'America/Buenos_Aires',
+      'Africa/Cairo',
+      'Africa/Johannesburg',
+      'Pacific/Honolulu',
+      'Asia/Dubai',
     ];
   }
 }

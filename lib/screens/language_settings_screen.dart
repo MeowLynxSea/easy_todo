@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_todo/providers/language_provider.dart';
+import 'package:easy_todo/widgets/web_desktop_content.dart';
 
 class LanguageSettingsScreen extends StatelessWidget {
   const LanguageSettingsScreen({super.key});
@@ -19,68 +20,77 @@ class LanguageSettingsScreen extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              l10n.language,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-          ),
-          const Divider(),
-          Expanded(
-            child: ListView.builder(
-              itemCount: LanguageProvider.supportedLocales.length,
-              itemBuilder: (context, index) {
-                final locale = LanguageProvider.supportedLocales[index];
-                final isSelected = languageProvider.locale == locale;
-                final languageName = _getLanguageName(locale, l10n);
-
-                return RadioListTile<Locale>(
-                  title: Text(
-                    languageName,
-                    style: TextStyle(
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
-                  subtitle: Text(
-                    _getNativeLanguageName(locale),
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                      fontSize: 12,
-                    ),
-                  ),
-                  value: locale,
-                  groupValue: languageProvider.locale,
-                  onChanged: (value) {
-                    if (value != null) {
-                      languageProvider.setLocale(value);
-                      Navigator.of(context).pop();
-                    }
-                  },
-                  selected: isSelected,
-                  activeColor: Theme.of(context).colorScheme.primary,
-                  secondary: isSelected
-                      ? Icon(
-                          Icons.check_circle,
-                          color: Theme.of(context).colorScheme.primary,
-                        )
-                      : null,
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              l10n.languageSettings,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+      body: WebDesktopContent(
+        padding: EdgeInsets.zero,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                l10n.language,
+                style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
-          ),
-        ],
+            const Divider(),
+            Expanded(
+              child: ListView.builder(
+                itemCount: LanguageProvider.supportedLocales.length,
+                itemBuilder: (context, index) {
+                  final locale = LanguageProvider.supportedLocales[index];
+                  final isSelected = languageProvider.locale == locale;
+                  final languageName = _getLanguageName(locale, l10n);
+
+                  return RadioListTile<Locale>(
+                    title: Text(
+                      languageName,
+                      style: TextStyle(
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    ),
+                    subtitle: Text(
+                      _getNativeLanguageName(locale),
+                      style: TextStyle(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
+                        fontSize: 12,
+                      ),
+                    ),
+                    value: locale,
+                    groupValue: languageProvider.locale,
+                    onChanged: (value) {
+                      if (value != null) {
+                        languageProvider.setLocale(value);
+                        Navigator.of(context).pop();
+                      }
+                    },
+                    selected: isSelected,
+                    activeColor: Theme.of(context).colorScheme.primary,
+                    secondary: isSelected
+                        ? Icon(
+                            Icons.check_circle,
+                            color: Theme.of(context).colorScheme.primary,
+                          )
+                        : null,
+                  );
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                l10n.languageSettings,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

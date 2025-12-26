@@ -22,6 +22,7 @@ import 'package:easy_todo/screens/theme_settings_screen.dart';
 import 'package:easy_todo/screens/pomodoro_settings_screen.dart';
 import 'package:easy_todo/screens/ai_settings_screen.dart';
 import 'package:easy_todo/providers/ai_provider.dart';
+import 'package:easy_todo/widgets/web_desktop_content.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -74,269 +75,274 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.preferences), centerTitle: true),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.appSettings,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+      body: WebDesktopContent(
+        padding: EdgeInsets.zero,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.appSettings,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildPreferenceItem(
-                    icon: Icons.notifications_outlined,
-                    title: l10n.notifications,
-                    subtitle: l10n.notificationsSubtitle,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              const NotificationSettingsScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  const Divider(),
-                  _buildPreferenceItem(
-                    icon: Icons.dark_mode_outlined,
-                    title: l10n.theme,
-                    subtitle: themeProvider.getThemeModeText(context),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ThemeSettingsScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  const Divider(),
-                  _buildPreferenceItem(
-                    icon: Icons.timer_outlined,
-                    title: l10n.pomodoroTimer,
-                    subtitle: l10n.pomodoroSettings,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const PomodoroSettingsScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  const Divider(),
-                  _buildPreferenceItem(
-                    icon: Icons.smart_toy_outlined,
-                    title: l10n.aiSettings,
-                    subtitle: aiProvider.settings.enableAIFeatures
-                        ? l10n.aiEnabled
-                        : l10n.aiDisabled,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AISettingsScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  const Divider(),
-                  _buildPreferenceItem(
-                    icon: Icons.language_outlined,
-                    title: l10n.language,
-                    subtitle: _getCurrentLanguageName(
-                      languageProvider.locale.languageCode,
-                      l10n,
+                    const SizedBox(height: 16),
+                    _buildPreferenceItem(
+                      icon: Icons.notifications_outlined,
+                      title: l10n.notifications,
+                      subtitle: l10n.notificationsSubtitle,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const NotificationSettingsScreen(),
+                          ),
+                        );
+                      },
                     ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const LanguageSettingsScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  if (!kIsWeb) ...[
                     const Divider(),
-                    _buildFingerprintLockItem(appSettingsProvider, l10n),
+                    _buildPreferenceItem(
+                      icon: Icons.dark_mode_outlined,
+                      title: l10n.theme,
+                      subtitle: themeProvider.getThemeModeText(context),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ThemeSettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
                     const Divider(),
-                    _buildAutoUpdateItem(appSettingsProvider, l10n),
+                    _buildPreferenceItem(
+                      icon: Icons.timer_outlined,
+                      title: l10n.pomodoroTimer,
+                      subtitle: l10n.pomodoroSettings,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const PomodoroSettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    const Divider(),
+                    _buildPreferenceItem(
+                      icon: Icons.smart_toy_outlined,
+                      title: l10n.aiSettings,
+                      subtitle: aiProvider.settings.enableAIFeatures
+                          ? l10n.aiEnabled
+                          : l10n.aiDisabled,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AISettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    const Divider(),
+                    _buildPreferenceItem(
+                      icon: Icons.language_outlined,
+                      title: l10n.language,
+                      subtitle: _getCurrentLanguageName(
+                        languageProvider.locale.languageCode,
+                        l10n,
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const LanguageSettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    if (!kIsWeb) ...[
+                      const Divider(),
+                      _buildFingerprintLockItem(appSettingsProvider, l10n),
+                      const Divider(),
+                      _buildAutoUpdateItem(appSettingsProvider, l10n),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.viewSettings,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.viewSettings,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildPreferenceItem(
-                    icon: Icons.view_carousel_outlined,
-                    title: l10n.viewDisplay,
-                    subtitle: l10n.viewDisplaySubtitle,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ViewSettingsScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.dataStorage,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                    const SizedBox(height: 16),
+                    _buildPreferenceItem(
+                      icon: Icons.view_carousel_outlined,
+                      title: l10n.viewDisplay,
+                      subtitle: l10n.viewDisplaySubtitle,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ViewSettingsScreen(),
+                          ),
+                        );
+                      },
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildPreferenceItem(
-                    icon: Icons.backup_outlined,
-                    title: l10n.backupRestore,
-                    subtitle: l10n.backupSubtitle,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const BackupRestoreScreen(),
-                        ),
-                      ).then((_) {
-                        _loadStorageStats();
-                      });
-                    },
-                  ),
-                  const Divider(),
-                  _buildPreferenceItem(
-                    icon: Icons.storage_outlined,
-                    title: l10n.storage,
-                    subtitle: _storageStats != null
-                        ? '${_storageStats!['todos']['total']} ${l10n.todos.toLowerCase()}, ${FileService.formatFileSize(_storageStats!['storage']['dataSize'])}'
-                        : l10n.storageSubtitle,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const StorageScreen(),
-                        ),
-                      ).then((_) {
-                        _loadStorageStats();
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.about,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildPreferenceItem(
-                    icon: Icons.info_outlined,
-                    title: l10n.aboutEasyTodo,
-                    subtitle: _packageInfo != null
-                        ? _packageInfo!.version
-                        : l10n.version,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AboutScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  if (!kIsWeb) ...[
-                    const Divider(),
-                    _buildUpdateSection(l10n),
                   ],
-                  const Divider(),
-                  _buildPreferenceItem(
-                    icon: Icons.help_outline,
-                    title: l10n.helpSupport,
-                    subtitle: l10n.helpSubtitle,
-                    onTap: () {
-                      _showHelpSupportDialog();
-                    },
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.dangerZone,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red,
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.dataStorage,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildPreferenceItem(
-                    icon: Icons.delete_outline,
-                    title: l10n.clearAllData,
-                    subtitle: l10n.clearDataSubtitle,
-                    onTap: () {
-                      _showClearDataDialog();
-                    },
-                    iconColor: Colors.red,
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    _buildPreferenceItem(
+                      icon: Icons.backup_outlined,
+                      title: l10n.backupRestore,
+                      subtitle: l10n.backupSubtitle,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const BackupRestoreScreen(),
+                          ),
+                        ).then((_) {
+                          _loadStorageStats();
+                        });
+                      },
+                    ),
+                    const Divider(),
+                    _buildPreferenceItem(
+                      icon: Icons.storage_outlined,
+                      title: l10n.storage,
+                      subtitle: _storageStats != null
+                          ? '${_storageStats!['todos']['total']} ${l10n.todos.toLowerCase()}, ${FileService.formatFileSize(_storageStats!['storage']['dataSize'])}'
+                          : l10n.storageSubtitle,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const StorageScreen(),
+                          ),
+                        ).then((_) {
+                          _loadStorageStats();
+                        });
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.about,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildPreferenceItem(
+                      icon: Icons.info_outlined,
+                      title: l10n.aboutEasyTodo,
+                      subtitle: _packageInfo != null
+                          ? _packageInfo!.version
+                          : l10n.version,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AboutScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    if (!kIsWeb) ...[
+                      const Divider(),
+                      _buildUpdateSection(l10n),
+                    ],
+                    const Divider(),
+                    _buildPreferenceItem(
+                      icon: Icons.help_outline,
+                      title: l10n.helpSupport,
+                      subtitle: l10n.helpSubtitle,
+                      onTap: () {
+                        _showHelpSupportDialog();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.dangerZone,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildPreferenceItem(
+                      icon: Icons.delete_outline,
+                      title: l10n.clearAllData,
+                      subtitle: l10n.clearDataSubtitle,
+                      onTap: () {
+                        _showClearDataDialog();
+                      },
+                      iconColor: Colors.red,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

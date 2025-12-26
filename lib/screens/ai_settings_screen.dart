@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:easy_todo/providers/ai_provider.dart';
 import 'package:easy_todo/models/ai_settings_model.dart';
 import 'package:easy_todo/screens/ai_debug_screen.dart';
+import 'package:easy_todo/widgets/web_desktop_content.dart';
 
 class AISettingsScreen extends StatefulWidget {
   const AISettingsScreen({super.key});
@@ -57,7 +58,8 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
     _timeoutController.text = settings.requestTimeout.toString();
     _temperatureController.text = settings.temperature.toString();
     _maxTokensController.text = settings.maxTokens.toString();
-    _maxRequestsPerMinuteController.text = settings.maxRequestsPerMinute.toString();
+    _maxRequestsPerMinuteController.text = settings.maxRequestsPerMinute
+        .toString();
     _customPersonaController.text = settings.customPersonaPrompt;
   }
 
@@ -73,12 +75,14 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
       modelName: _modelNameController.text.trim(),
       enableAutoCategorization: aiProvider.settings.enableAutoCategorization,
       enablePrioritySorting: aiProvider.settings.enablePrioritySorting,
-      enableMotivationalMessages: aiProvider.settings.enableMotivationalMessages,
+      enableMotivationalMessages:
+          aiProvider.settings.enableMotivationalMessages,
       enableSmartNotifications: aiProvider.settings.enableSmartNotifications,
       temperature: double.tryParse(_temperatureController.text) ?? 1.0,
       maxTokens: int.tryParse(_maxTokensController.text) ?? 10000,
       requestTimeout: int.tryParse(_timeoutController.text) ?? 60000,
-      maxRequestsPerMinute: int.tryParse(_maxRequestsPerMinuteController.text) ?? 20,
+      maxRequestsPerMinute:
+          int.tryParse(_maxRequestsPerMinuteController.text) ?? 20,
       customPersonaPrompt: _customPersonaController.text.trim(),
       apiFormat: aiProvider.settings.apiFormat,
     );
@@ -127,7 +131,8 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
       temperature: double.tryParse(_temperatureController.text) ?? 1.0,
       maxTokens: int.tryParse(_maxTokensController.text) ?? 10000,
       requestTimeout: int.tryParse(_timeoutController.text) ?? 60000,
-      maxRequestsPerMinute: int.tryParse(_maxRequestsPerMinuteController.text) ?? 20,
+      maxRequestsPerMinute:
+          int.tryParse(_maxRequestsPerMinuteController.text) ?? 20,
       apiFormat: aiProvider.settings.apiFormat, // Preserve current API format
     );
 
@@ -170,400 +175,476 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(l10n.aiSettings),
-          centerTitle: true,
-        ),
+        appBar: AppBar(title: Text(l10n.aiSettings), centerTitle: true),
         body: Form(
           key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Card(
-                color: Theme.of(context).colorScheme.surfaceContainer,
-                elevation: 1,
-                shadowColor: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.2),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.aiFeatures,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SwitchListTile(
-                        title: Text(
-                          l10n.enableAIFeatures,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                        subtitle: Text(
-                          l10n.enableAIFeaturesSubtitle,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
-                          ),
-                        ),
-                        value: aiProvider.settings.enableAIFeatures,
-                        onChanged: (value) {
-                          HapticFeedback.lightImpact();
-                          final newSettings = aiProvider.settings.copyWith(enableAIFeatures: value);
-                          aiProvider.updateSettings(newSettings);
-                        },
-                      ),
-                      if (aiProvider.settings.enableAIFeatures) ...[
-                        const SizedBox(height: 16),
-                        _buildSectionTitle(l10n.apiConfiguration),
-                        const SizedBox(height: 8),
-                        _buildTextField(
-                          controller: _apiEndpointController,
-                          label: l10n.apiEndpoint,
-                          hint: aiProvider.settings.apiFormat == 'ollama'
-                              ? 'http://localhost:11434/api/generate'
-                              : 'https://api.openai.com/v1/chat/completions',
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return l10n.pleaseEnterApiEndpoint;
-                            }
-                            if (!Uri.tryParse(value.trim())!.hasAbsolutePath) {
-                              return l10n.invalidApiEndpoint;
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        _buildTextField(
-                          controller: _apiKeyController,
-                          label: l10n.apiKey,
-                          hint: aiProvider.settings.apiFormat == 'ollama' ? '(Optional for Ollama)' : 'sk-...',
-                          obscureText: !_showPassword && aiProvider.settings.apiFormat != 'ollama',
-                          validator: (value) {
-                            if (aiProvider.settings.apiFormat != 'ollama' && (value == null || value.trim().isEmpty)) {
-                              return l10n.pleaseEnterApiKey;
-                            }
-                            return null;
-                          },
-                          suffixIcon: aiProvider.settings.apiFormat != 'ollama' ? IconButton(
-                            icon: Icon(_showPassword ? Icons.visibility_off : Icons.visibility),
-                            onPressed: () {
-                              setState(() {
-                                _showPassword = !_showPassword;
-                              });
-                            },
-                          ) : null,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildTextField(
-                          controller: _modelNameController,
-                          label: l10n.modelName,
-                          hint: aiProvider.settings.apiFormat == 'ollama' ? 'llama3.2' : 'gpt-3.5-turbo',
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return l10n.pleaseEnterModelName;
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        _buildSectionTitle(l10n.advancedSettings),
-                        const SizedBox(height: 8),
-                        _buildApiFormatSelector(l10n),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildTextField(
-                                controller: _timeoutController,
-                                label: l10n.timeout,
-                                hint: '60000',
-                                keyboardType: TextInputType.number,
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return l10n.pleaseEnterTimeout;
-                                  }
-                                  final timeout = int.tryParse(value);
-                                  if (timeout == null || timeout < 1000) {
-                                    return l10n.invalidTimeout;
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildTextField(
-                                controller: _temperatureController,
-                                label: l10n.temperature,
-                                hint: '1.0',
-                                keyboardType: TextInputType.numberWithOptions(decimal: true),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return l10n.pleaseEnterTemperature;
-                                  }
-                                  final temp = double.tryParse(value);
-                                  if (temp == null || temp < 0 || temp > 2) {
-                                    return l10n.invalidTemperature;
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        _buildSectionTitle(l10n.rateAndTokenLimits),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: _buildTextField(
-                                controller: _maxRequestsPerMinuteController,
-                                label: l10n.rateLimit,
-                                hint: '20',
-                                keyboardType: TextInputType.number,
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return l10n.pleaseEnterRateLimit;
-                                  }
-                                  final rate = int.tryParse(value);
-                                  if (rate == null || rate < 1 || rate > 100) {
-                                    return l10n.invalidRateLimit;
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              flex: 2,
-                              child: _buildTextField(
-                                controller: _maxTokensController,
-                                label: l10n.maxTokens,
-                                hint: '10000',
-                                keyboardType: TextInputType.number,
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return l10n.pleaseEnterMaxTokens;
-                                  }
-                                  final tokens = int.tryParse(value);
-                                  if (tokens == null || tokens < 1) {
-                                    return l10n.invalidMaxTokens;
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        if (_testResult != null) ...[
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: _testResult!.contains(l10n.connectionSuccessful)
-                                  ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3)
-                                  : Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: _testResult!.contains(l10n.connectionSuccessful)
-                                    ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
-                                    : Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
-                              ),
-                            ),
-                            child: Text(
-                              _testResult!,
-                              style: TextStyle(
-                                color: _testResult!.contains(l10n.connectionSuccessful)
-                                    ? Theme.of(context).colorScheme.onPrimaryContainer
-                                    : Theme.of(context).colorScheme.onErrorContainer,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: _isLoading ? null : _testConnection,
-                                child: _isLoading
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : Text(l10n.testConnection),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              if (aiProvider.settings.enableAIFeatures)
+          child: WebDesktopContent(
+            padding: EdgeInsets.zero,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
                 Card(
                   color: Theme.of(context).colorScheme.surfaceContainer,
                   elevation: 1,
-                  shadowColor: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.2),
+                  shadowColor: Theme.of(
+                    context,
+                  ).colorScheme.shadow.withValues(alpha: 0.2),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildSectionTitle(l10n.aiFeaturesToggle),
+                        Text(
+                          l10n.aiFeatures,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
                         const SizedBox(height: 16),
                         SwitchListTile(
                           title: Text(
-                            l10n.autoCategorization,
+                            l10n.enableAIFeatures,
                             style: TextStyle(
                               color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                           subtitle: Text(
-                            l10n.autoCategorizationSubtitle,
+                            l10n.enableAIFeaturesSubtitle,
                             style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant
+                                  .withValues(alpha: 0.8),
                             ),
                           ),
-                          value: aiProvider.settings.enableAutoCategorization,
+                          value: aiProvider.settings.enableAIFeatures,
                           onChanged: (value) {
                             HapticFeedback.lightImpact();
                             final newSettings = aiProvider.settings.copyWith(
-                              enableAutoCategorization: value,
+                              enableAIFeatures: value,
                             );
                             aiProvider.updateSettings(newSettings);
                           },
                         ),
-                        SwitchListTile(
-                          title: Text(
-                            l10n.prioritySorting,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
-                          ),
-                          subtitle: Text(
-                            l10n.prioritySortingSubtitle,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
-                            ),
-                          ),
-                          value: aiProvider.settings.enablePrioritySorting,
-                          onChanged: (value) {
-                            HapticFeedback.lightImpact();
-                            final newSettings = aiProvider.settings.copyWith(
-                              enablePrioritySorting: value,
-                            );
-                            aiProvider.updateSettings(newSettings);
-                          },
-                        ),
-                        SwitchListTile(
-                          title: Text(
-                            l10n.motivationalMessages,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
-                          ),
-                          subtitle: Text(
-                            l10n.motivationalMessagesSubtitle,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
-                            ),
-                          ),
-                          value: aiProvider.settings.enableMotivationalMessages,
-                          onChanged: (value) {
-                            HapticFeedback.lightImpact();
-                            final newSettings = aiProvider.settings.copyWith(
-                              enableMotivationalMessages: value,
-                            );
-                            aiProvider.updateSettings(newSettings);
-                          },
-                        ),
-                        SwitchListTile(
-                          title: Text(
-                            l10n.smartNotifications,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
-                          ),
-                          subtitle: Text(
-                            l10n.smartNotificationsSubtitle,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
-                            ),
-                          ),
-                          value: aiProvider.settings.enableSmartNotifications,
-                          onChanged: (value) {
-                            HapticFeedback.lightImpact();
-                            final newSettings = aiProvider.settings.copyWith(
-                              enableSmartNotifications: value,
-                            );
-                            aiProvider.updateSettings(newSettings);
-                          },
-                        ),
-                        if (aiProvider.settings.enableSmartNotifications || aiProvider.settings.enableMotivationalMessages) ...[
+                        if (aiProvider.settings.enableAIFeatures) ...[
                           const SizedBox(height: 16),
-                          _buildSectionTitle(l10n.customPersona),
+                          _buildSectionTitle(l10n.apiConfiguration),
                           const SizedBox(height: 8),
-                          _buildPersonaPromptField(l10n),
+                          _buildTextField(
+                            controller: _apiEndpointController,
+                            label: l10n.apiEndpoint,
+                            hint: aiProvider.settings.apiFormat == 'ollama'
+                                ? 'http://localhost:11434/api/generate'
+                                : 'https://api.openai.com/v1/chat/completions',
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return l10n.pleaseEnterApiEndpoint;
+                              }
+                              if (!Uri.tryParse(
+                                value.trim(),
+                              )!.hasAbsolutePath) {
+                                return l10n.invalidApiEndpoint;
+                              }
+                              return null;
+                            },
+                          ),
                           const SizedBox(height: 16),
-                          _buildPersonaExamples(l10n),
+                          _buildTextField(
+                            controller: _apiKeyController,
+                            label: l10n.apiKey,
+                            hint: aiProvider.settings.apiFormat == 'ollama'
+                                ? '(Optional for Ollama)'
+                                : 'sk-...',
+                            obscureText:
+                                !_showPassword &&
+                                aiProvider.settings.apiFormat != 'ollama',
+                            validator: (value) {
+                              if (aiProvider.settings.apiFormat != 'ollama' &&
+                                  (value == null || value.trim().isEmpty)) {
+                                return l10n.pleaseEnterApiKey;
+                              }
+                              return null;
+                            },
+                            suffixIcon:
+                                aiProvider.settings.apiFormat != 'ollama'
+                                ? IconButton(
+                                    icon: Icon(
+                                      _showPassword
+                                          ? Icons.visibility_off
+                                          : Icons.visibility,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _showPassword = !_showPassword;
+                                      });
+                                    },
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(height: 16),
+                          _buildTextField(
+                            controller: _modelNameController,
+                            label: l10n.modelName,
+                            hint: aiProvider.settings.apiFormat == 'ollama'
+                                ? 'llama3.2'
+                                : 'gpt-3.5-turbo',
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return l10n.pleaseEnterModelName;
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          _buildSectionTitle(l10n.advancedSettings),
+                          const SizedBox(height: 8),
+                          _buildApiFormatSelector(l10n),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildTextField(
+                                  controller: _timeoutController,
+                                  label: l10n.timeout,
+                                  hint: '60000',
+                                  keyboardType: TextInputType.number,
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return l10n.pleaseEnterTimeout;
+                                    }
+                                    final timeout = int.tryParse(value);
+                                    if (timeout == null || timeout < 1000) {
+                                      return l10n.invalidTimeout;
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _buildTextField(
+                                  controller: _temperatureController,
+                                  label: l10n.temperature,
+                                  hint: '1.0',
+                                  keyboardType: TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return l10n.pleaseEnterTemperature;
+                                    }
+                                    final temp = double.tryParse(value);
+                                    if (temp == null || temp < 0 || temp > 2) {
+                                      return l10n.invalidTemperature;
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          _buildSectionTitle(l10n.rateAndTokenLimits),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                flex: 3,
+                                child: _buildTextField(
+                                  controller: _maxRequestsPerMinuteController,
+                                  label: l10n.rateLimit,
+                                  hint: '20',
+                                  keyboardType: TextInputType.number,
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return l10n.pleaseEnterRateLimit;
+                                    }
+                                    final rate = int.tryParse(value);
+                                    if (rate == null ||
+                                        rate < 1 ||
+                                        rate > 100) {
+                                      return l10n.invalidRateLimit;
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                flex: 2,
+                                child: _buildTextField(
+                                  controller: _maxTokensController,
+                                  label: l10n.maxTokens,
+                                  hint: '10000',
+                                  keyboardType: TextInputType.number,
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return l10n.pleaseEnterMaxTokens;
+                                    }
+                                    final tokens = int.tryParse(value);
+                                    if (tokens == null || tokens < 1) {
+                                      return l10n.invalidMaxTokens;
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                          if (_testResult != null) ...[
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color:
+                                    _testResult!.contains(
+                                      l10n.connectionSuccessful,
+                                    )
+                                    ? Theme.of(context)
+                                          .colorScheme
+                                          .primaryContainer
+                                          .withValues(alpha: 0.3)
+                                    : Theme.of(context)
+                                          .colorScheme
+                                          .errorContainer
+                                          .withValues(alpha: 0.3),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color:
+                                      _testResult!.contains(
+                                        l10n.connectionSuccessful,
+                                      )
+                                      ? Theme.of(context).colorScheme.primary
+                                            .withValues(alpha: 0.3)
+                                      : Theme.of(context).colorScheme.error
+                                            .withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Text(
+                                _testResult!,
+                                style: TextStyle(
+                                  color:
+                                      _testResult!.contains(
+                                        l10n.connectionSuccessful,
+                                      )
+                                      ? Theme.of(
+                                          context,
+                                        ).colorScheme.onPrimaryContainer
+                                      : Theme.of(
+                                          context,
+                                        ).colorScheme.onErrorContainer,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: _isLoading
+                                      ? null
+                                      : _testConnection,
+                                  child: _isLoading
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : Text(l10n.testConnection),
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ],
                     ),
                   ),
                 ),
-              const SizedBox(height: 16),
-              Card(
-                color: Theme.of(context).colorScheme.surfaceContainer,
-                elevation: 1,
-                shadowColor: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.2),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: ListTile(
-                    leading: Icon(
-                      Icons.bug_report_outlined,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    title: Text(
-                      l10n.aiDebugInfoTitle,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        color: Theme.of(context).colorScheme.onSurface,
+                const SizedBox(height: 16),
+                if (aiProvider.settings.enableAIFeatures)
+                  Card(
+                    color: Theme.of(context).colorScheme.surfaceContainer,
+                    elevation: 1,
+                    shadowColor: Theme.of(
+                      context,
+                    ).colorScheme.shadow.withValues(alpha: 0.2),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildSectionTitle(l10n.aiFeaturesToggle),
+                          const SizedBox(height: 16),
+                          SwitchListTile(
+                            title: Text(
+                              l10n.autoCategorization,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                            subtitle: Text(
+                              l10n.autoCategorizationSubtitle,
+                              style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant
+                                    .withValues(alpha: 0.8),
+                              ),
+                            ),
+                            value: aiProvider.settings.enableAutoCategorization,
+                            onChanged: (value) {
+                              HapticFeedback.lightImpact();
+                              final newSettings = aiProvider.settings.copyWith(
+                                enableAutoCategorization: value,
+                              );
+                              aiProvider.updateSettings(newSettings);
+                            },
+                          ),
+                          SwitchListTile(
+                            title: Text(
+                              l10n.prioritySorting,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                            subtitle: Text(
+                              l10n.prioritySortingSubtitle,
+                              style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant
+                                    .withValues(alpha: 0.8),
+                              ),
+                            ),
+                            value: aiProvider.settings.enablePrioritySorting,
+                            onChanged: (value) {
+                              HapticFeedback.lightImpact();
+                              final newSettings = aiProvider.settings.copyWith(
+                                enablePrioritySorting: value,
+                              );
+                              aiProvider.updateSettings(newSettings);
+                            },
+                          ),
+                          SwitchListTile(
+                            title: Text(
+                              l10n.motivationalMessages,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                            subtitle: Text(
+                              l10n.motivationalMessagesSubtitle,
+                              style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant
+                                    .withValues(alpha: 0.8),
+                              ),
+                            ),
+                            value:
+                                aiProvider.settings.enableMotivationalMessages,
+                            onChanged: (value) {
+                              HapticFeedback.lightImpact();
+                              final newSettings = aiProvider.settings.copyWith(
+                                enableMotivationalMessages: value,
+                              );
+                              aiProvider.updateSettings(newSettings);
+                            },
+                          ),
+                          SwitchListTile(
+                            title: Text(
+                              l10n.smartNotifications,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                            subtitle: Text(
+                              l10n.smartNotificationsSubtitle,
+                              style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant
+                                    .withValues(alpha: 0.8),
+                              ),
+                            ),
+                            value: aiProvider.settings.enableSmartNotifications,
+                            onChanged: (value) {
+                              HapticFeedback.lightImpact();
+                              final newSettings = aiProvider.settings.copyWith(
+                                enableSmartNotifications: value,
+                              );
+                              aiProvider.updateSettings(newSettings);
+                            },
+                          ),
+                          if (aiProvider.settings.enableSmartNotifications ||
+                              aiProvider
+                                  .settings
+                                  .enableMotivationalMessages) ...[
+                            const SizedBox(height: 16),
+                            _buildSectionTitle(l10n.customPersona),
+                            const SizedBox(height: 8),
+                            _buildPersonaPromptField(l10n),
+                            const SizedBox(height: 16),
+                            _buildPersonaExamples(l10n),
+                          ],
+                        ],
                       ),
                     ),
-                    subtitle: Text(
-                      l10n.aiDebugInfoSubtitle,
-                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-                    ),
-                    trailing: Icon(
-                      Icons.chevron_right,
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AIDebugScreen(),
+                  ),
+                const SizedBox(height: 16),
+                Card(
+                  color: Theme.of(context).colorScheme.surfaceContainer,
+                  elevation: 1,
+                  shadowColor: Theme.of(
+                    context,
+                  ).colorScheme.shadow.withValues(alpha: 0.2),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: ListTile(
+                      leading: Icon(
+                        Icons.bug_report_outlined,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      title: Text(
+                        l10n.aiDebugInfoTitle,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
-                      );
-                    },
+                      ),
+                      subtitle: Text(
+                        l10n.aiDebugInfoSubtitle,
+                        style: TextStyle(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      trailing: Icon(
+                        Icons.chevron_right,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AIDebugScreen(),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
-              ),
-            ],
-          )
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -620,12 +701,14 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
       modelName: _modelNameController.text.trim(),
       enableAutoCategorization: aiProvider.settings.enableAutoCategorization,
       enablePrioritySorting: aiProvider.settings.enablePrioritySorting,
-      enableMotivationalMessages: aiProvider.settings.enableMotivationalMessages,
+      enableMotivationalMessages:
+          aiProvider.settings.enableMotivationalMessages,
       enableSmartNotifications: aiProvider.settings.enableSmartNotifications,
       temperature: double.tryParse(_temperatureController.text) ?? 1.0,
       maxTokens: int.tryParse(_maxTokensController.text) ?? 10000,
       requestTimeout: int.tryParse(_timeoutController.text) ?? 60000,
-      maxRequestsPerMinute: int.tryParse(_maxRequestsPerMinuteController.text) ?? 20,
+      maxRequestsPerMinute:
+          int.tryParse(_maxRequestsPerMinuteController.text) ?? 20,
       customPersonaPrompt: _customPersonaController.text.trim(),
       apiFormat: aiProvider.settings.apiFormat,
     );
@@ -701,7 +784,9 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
                 hintText: l10n.personaPromptHint,
                 hintStyle: TextStyle(
                   fontSize: 14,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                 ),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 12),
@@ -724,7 +809,9 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
               l10n.personaPromptDescription,
               style: TextStyle(
                 fontSize: 12,
-                color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
               ),
             ),
           ),
@@ -746,21 +833,23 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
     }
 
     return DropdownButtonFormField<String>(
-      value: currentValue == 'openai' || currentValue == 'ollama' ? currentValue : 'openai',
+      value: currentValue == 'openai' || currentValue == 'ollama'
+          ? currentValue
+          : 'openai',
       decoration: InputDecoration(
         labelText: l10n.apiFormat,
         border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
       ),
       items: [
         DropdownMenuItem<String>(
           value: 'openai',
           child: Text(l10n.openaiFormat),
         ),
-        DropdownMenuItem<String>(
-          value: 'ollama',
-          child: const Text('Ollama'),
-        ),
+        DropdownMenuItem<String>(value: 'ollama', child: const Text('Ollama')),
       ],
       onChanged: (value) {
         if (value != null) {
@@ -772,14 +861,12 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
           if (value == 'ollama') {
             _apiEndpointController.text = 'http://localhost:11434/api/generate';
           } else if (value == 'openai') {
-            _apiEndpointController.text = 'https://api.openai.com/v1/chat/completions';
+            _apiEndpointController.text =
+                'https://api.openai.com/v1/chat/completions';
           }
         }
       },
-      icon: Icon(
-        Icons.api,
-        color: Theme.of(context).colorScheme.primary,
-      ),
+      icon: Icon(Icons.api, color: Theme.of(context).colorScheme.primary),
     );
   }
 
@@ -828,31 +915,37 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
             l10n.personaExample2,
             l10n.personaExample3,
             l10n.personaExample4,
-          ].map((example) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      margin: const EdgeInsets.only(top: 2, right: 8),
-                      child: Icon(
-                        Icons.circle,
-                        size: 4,
-                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.6),
+          ].map(
+            (example) => Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 2, right: 8),
+                    child: Icon(
+                      Icons.circle,
+                      size: 4,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      example,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurfaceVariant.withValues(alpha: 0.85),
                       ),
                     ),
-                    Expanded(
-                      child: Text(
-                        example,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.85),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              )),
+                  ),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: 12),
         ],
       ),

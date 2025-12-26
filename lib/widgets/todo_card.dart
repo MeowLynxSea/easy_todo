@@ -125,9 +125,7 @@ class _TodoCardState extends State<TodoCard> {
             HapticFeedback.selectionClick();
             _handleToggle();
           },
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
         title: Row(
           children: [
@@ -176,8 +174,11 @@ class _TodoCardState extends State<TodoCard> {
             ),
           ],
         ),
-        subtitle: (widget.todo.description != null && widget.todo.description!.isNotEmpty) ||
-                (widget.todo.reminderEnabled && widget.todo.reminderTime != null) ||
+        subtitle:
+            (widget.todo.description != null &&
+                    widget.todo.description!.isNotEmpty) ||
+                (widget.todo.reminderEnabled &&
+                    widget.todo.reminderTime != null) ||
                 _shouldShowAITags()
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -198,7 +199,8 @@ class _TodoCardState extends State<TodoCard> {
                             : TextDecoration.none,
                       ),
                     ),
-                  if (widget.todo.reminderEnabled && widget.todo.reminderTime != null) ...[
+                  if (widget.todo.reminderEnabled &&
+                      widget.todo.reminderTime != null) ...[
                     const SizedBox(height: 4),
                     _buildReminderChip(),
                   ],
@@ -229,24 +231,33 @@ class _TodoCardState extends State<TodoCard> {
     if (!settings.enableAIFeatures) return false;
 
     // Check if any AI features are enabled
-    if (!settings.enableAutoCategorization && !settings.enablePrioritySorting) return false;
+    if (!settings.enableAutoCategorization && !settings.enablePrioritySorting) {
+      return false;
+    }
 
     // Get the latest todo data
-    final latestTodo = todoProvider.todos.firstWhere((t) => t.id == widget.todo.id);
+    final latestTodo = todoProvider.todos.firstWhere(
+      (t) => t.id == widget.todo.id,
+    );
 
     // Don't show for completed todos - they should retain their existing AI data
     if (latestTodo.isCompleted) {
       // Even for completed todos, show AI tags if they have valid data
-      bool hasCategoryData = settings.enableAutoCategorization && latestTodo.aiCategory != null;
-      bool hasPriorityData = settings.enablePrioritySorting && latestTodo.aiPriority > 0;
+      bool hasCategoryData =
+          settings.enableAutoCategorization && latestTodo.aiCategory != null;
+      bool hasPriorityData =
+          settings.enablePrioritySorting && latestTodo.aiPriority > 0;
       return hasCategoryData || hasPriorityData;
     }
 
     // Show if data exists or if it's being generated
-    bool hasCategoryData = settings.enableAutoCategorization && latestTodo.aiCategory != null;
-    bool hasPriorityData = settings.enablePrioritySorting && latestTodo.aiPriority > 0;
-    bool needsGeneration = (settings.enableAutoCategorization && latestTodo.aiCategory == null) ||
-                           (settings.enablePrioritySorting && latestTodo.aiPriority == 0);
+    bool hasCategoryData =
+        settings.enableAutoCategorization && latestTodo.aiCategory != null;
+    bool hasPriorityData =
+        settings.enablePrioritySorting && latestTodo.aiPriority > 0;
+    bool needsGeneration =
+        (settings.enableAutoCategorization && latestTodo.aiCategory == null) ||
+        (settings.enablePrioritySorting && latestTodo.aiPriority == 0);
 
     return hasCategoryData || hasPriorityData || needsGeneration;
   }
@@ -255,21 +266,28 @@ class _TodoCardState extends State<TodoCard> {
     final now = DateTime.now();
     final reminderTime = widget.todo.reminderTime!;
     final isOverdue = reminderTime.isBefore(now) && !widget.todo.isCompleted;
-    final isToday = reminderTime.day == now.day &&
+    final isToday =
+        reminderTime.day == now.day &&
         reminderTime.month == now.month &&
         reminderTime.year == now.year;
-    final isTomorrow = reminderTime.day == now.day + 1 &&
+    final isTomorrow =
+        reminderTime.day == now.day + 1 &&
         reminderTime.month == now.month &&
         reminderTime.year == now.year;
 
     String timeText;
     final l10n = AppLocalizations.of(context)!;
     if (isToday) {
-      timeText = l10n.todayTimeFormat(TimeOfDay.fromDateTime(reminderTime).format(context));
+      timeText = l10n.todayTimeFormat(
+        TimeOfDay.fromDateTime(reminderTime).format(context),
+      );
     } else if (isTomorrow) {
-      timeText = l10n.tomorrowTimeFormat(TimeOfDay.fromDateTime(reminderTime).format(context));
+      timeText = l10n.tomorrowTimeFormat(
+        TimeOfDay.fromDateTime(reminderTime).format(context),
+      );
     } else {
-      timeText = '${reminderTime.day}/${reminderTime.month} ${TimeOfDay.fromDateTime(reminderTime).format(context)}';
+      timeText =
+          '${reminderTime.day}/${reminderTime.month} ${TimeOfDay.fromDateTime(reminderTime).format(context)}';
     }
 
     return Row(
@@ -279,7 +297,9 @@ class _TodoCardState extends State<TodoCard> {
           size: 14,
           color: widget.todo.isCompleted
               ? Colors.grey
-              : (isOverdue ? Colors.red : Theme.of(context).colorScheme.primary),
+              : (isOverdue
+                    ? Colors.red
+                    : Theme.of(context).colorScheme.primary),
         ),
         const SizedBox(width: 4),
         Text(
@@ -288,7 +308,9 @@ class _TodoCardState extends State<TodoCard> {
             fontSize: 12,
             color: widget.todo.isCompleted
                 ? Colors.grey
-                : (isOverdue ? Colors.red : Theme.of(context).colorScheme.primary),
+                : (isOverdue
+                      ? Colors.red
+                      : Theme.of(context).colorScheme.primary),
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -311,14 +333,18 @@ class _TodoCardState extends State<TodoCard> {
     }
 
     // ALWAYS get the latest todo from provider to ensure we have the most up-to-date AI data
-    final latestTodo = todoProvider.todos.firstWhere((t) => t.id == widget.todo.id);
+    final latestTodo = todoProvider.todos.firstWhere(
+      (t) => t.id == widget.todo.id,
+    );
 
     bool shouldShowCategory = settings.enableAutoCategorization;
     bool shouldShowPriority = settings.enablePrioritySorting;
 
     // Check if we need to show loading states
-    bool needsCategoryLoading = settings.enableAutoCategorization && latestTodo.aiCategory == null;
-    bool needsPriorityLoading = settings.enablePrioritySorting && latestTodo.aiPriority == 0;
+    bool needsCategoryLoading =
+        settings.enableAutoCategorization && latestTodo.aiCategory == null;
+    bool needsPriorityLoading =
+        settings.enablePrioritySorting && latestTodo.aiPriority == 0;
 
     // If AI features are enabled but data is missing, trigger background generation only for active todos
     if (settings.enableAIFeatures && !latestTodo.isCompleted) {
@@ -332,7 +358,9 @@ class _TodoCardState extends State<TodoCard> {
             // Additional check to ensure widget is still in a valid state
             if (mounted) {
               // Double-check if todo still exists before processing
-              final stillExists = todoProvider.todos.any((t) => t.id == widget.todo.id);
+              final stillExists = todoProvider.todos.any(
+                (t) => t.id == widget.todo.id,
+              );
               if (stillExists) {
                 todoProvider.processMissingAIDataForTodo(latestTodo);
               }
@@ -343,12 +371,16 @@ class _TodoCardState extends State<TodoCard> {
     }
 
     // Check what we should actually display
-    bool shouldShowCategoryWithData = shouldShowCategory && latestTodo.aiCategory != null;
-    bool shouldShowPriorityWithData = shouldShowPriority && latestTodo.aiPriority > 0;
+    bool shouldShowCategoryWithData =
+        shouldShowCategory && latestTodo.aiCategory != null;
+    bool shouldShowPriorityWithData =
+        shouldShowPriority && latestTodo.aiPriority > 0;
 
     // If nothing to show (no data and no loading needed), return empty
-    if (!shouldShowCategoryWithData && !shouldShowPriorityWithData &&
-        !needsCategoryLoading && !needsPriorityLoading) {
+    if (!shouldShowCategoryWithData &&
+        !shouldShowPriorityWithData &&
+        !needsCategoryLoading &&
+        !needsPriorityLoading) {
       return const SizedBox();
     }
 
@@ -387,10 +419,7 @@ class _TodoCardState extends State<TodoCard> {
     );
   }
 
-  Widget _buildLoadingChip({
-    required String label,
-    required Color color,
-  }) {
+  Widget _buildLoadingChip({required String label, required Color color}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
@@ -406,7 +435,9 @@ class _TodoCardState extends State<TodoCard> {
             height: 8,
             child: CircularProgressIndicator(
               strokeWidth: 1.5,
-              valueColor: AlwaysStoppedAnimation<Color>(color.withValues(alpha: 0.7)),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                color.withValues(alpha: 0.7),
+              ),
             ),
           ),
           const SizedBox(width: 4),
@@ -438,11 +469,7 @@ class _TodoCardState extends State<TodoCard> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 10,
-            color: color,
-          ),
+          Icon(icon, size: 10, color: color),
           const SizedBox(width: 2),
           Text(
             label,
@@ -515,10 +542,7 @@ class _TodoCardState extends State<TodoCard> {
             value: 'pomodoro',
             child: Row(
               children: [
-                Icon(
-                  Icons.timer,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+                Icon(Icons.timer, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 8),
                 Text(
                   AppLocalizations.of(context)!.startPomodoro,
@@ -539,7 +563,10 @@ class _TodoCardState extends State<TodoCard> {
               children: [
                 Icon(Icons.delete, color: Colors.red),
                 const SizedBox(width: 8),
-                Text(AppLocalizations.of(context)!.delete, style: TextStyle(color: Colors.red)),
+                Text(
+                  AppLocalizations.of(context)!.delete,
+                  style: TextStyle(color: Colors.red),
+                ),
               ],
             ),
           ),

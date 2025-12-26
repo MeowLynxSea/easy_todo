@@ -38,13 +38,18 @@ class _CalendarWidgetState extends State<CalendarWidget> {
       final localTimeZoneName = DateTime.now().timeZoneName;
       String? timeZoneId;
 
-      if (localTimeZoneName.contains('CST') || localTimeZoneName.contains('GMT+8') || localTimeZoneName.contains('UTC+8')) {
+      if (localTimeZoneName.contains('CST') ||
+          localTimeZoneName.contains('GMT+8') ||
+          localTimeZoneName.contains('UTC+8')) {
         timeZoneId = 'Asia/Shanghai';
-      } else if (localTimeZoneName.contains('PST') || localTimeZoneName.contains('GMT-8')) {
+      } else if (localTimeZoneName.contains('PST') ||
+          localTimeZoneName.contains('GMT-8')) {
         timeZoneId = 'America/Los_Angeles';
-      } else if (localTimeZoneName.contains('EST') || localTimeZoneName.contains('GMT-5')) {
+      } else if (localTimeZoneName.contains('EST') ||
+          localTimeZoneName.contains('GMT-5')) {
         timeZoneId = 'America/New_York';
-      } else if (localTimeZoneName.contains('JST') || localTimeZoneName.contains('GMT+9')) {
+      } else if (localTimeZoneName.contains('JST') ||
+          localTimeZoneName.contains('GMT+9')) {
         timeZoneId = 'Asia/Tokyo';
       } else if (localTimeZoneName.contains('GMT')) {
         final offset = DateTime.now().timeZoneOffset.inHours;
@@ -63,7 +68,7 @@ class _CalendarWidgetState extends State<CalendarWidget> {
         try {
           final location = tz.getLocation(timeZoneId);
           tz.setLocalLocation(location);
-          } catch (e) {
+        } catch (e) {
           debugPrint('CalendarWidget: Failed to set timezone: $e');
         }
       }

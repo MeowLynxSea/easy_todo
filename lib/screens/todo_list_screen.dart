@@ -13,6 +13,8 @@ import 'package:easy_todo/providers/app_settings_provider.dart';
 import 'package:easy_todo/providers/ai_provider.dart';
 import 'package:easy_todo/screens/pomodoro_screen.dart';
 import 'package:easy_todo/screens/repeat_tasks_screen.dart';
+import 'package:easy_todo/utils/responsive.dart';
+import 'package:easy_todo/widgets/web_desktop_content.dart';
 
 class TodoListScreen extends StatefulWidget {
   const TodoListScreen({super.key});
@@ -128,206 +130,239 @@ class _TodoListScreenState extends State<TodoListScreen> {
     final filterProvider = Provider.of<FilterProvider>(context, listen: false);
     final aiProvider = Provider.of<AIProvider>(context, listen: false);
 
-    final showCategoryFilter = aiProvider.settings.enableAIFeatures &&
-                              aiProvider.settings.enableAutoCategorization;
-    final showImportanceSort = aiProvider.settings.enableAIFeatures &&
-                              aiProvider.settings.enablePrioritySorting;
+    final showCategoryFilter =
+        aiProvider.settings.enableAIFeatures &&
+        aiProvider.settings.enableAutoCategorization;
+    final showImportanceSort =
+        aiProvider.settings.enableAIFeatures &&
+        aiProvider.settings.enablePrioritySorting;
 
     final tabCount = 3 + (showCategoryFilter ? 1 : 0);
+
+    Widget buildFilterPanel(StateSetter setState, {required bool asDialog}) {
+      final borderRadius = asDialog
+          ? BorderRadius.circular(16)
+          : const BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            );
+
+      return Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: borderRadius,
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  l10n.filterByStatus,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: Icon(
+                    Icons.close,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Filter Presets
+            SizedBox(
+              height: 40,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  _buildFilterPresetChip(
+                    l10n.filterAll,
+                    filterProvider.statusFilter == TodoFilter.all &&
+                        filterProvider.timeFilter == TimeFilter.all,
+                    () {
+                      setState(() {
+                        filterProvider.setStatusFilter(TodoFilter.all);
+                        filterProvider.setTimeFilter(TimeFilter.all);
+                        todoProvider.setFilter(TodoFilter.all);
+                        todoProvider.setTimeFilter(TimeFilter.all);
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  _buildFilterPresetChip(
+                    l10n.filterTodayTodos,
+                    filterProvider.statusFilter == TodoFilter.active &&
+                        filterProvider.timeFilter == TimeFilter.today,
+                    () {
+                      setState(() {
+                        filterProvider.setStatusFilter(TodoFilter.active);
+                        filterProvider.setTimeFilter(TimeFilter.today);
+                        todoProvider.setFilter(TodoFilter.active);
+                        todoProvider.setTimeFilter(TimeFilter.today);
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  _buildFilterPresetChip(
+                    l10n.filterCompleted,
+                    filterProvider.statusFilter == TodoFilter.completed,
+                    () {
+                      setState(() {
+                        filterProvider.setStatusFilter(TodoFilter.completed);
+                        todoProvider.setFilter(TodoFilter.completed);
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  _buildFilterPresetChip(
+                    l10n.filterThisWeek,
+                    filterProvider.timeFilter == TimeFilter.week,
+                    () {
+                      setState(() {
+                        filterProvider.setTimeFilter(TimeFilter.week);
+                        todoProvider.setTimeFilter(TimeFilter.week);
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Tab Bar
+            DefaultTabController(
+              length: tabCount,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TabBar(
+                    isScrollable: true,
+                    labelColor: AppTheme.primaryColor,
+                    unselectedLabelColor: Colors.grey[600],
+                    indicatorColor: AppTheme.primaryColor,
+                    overlayColor: WidgetStateProperty.resolveWith<Color?>((
+                      Set<WidgetState> states,
+                    ) {
+                      if (states.contains(WidgetState.pressed)) {
+                        return AppTheme.primaryColor.withValues(alpha: 0.1);
+                      }
+                      if (states.contains(WidgetState.hovered)) {
+                        return AppTheme.primaryColor.withValues(alpha: 0.05);
+                      }
+                      return null;
+                    }),
+                    tabs: [
+                      Tab(text: l10n.filterByStatus),
+                      Tab(text: l10n.filterByTime),
+                      if (showCategoryFilter) Tab(text: l10n.filterByCategory),
+                      Tab(text: l10n.sortBy),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 200,
+                    child: TabBarView(
+                      children: [
+                        // Status Filter
+                        _buildStatusFilterTab(
+                          filterProvider,
+                          todoProvider,
+                          setState,
+                        ),
+                        // Time Filter
+                        _buildTimeFilterTab(
+                          filterProvider,
+                          todoProvider,
+                          setState,
+                        ),
+                        // Category Filter
+                        if (showCategoryFilter)
+                          _buildCategoryFilterTab(
+                            filterProvider,
+                            todoProvider,
+                            setState,
+                          ),
+                        // Sort Order
+                        _buildSortOrderTab(
+                          filterProvider,
+                          todoProvider,
+                          setState,
+                          showImportanceSort: showImportanceSort,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () {
+                      // Reset all filters
+                      setState(() {
+                        filterProvider.setStatusFilter(TodoFilter.all);
+                        filterProvider.setTimeFilter(TimeFilter.all);
+                        filterProvider.setSortOrder(SortOrder.timeDescending);
+                        filterProvider.clearCategoryFilter();
+                        // Sync TodoProvider with FilterProvider after reset
+                        todoProvider.syncWithFilterProvider(filterProvider);
+                      });
+                    },
+                    child: Text(l10n.resetButton),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(l10n.applyButton),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (isWebDesktop(context)) {
+      showDialog(
+        context: context,
+        builder: (context) => StatefulBuilder(
+          builder: (context, setState) => Dialog(
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 24,
+            ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: SingleChildScrollView(
+                child: buildFilterPanel(setState, asDialog: true),
+              ),
+            ),
+          ),
+        ),
+      );
+      return;
+    }
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-            ),
-          ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    l10n.filterByStatus,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: Icon(
-                      Icons.close,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              // Filter Presets
-              SizedBox(
-                height: 40,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    _buildFilterPresetChip(
-                      l10n.filterAll,
-                      filterProvider.statusFilter == TodoFilter.all &&
-                          filterProvider.timeFilter == TimeFilter.all,
-                      () {
-                        setState(() {
-                          filterProvider.setStatusFilter(TodoFilter.all);
-                          filterProvider.setTimeFilter(TimeFilter.all);
-                          todoProvider.setFilter(TodoFilter.all);
-                          todoProvider.setTimeFilter(TimeFilter.all);
-                        });
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    _buildFilterPresetChip(
-                      l10n.filterTodayTodos,
-                      filterProvider.statusFilter == TodoFilter.active &&
-                          filterProvider.timeFilter == TimeFilter.today,
-                      () {
-                        setState(() {
-                          filterProvider.setStatusFilter(TodoFilter.active);
-                          filterProvider.setTimeFilter(TimeFilter.today);
-                          todoProvider.setFilter(TodoFilter.active);
-                          todoProvider.setTimeFilter(TimeFilter.today);
-                        });
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    _buildFilterPresetChip(
-                      l10n.filterCompleted,
-                      filterProvider.statusFilter == TodoFilter.completed,
-                      () {
-                        setState(() {
-                          filterProvider.setStatusFilter(TodoFilter.completed);
-                          todoProvider.setFilter(TodoFilter.completed);
-                        });
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    _buildFilterPresetChip(
-                      l10n.filterThisWeek,
-                      filterProvider.timeFilter == TimeFilter.week,
-                      () {
-                        setState(() {
-                          filterProvider.setTimeFilter(TimeFilter.week);
-                          todoProvider.setTimeFilter(TimeFilter.week);
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Tab Bar
-              DefaultTabController(
-                length: tabCount,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TabBar(
-                      isScrollable: true,
-                      labelColor: AppTheme.primaryColor,
-                      unselectedLabelColor: Colors.grey[600],
-                      indicatorColor: AppTheme.primaryColor,
-                      overlayColor: WidgetStateProperty.resolveWith<Color?>((
-                        Set<WidgetState> states,
-                      ) {
-                        if (states.contains(WidgetState.pressed)) {
-                          return AppTheme.primaryColor.withValues(alpha: 0.1);
-                        }
-                        if (states.contains(WidgetState.hovered)) {
-                          return AppTheme.primaryColor.withValues(alpha: 0.05);
-                        }
-                        return null;
-                      }),
-                      tabs: [
-                        Tab(text: l10n.filterByStatus),
-                        Tab(text: l10n.filterByTime),
-                        if (showCategoryFilter) Tab(text: l10n.filterByCategory),
-                        Tab(text: l10n.sortBy),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      height: 200,
-                      child: TabBarView(
-                        children: [
-                          // Status Filter
-                          _buildStatusFilterTab(
-                            filterProvider,
-                            todoProvider,
-                            setState,
-                          ),
-                          // Time Filter
-                          _buildTimeFilterTab(
-                            filterProvider,
-                            todoProvider,
-                            setState,
-                          ),
-                          // Category Filter
-                          if (showCategoryFilter) _buildCategoryFilterTab(
-                            filterProvider,
-                            todoProvider,
-                            setState,
-                          ),
-                          // Sort Order
-                          _buildSortOrderTab(
-                            filterProvider,
-                            todoProvider,
-                            setState,
-                            showImportanceSort: showImportanceSort,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () {
-                        // Reset all filters
-                        setState(() {
-                          filterProvider.setStatusFilter(TodoFilter.all);
-                          filterProvider.setTimeFilter(TimeFilter.all);
-                          filterProvider.setSortOrder(SortOrder.timeDescending);
-                          filterProvider.clearCategoryFilter();
-                          // Sync TodoProvider with FilterProvider after reset
-                          todoProvider.syncWithFilterProvider(filterProvider);
-                        });
-                      },
-                      child: Text(l10n.resetButton),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: Text(l10n.applyButton),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
+        builder: (context, setState) =>
+            buildFilterPanel(setState, asDialog: false),
       ),
     );
   }
@@ -507,75 +542,81 @@ class _TodoListScreenState extends State<TodoListScreen> {
   }) {
     final l10n = AppLocalizations.of(context)!;
     return ListView(
-      children: SortOrder.values.where((order) {
-        // Filter out importance sorting options if not enabled
-        if (!showImportanceSort &&
-            (order == SortOrder.importanceAscending || order == SortOrder.importanceDescending)) {
-          return false;
-        }
-        return true;
-      }).map((order) {
-        String title;
-        switch (order) {
-          case SortOrder.timeAscending:
-            title = '${l10n.sortByTime} (${l10n.ascending})';
-            break;
-          case SortOrder.timeDescending:
-            title = '${l10n.sortByTime} (${l10n.descending})';
-            break;
-          case SortOrder.alphabetical:
-            title = l10n.alphabetical;
-            break;
-          case SortOrder.importanceAscending:
-            title = '${l10n.importance} (${l10n.ascending})';
-            break;
-          case SortOrder.importanceDescending:
-            title = '${l10n.importance} (${l10n.descending})';
-            break;
-        }
+      children: SortOrder.values
+          .where((order) {
+            // Filter out importance sorting options if not enabled
+            if (!showImportanceSort &&
+                (order == SortOrder.importanceAscending ||
+                    order == SortOrder.importanceDescending)) {
+              return false;
+            }
+            return true;
+          })
+          .map((order) {
+            String title;
+            switch (order) {
+              case SortOrder.timeAscending:
+                title = '${l10n.sortByTime} (${l10n.ascending})';
+                break;
+              case SortOrder.timeDescending:
+                title = '${l10n.sortByTime} (${l10n.descending})';
+                break;
+              case SortOrder.alphabetical:
+                title = l10n.alphabetical;
+                break;
+              case SortOrder.importanceAscending:
+                title = '${l10n.importance} (${l10n.ascending})';
+                break;
+              case SortOrder.importanceDescending:
+                title = '${l10n.importance} (${l10n.descending})';
+                break;
+            }
 
-        return RadioListTile<SortOrder>(
-          title: Text(
-            title,
-            style: TextStyle(
-              color: order == filterProvider.sortOrder
-                  ? (Theme.of(context).brightness == Brightness.dark
-                        ? const Color(0xFF818CF8)
-                        : Theme.of(context).colorScheme.primary)
-                  : Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.7),
-              fontWeight: order == filterProvider.sortOrder
-                  ? FontWeight.w600
-                  : FontWeight.normal,
-            ),
-          ),
-          value: order,
-          groupValue: filterProvider.sortOrder,
-          onChanged: (value) {
-            if (value != null) {
-              setState(() {
-                filterProvider.setSortOrder(value);
-                todoProvider.setSortOrder(value);
-              });
-            }
-          },
-          contentPadding: EdgeInsets.zero,
-          activeColor: Theme.of(context).brightness == Brightness.dark
-              ? const Color(0xFF818CF8) // Lighter theme color for dark mode
-              : Theme.of(context).colorScheme.primary,
-          fillColor: WidgetStateProperty.resolveWith<Color?>((
-            Set<WidgetState> states,
-          ) {
-            if (states.contains(WidgetState.selected)) {
-              return Theme.of(context).brightness == Brightness.dark
+            return RadioListTile<SortOrder>(
+              title: Text(
+                title,
+                style: TextStyle(
+                  color: order == filterProvider.sortOrder
+                      ? (Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF818CF8)
+                            : Theme.of(context).colorScheme.primary)
+                      : Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
+                  fontWeight: order == filterProvider.sortOrder
+                      ? FontWeight.w600
+                      : FontWeight.normal,
+                ),
+              ),
+              value: order,
+              groupValue: filterProvider.sortOrder,
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() {
+                    filterProvider.setSortOrder(value);
+                    todoProvider.setSortOrder(value);
+                  });
+                }
+              },
+              contentPadding: EdgeInsets.zero,
+              activeColor: Theme.of(context).brightness == Brightness.dark
                   ? const Color(0xFF818CF8) // Lighter theme color for dark mode
-                  : Theme.of(context).colorScheme.primary;
-            }
-            return null;
-          }),
-        );
-      }).toList(),
+                  : Theme.of(context).colorScheme.primary,
+              fillColor: WidgetStateProperty.resolveWith<Color?>((
+                Set<WidgetState> states,
+              ) {
+                if (states.contains(WidgetState.selected)) {
+                  return Theme.of(context).brightness == Brightness.dark
+                      ? const Color(
+                          0xFF818CF8,
+                        ) // Lighter theme color for dark mode
+                      : Theme.of(context).colorScheme.primary;
+                }
+                return null;
+              }),
+            );
+          })
+          .toList(),
     );
   }
 
@@ -619,12 +660,15 @@ class _TodoListScreenState extends State<TodoListScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     // Get all available categories from todos
-    final allCategories = todoProvider.allTodos
-        .where((todo) => todo.aiCategory != null && todo.aiCategory!.isNotEmpty)
-        .map((todo) => todo.aiCategory!)
-        .toSet()
-        .toList()
-      ..sort();
+    final allCategories =
+        todoProvider.allTodos
+            .where(
+              (todo) => todo.aiCategory != null && todo.aiCategory!.isNotEmpty,
+            )
+            .map((todo) => todo.aiCategory!)
+            .toSet()
+            .toList()
+          ..sort();
 
     if (allCategories.isEmpty) {
       return Center(
@@ -635,18 +679,12 @@ class _TodoListScreenState extends State<TodoListScreen> {
             const SizedBox(height: 16),
             Text(
               l10n.noCategoriesAvailable,
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
             const SizedBox(height: 8),
             Text(
               l10n.aiWillCategorizeTasks,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
             ),
           ],
         ),
@@ -698,17 +736,21 @@ class _TodoListScreenState extends State<TodoListScreen> {
             children: allCategories.map((category) {
               return Consumer<FilterProvider>(
                 builder: (context, provider, child) {
-                  final isSelected = provider.selectedCategories.contains(category);
+                  final isSelected = provider.selectedCategories.contains(
+                    category,
+                  );
                   return CheckboxListTile(
                     title: Text(
                       _getLocalizedCategory(category, l10n),
                       style: TextStyle(
                         color: isSelected
                             ? (Theme.of(context).brightness == Brightness.dark
-                                ? const Color(0xFF818CF8)
-                                : Theme.of(context).colorScheme.primary)
+                                  ? const Color(0xFF818CF8)
+                                  : Theme.of(context).colorScheme.primary)
                             : Theme.of(context).colorScheme.onSurface,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
                     ),
                     value: isSelected,
@@ -800,14 +842,17 @@ class _TodoListScreenState extends State<TodoListScreen> {
               ),
             ),
           ),
-          body: Column(
-            children: [
-              _buildStatsSummary(provider, l10n),
-              _buildSearchBar(l10n),
-              const Divider(height: 1),
-              Expanded(child: _buildTodoList(provider, appSettingsProvider)),
-              _buildAddTodoInput(),
-            ],
+          body: WebDesktopContent(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                _buildStatsSummary(provider, l10n),
+                _buildSearchBar(l10n),
+                const Divider(height: 1),
+                Expanded(child: _buildTodoList(provider, appSettingsProvider)),
+                _buildAddTodoInput(),
+              ],
+            ),
           ),
         );
       },
@@ -916,10 +961,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
                 transitionBuilder: (Widget child, Animation<double> animation) {
                   return FadeTransition(
                     opacity: animation,
-                    child: ScaleTransition(
-                      scale: animation,
-                      child: child,
-                    ),
+                    child: ScaleTransition(scale: animation, child: child),
                   );
                 },
                 child: Text(
@@ -1180,5 +1222,4 @@ class _TodoListScreenState extends State<TodoListScreen> {
     final localDate = date.toLocal();
     return '${localDate.day.toString().padLeft(2, '0')}/${localDate.month.toString().padLeft(2, '0')}/${localDate.year} ${localDate.hour.toString().padLeft(2, '0')}:${localDate.minute.toString().padLeft(2, '0')}';
   }
-
-  }
+}

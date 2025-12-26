@@ -85,7 +85,10 @@ class FilterProvider extends ChangeNotifier {
     await prefs.setInt(_statusFilterKey, _statusFilter.index);
     await prefs.setInt(_timeFilterKey, _timeFilter.index);
     await prefs.setInt(_sortOrderKey, _sortOrder.index);
-    await prefs.setString(_selectedCategoriesKey, _selectedCategories.join(','));
+    await prefs.setString(
+      _selectedCategoriesKey,
+      _selectedCategories.join(','),
+    );
   }
 
   void resetToDefaults() {

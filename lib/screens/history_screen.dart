@@ -8,6 +8,7 @@ import 'package:easy_todo/theme/app_theme.dart';
 import 'package:easy_todo/widgets/calendar_widget.dart';
 import 'package:easy_todo/providers/app_settings_provider.dart';
 import 'package:easy_todo/screens/day_detail_screen.dart';
+import 'package:easy_todo/widgets/web_desktop_content.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -60,21 +61,24 @@ class _HistoryScreenState extends State<HistoryScreen>
               ],
             ),
           ),
-          body: Column(
-            children: [
-              _buildSearchBar(l10n),
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildTodosList(provider.getTodayTodos(), l10n),
-                    _buildTodosList(provider.getWeekTodos(), l10n),
-                    _buildTodosList(provider.getMonthTodos(), l10n),
-                    _buildAllTodosTab(provider, appSettingsProvider, l10n),
-                  ],
+          body: WebDesktopContent(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                _buildSearchBar(l10n),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildTodosList(provider.getTodayTodos(), l10n),
+                      _buildTodosList(provider.getWeekTodos(), l10n),
+                      _buildTodosList(provider.getMonthTodos(), l10n),
+                      _buildAllTodosTab(provider, appSettingsProvider, l10n),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

@@ -88,8 +88,9 @@ class NotificationService {
       try {
         settingsBox = _hiveService.notificationSettingsBox;
       } catch (_) {
-        settingsBox =
-            await Hive.openBox<NotificationSettingsModel>('notificationSettings');
+        settingsBox = await Hive.openBox<NotificationSettingsModel>(
+          'notificationSettings',
+        );
       }
 
       final settings = settingsBox.get('notificationSettings');
@@ -140,8 +141,9 @@ class NotificationService {
       try {
         settingsBox = _hiveService.notificationSettingsBox;
       } catch (_) {
-        settingsBox =
-            await Hive.openBox<NotificationSettingsModel>('notificationSettings');
+        settingsBox = await Hive.openBox<NotificationSettingsModel>(
+          'notificationSettings',
+        );
       }
 
       await settingsBox.put('notificationSettings', settings);
@@ -157,7 +159,8 @@ class NotificationService {
 
       final enabledChanged =
           oldSettings?.dailySummaryEnabled != settings.dailySummaryEnabled;
-      final timeChanged = oldSettings?.dailySummaryTime != settings.dailySummaryTime;
+      final timeChanged =
+          oldSettings?.dailySummaryTime != settings.dailySummaryTime;
 
       if (settings.dailySummaryEnabled && timeChanged) {
         await _clearLastDailySummaryDate();
@@ -239,7 +242,9 @@ class NotificationService {
             body = parsed.$2;
           } else {
             title = '🤖 Smart Reminder';
-            body = aiMessage.length > 100 ? '${aiMessage.substring(0, 97)}...' : aiMessage;
+            body = aiMessage.length > 100
+                ? '${aiMessage.substring(0, 97)}...'
+                : aiMessage;
           }
         }
       } catch (e) {
@@ -426,7 +431,9 @@ class NotificationService {
 
       final todos = todosBox.values.toList();
       for (final todo in todos) {
-        if (todo.reminderEnabled && todo.reminderTime != null && !todo.isCompleted) {
+        if (todo.reminderEnabled &&
+            todo.reminderTime != null &&
+            !todo.isCompleted) {
           await scheduleTodoReminder(todo);
         }
       }
@@ -547,7 +554,13 @@ class NotificationService {
     }
 
     final now = DateTime.now();
-    final currentMinute = DateTime(now.year, now.month, now.day, now.hour, now.minute);
+    final currentMinute = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+      now.minute,
+    );
 
     final lastSent = _lastTodoReminderSent[todo.id];
     if (lastSent != null) {
@@ -593,7 +606,10 @@ class NotificationService {
       parsedTitle = titleMatch.group(1)?.trim();
       parsedBody = messageMatch.group(1)?.trim();
     } else {
-      final lines = aiMessage.split('\n').where((l) => l.trim().isNotEmpty).toList();
+      final lines = aiMessage
+          .split('\n')
+          .where((l) => l.trim().isNotEmpty)
+          .toList();
       if (lines.length >= 2) {
         parsedTitle = lines.first.trim();
         parsedBody = lines.sublist(1).join('\n').trim();
@@ -627,11 +643,7 @@ class NotificationService {
   void _showBrowserNotification(String title, String body, {String? tag}) {
     try {
       if (html.Notification.permission != 'granted') return;
-      html.Notification(
-        title,
-        body: body,
-        tag: tag,
-      );
+      html.Notification(title, body: body, tag: tag);
     } catch (e) {
       debugPrint('NotificationService(web): Browser notification failed: $e');
     }

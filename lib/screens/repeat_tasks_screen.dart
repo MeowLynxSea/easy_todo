@@ -6,6 +6,7 @@ import 'package:easy_todo/models/repeat_todo_model.dart';
 import 'package:easy_todo/providers/todo_provider.dart';
 import 'package:easy_todo/widgets/repeat_todo_dialog.dart';
 import 'package:easy_todo/widgets/ai_loading_indicator.dart';
+import 'package:easy_todo/widgets/web_desktop_content.dart';
 
 class RepeatTasksScreen extends StatefulWidget {
   const RepeatTasksScreen({super.key});
@@ -69,22 +70,17 @@ class _RepeatTasksScreenState extends State<RepeatTasksScreen> {
 
       final todoProvider = Provider.of<TodoProvider>(context, listen: false);
 
-
       // First, clean up any existing tasks for repeat templates
       await _cleanupExistingRepeatTasks(todoProvider);
-
 
       // 重新加载以确保数据一致性
       await todoProvider.loadTodos();
 
-
       // 直接调用强制刷新方法，而不是refreshTodayRepeatTasks
       await todoProvider.forceRefreshAllRepeatTasks();
 
-
       // 再次加载以显示新生成的任务
       await todoProvider.loadTodos();
-
 
       setState(() {
         _isLoading = false;
@@ -130,28 +126,27 @@ class _RepeatTasksScreenState extends State<RepeatTasksScreen> {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-
     // Get all active repeat todos
-    final activeRepeatTodos = todoProvider.repeatTodos.where((rt) => rt.isActive).toList();
+    final activeRepeatTodos = todoProvider.repeatTodos
+        .where((rt) => rt.isActive)
+        .toList();
 
     for (final repeatTodo in activeRepeatTodos) {
-
       // Find all todos generated from this repeat template that were created TODAY
       // 删除所有今天生成的任务，无论其完成状态如何
       final generatedTodos = todoProvider.allTodos
-          .where((todo) =>
-              todo.repeatTodoId == repeatTodo.id &&
-              todo.isGeneratedFromRepeat &&
-              _isSameDay(todo.createdAt, today)
+          .where(
+            (todo) =>
+                todo.repeatTodoId == repeatTodo.id &&
+                todo.isGeneratedFromRepeat &&
+                _isSameDay(todo.createdAt, today),
           )
           .toList();
-
 
       // Delete all today's generated tasks (both completed and uncompleted)
       for (final todo in generatedTodos) {
         await todoProvider.deleteTodo(todo.id);
       }
-
     }
   }
 
@@ -179,82 +174,84 @@ class _RepeatTasksScreenState extends State<RepeatTasksScreen> {
           ),
         ],
       ),
-      body: Consumer<TodoProvider>(
-        builder: (context, todoProvider, child) {
-          if (_isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: WebDesktopContent(
+        padding: EdgeInsets.zero,
+        child: Consumer<TodoProvider>(
+          builder: (context, todoProvider, child) {
+            if (_isLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-          if (_hasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: Colors.red.shade400,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    l10n.errorLoadingRepeatTasks,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    l10n.pleaseCheckStoragePermissions,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _loadRepeatTodos,
-                    child: Text(l10n.retry),
-                  ),
-                ],
-              ),
+            if (_hasError) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      size: 64,
+                      color: Colors.red.shade400,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      l10n.errorLoadingRepeatTasks,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      l10n.pleaseCheckStoragePermissions,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _loadRepeatTodos,
+                      child: Text(l10n.retry),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            final repeatTodos = todoProvider.repeatTodos;
+
+            if (repeatTodos.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.repeat, size: 64, color: Colors.grey.shade400),
+                    const SizedBox(height: 16),
+                    Text(
+                      l10n.noRepeatTasks,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      l10n.createYourFirstRepeatTask,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            // Sort repeat tasks: active first, then paused
+            final sortedRepeatTodos = List<RepeatTodoModel>.from(repeatTodos)
+              ..sort((a, b) {
+                if (a.isActive == b.isActive) return 0;
+                return a.isActive ? -1 : 1;
+              });
+
+            return ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              itemCount: sortedRepeatTodos.length,
+              itemBuilder: (context, index) {
+                final repeatTodo = sortedRepeatTodos[index];
+                return _buildRepeatTaskCard(repeatTodo, todoProvider, l10n);
+              },
             );
-          }
-
-          final repeatTodos = todoProvider.repeatTodos;
-
-
-          if (repeatTodos.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.repeat, size: 64, color: Colors.grey.shade400),
-                  const SizedBox(height: 16),
-                  Text(
-                    l10n.noRepeatTasks,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    l10n.createYourFirstRepeatTask,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
-              ),
-            );
-          }
-
-          // Sort repeat tasks: active first, then paused
-          final sortedRepeatTodos = List<RepeatTodoModel>.from(repeatTodos)
-            ..sort((a, b) {
-              if (a.isActive == b.isActive) return 0;
-              return a.isActive ? -1 : 1;
-            });
-
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            itemCount: sortedRepeatTodos.length,
-            itemBuilder: (context, index) {
-              final repeatTodo = sortedRepeatTodos[index];
-              return _buildRepeatTaskCard(repeatTodo, todoProvider, l10n);
-            },
-          );
-        },
+          },
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddRepeatTodoDialog,
@@ -314,7 +311,9 @@ class _RepeatTasksScreenState extends State<RepeatTasksScreen> {
               const SizedBox(height: 4),
               RepeatTodoAIStatus(
                 repeatTodoId: repeatTodo.id,
-                isProcessing: todoProvider.isRepeatTodoProcessingAI(repeatTodo.id),
+                isProcessing: todoProvider.isRepeatTodoProcessingAI(
+                  repeatTodo.id,
+                ),
                 isLoading: todoProvider.isRepeatTodoAILoading(repeatTodo.id),
                 status: todoProvider.getRepeatTodoAIStatus(repeatTodo.id),
               ),

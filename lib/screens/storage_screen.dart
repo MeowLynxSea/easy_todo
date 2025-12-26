@@ -5,6 +5,7 @@ import 'package:easy_todo/services/backup_restore_service.dart';
 import 'package:easy_todo/services/file_service.dart';
 import 'package:easy_todo/theme/app_theme.dart';
 import 'package:easy_todo/providers/todo_provider.dart';
+import 'package:easy_todo/widgets/web_desktop_content.dart';
 
 class StorageScreen extends StatefulWidget {
   const StorageScreen({super.key});
@@ -38,18 +39,24 @@ class _StorageScreenState extends State<StorageScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.storageManagement), centerTitle: true),
       body: _storageStats == null
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildStorageOverviewCard(),
-                  const SizedBox(height: 20),
-                  _buildChartsSection(),
-                  const SizedBox(height: 20),
-                  _buildCleanupOptions(),
-                ],
+          ? const WebDesktopContent(
+              padding: EdgeInsets.zero,
+              child: Center(child: CircularProgressIndicator()),
+            )
+          : WebDesktopContent(
+              padding: EdgeInsets.zero,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildStorageOverviewCard(),
+                    const SizedBox(height: 20),
+                    _buildChartsSection(),
+                    const SizedBox(height: 20),
+                    _buildCleanupOptions(),
+                  ],
+                ),
               ),
             ),
     );
@@ -128,7 +135,9 @@ class _StorageScreenState extends State<StorageScreen> {
                   child: _buildStatCard(
                     icon: Icons.schedule,
                     title: _l10n.focusTime,
-                    value: _formatDuration(_storageStats!['pomodoro']?['totalFocusTime'] ?? 0),
+                    value: _formatDuration(
+                      _storageStats!['pomodoro']?['totalFocusTime'] ?? 0,
+                    ),
                     color: Colors.teal,
                   ),
                 ),
@@ -453,7 +462,8 @@ class _StorageScreenState extends State<StorageScreen> {
         message += ', ${_l10n.statisticsDeleted(statisticsDeleted)}';
       }
       if (pomodoroSessionsDeleted > 0) {
-        message += ', ${_l10n.pomodoroSessionsDeleted(pomodoroSessionsDeleted)}';
+        message +=
+            ', ${_l10n.pomodoroSessionsDeleted(pomodoroSessionsDeleted)}';
       }
       if (backupFilesDeleted > 0) {
         message += ', ${_l10n.backupFilesDeleted(backupFilesDeleted)}';

@@ -71,8 +71,10 @@ class NotificationService {
   Future<bool> hasNotificationPermission() async {
     try {
       final plugin = FlutterLocalNotificationsPlugin();
-      final androidPlugin = plugin.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
+      final androidPlugin = plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       if (androidPlugin != null) {
         return await androidPlugin.areNotificationsEnabled() ?? false;
       }
@@ -86,8 +88,10 @@ class NotificationService {
   Future<bool> requestNotificationPermission() async {
     try {
       final plugin = FlutterLocalNotificationsPlugin();
-      final androidPlugin = plugin.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
+      final androidPlugin = plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       if (androidPlugin != null) {
         return await androidPlugin.requestNotificationsPermission() ?? false;
       }
@@ -116,7 +120,9 @@ class NotificationService {
       final detectedTimezone = timezoneService.detectTimezone();
       await timezoneService.setCustomTimezone(detectedTimezone);
     } catch (e) {
-      debugPrint('Failed to initialize enhanced timezone service in notification service: $e');
+      debugPrint(
+        'Failed to initialize enhanced timezone service in notification service: $e',
+      );
       // Fallback to basic timezone initialization - use system local timezone
       try {
         tz.initializeTimeZones();
@@ -126,11 +132,15 @@ class NotificationService {
           final location = tz.getLocation(timeZoneName);
           tz.setLocalLocation(location);
         } catch (locationError) {
-          debugPrint('Could not find timezone $timeZoneName, using UTC: $locationError');
+          debugPrint(
+            'Could not find timezone $timeZoneName, using UTC: $locationError',
+          );
           tz.setLocalLocation(tz.UTC);
         }
       } catch (fallbackError) {
-        debugPrint('Fallback timezone initialization also failed: $fallbackError');
+        debugPrint(
+          'Fallback timezone initialization also failed: $fallbackError',
+        );
       }
     }
   }
@@ -223,7 +233,6 @@ class NotificationService {
             );
 
         await androidPlugin.createNotificationChannel(pomodoroChannel);
-
       }
     } catch (e) {
       debugPrint('Error creating notification channels: $e');
@@ -249,7 +258,9 @@ class NotificationService {
         settingsBox = _hiveService.notificationSettingsBox;
       } catch (e) {
         // Try to open the box directly
-        settingsBox = await Hive.openBox<NotificationSettingsModel>('notificationSettings');
+        settingsBox = await Hive.openBox<NotificationSettingsModel>(
+          'notificationSettings',
+        );
       }
 
       final settings = settingsBox.get('notificationSettings');
@@ -288,9 +299,13 @@ class NotificationService {
       try {
         settingsBox = _hiveService.notificationSettingsBox;
       } catch (e) {
-        debugPrint('Notification settings box not available for update, attempting to open it: $e');
+        debugPrint(
+          'Notification settings box not available for update, attempting to open it: $e',
+        );
         // Try to open the box directly
-        settingsBox = await Hive.openBox<NotificationSettingsModel>('notificationSettings');
+        settingsBox = await Hive.openBox<NotificationSettingsModel>(
+          'notificationSettings',
+        );
       }
 
       await settingsBox.put('notificationSettings', settings);
@@ -308,12 +323,16 @@ class NotificationService {
       }
 
       // Only reschedule if settings actually changed
-      final enabledChanged = oldSettings?.dailySummaryEnabled != settings.dailySummaryEnabled;
-      final timeChanged = oldSettings?.dailySummaryTime != settings.dailySummaryTime;
+      final enabledChanged =
+          oldSettings?.dailySummaryEnabled != settings.dailySummaryEnabled;
+      final timeChanged =
+          oldSettings?.dailySummaryTime != settings.dailySummaryTime;
 
       // If time was changed and daily summary is enabled, clear the "今日已发送" record
       if (settings.dailySummaryEnabled && timeChanged) {
-        debugPrint('Daily summary time changed, clearing last sent date record');
+        debugPrint(
+          'Daily summary time changed, clearing last sent date record',
+        );
         await _clearLastDailySummaryDate();
       }
 
@@ -339,7 +358,8 @@ class NotificationService {
       final now = DateTime.now();
 
       // 检查小时和分钟是否相等，相等则立即发送通知
-      if (scheduledTime.hour == now.hour && scheduledTime.minute == now.minute) {
+      if (scheduledTime.hour == now.hour &&
+          scheduledTime.minute == now.minute) {
         // Check if we should send the reminder now (prevent duplicates within same minute)
         if (_shouldSendTodoReminderNow(todo)) {
           await sendTodoReminderNotification(todo);
@@ -372,16 +392,20 @@ class NotificationService {
     }
   }
 
-  Future<void> _scheduleWithFlutterNotifications(TodoModel todo, DateTime scheduledTime) async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'todo_reminder',
-      'Todo Reminders',
-      channelDescription: 'Notifications for individual todo reminders',
-      importance: Importance.high,
-      priority: Priority.high,
-      enableVibration: true,
-      playSound: true,
-    );
+  Future<void> _scheduleWithFlutterNotifications(
+    TodoModel todo,
+    DateTime scheduledTime,
+  ) async {
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+          'todo_reminder',
+          'Todo Reminders',
+          channelDescription: 'Notifications for individual todo reminders',
+          importance: Importance.high,
+          priority: Priority.high,
+          enableVibration: true,
+          playSound: true,
+        );
 
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
       presentAlert: true,
@@ -404,14 +428,18 @@ class NotificationService {
       final nextScheduledTime = scheduledTime.add(const Duration(days: 1));
       correctedDelay = nextScheduledTime.difference(now);
 
-      debugPrint('Rescheduling repeating task: ${todo.title} from $scheduledTime to $nextScheduledTime');
+      debugPrint(
+        'Rescheduling repeating task: ${todo.title} from $scheduledTime to $nextScheduledTime',
+      );
 
       _activeTimers[todo.id] = Timer(correctedDelay, () async {
         await sendTodoReminderNotification(todo);
       });
     } else if (delay.isNegative) {
       // 普通任务的过期时间，跳过
-      debugPrint('Skipping past non-repeating reminder: ${todo.title} at $scheduledTime');
+      debugPrint(
+        'Skipping past non-repeating reminder: ${todo.title} at $scheduledTime',
+      );
     } else {
       // 未来时间的正常处理
       _activeTimers[todo.id] = Timer(delay, () async {
@@ -420,7 +448,9 @@ class NotificationService {
     }
 
     // 只有在未来时间才尝试使用zonedSchedule
-    final actualDelay = delay.isNegative && todo.isGeneratedFromRepeat ? correctedDelay! : delay;
+    final actualDelay = delay.isNegative && todo.isGeneratedFromRepeat
+        ? correctedDelay!
+        : delay;
     if (actualDelay.isNegative) {
       debugPrint('Skipping zonedSchedule for past time, relying on Timer only');
     } else {
@@ -432,7 +462,8 @@ class NotificationService {
           tz.TZDateTime.now(tz.local).add(actualDelay),
           platformDetails,
           androidScheduleMode: AndroidScheduleMode.inexact,
-          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
         );
       } catch (e) {
         debugPrint('zonedSchedule backup failed (but Timer should work): $e');
@@ -514,10 +545,13 @@ class NotificationService {
       try {
         if (_aiProvider?.settings.enableSmartNotifications == true &&
             _aiProvider?.settings.isValid == true) {
-
           final prefs = await SharedPreferences.getInstance();
           final languageCode = prefs.getString('app_language') ?? 'zh';
-          final aiMessage = await _aiProvider?.generateSmartNotification(todo, languageCode: languageCode, context: _context);
+          final aiMessage = await _aiProvider?.generateSmartNotification(
+            todo,
+            languageCode: languageCode,
+            context: _context,
+          );
           if (aiMessage != null && aiMessage.isNotEmpty) {
             // Parse the AI response to extract title and message
             // Try multiple formats that AI might return
@@ -525,16 +559,28 @@ class NotificationService {
             String? parsedBody;
 
             // Format 1: TITLE: [title] MESSAGE: [message]
-            var titleMatch = RegExp(r'TITLE:\s*(.+?)(?:\n|$|\s*MESSAGE:)', caseSensitive: false).firstMatch(aiMessage);
-            var messageMatch = RegExp(r'MESSAGE:\s*(.+?)(?:\n|$)', caseSensitive: false).firstMatch(aiMessage);
+            var titleMatch = RegExp(
+              r'TITLE:\s*(.+?)(?:\n|$|\s*MESSAGE:)',
+              caseSensitive: false,
+            ).firstMatch(aiMessage);
+            var messageMatch = RegExp(
+              r'MESSAGE:\s*(.+?)(?:\n|$)',
+              caseSensitive: false,
+            ).firstMatch(aiMessage);
 
             if (titleMatch != null && messageMatch != null) {
               parsedTitle = titleMatch.group(1)!.trim();
               parsedBody = messageMatch.group(1)!.trim();
             } else {
               // Format 2: **Title:** [title] **Message:** [message] (Markdown format)
-              titleMatch = RegExp(r'\*\*Title:\*\*\s*(.+?)(?:\n|$|\*\*Message:\*\*)', caseSensitive: false).firstMatch(aiMessage);
-              messageMatch = RegExp(r'\*\*Message:\*\*\s*(.+?)(?:\n|$)', caseSensitive: false).firstMatch(aiMessage);
+              titleMatch = RegExp(
+                r'\*\*Title:\*\*\s*(.+?)(?:\n|$|\*\*Message:\*\*)',
+                caseSensitive: false,
+              ).firstMatch(aiMessage);
+              messageMatch = RegExp(
+                r'\*\*Message:\*\*\s*(.+?)(?:\n|$)',
+                caseSensitive: false,
+              ).firstMatch(aiMessage);
 
               if (titleMatch != null && messageMatch != null) {
                 parsedTitle = titleMatch.group(1)!.trim();
@@ -547,21 +593,48 @@ class NotificationService {
                   parsedBody = lines.sublist(1).join('\n').trim();
 
                   // Clean up common prefixes from title
-                  parsedTitle = parsedTitle.replaceAll(RegExp(r'^(Title:|🤖|Smart Reminder|AI Reminder)\s*', caseSensitive: false), '').trim();
+                  parsedTitle = parsedTitle
+                      .replaceAll(
+                        RegExp(
+                          r'^(Title:|🤖|Smart Reminder|AI Reminder)\s*',
+                          caseSensitive: false,
+                        ),
+                        '',
+                      )
+                      .trim();
 
                   // Clean up common prefixes from message
-                  parsedBody = parsedBody.replaceAll(RegExp(r'^(Message:|Body:|Content:)\s*', caseSensitive: false), '').trim();
+                  parsedBody = parsedBody
+                      .replaceAll(
+                        RegExp(
+                          r'^(Message:|Body:|Content:)\s*',
+                          caseSensitive: false,
+                        ),
+                        '',
+                      )
+                      .trim();
                 }
               }
             }
 
             // Use parsed values if successful, otherwise fallback
-            if (parsedTitle != null && parsedBody != null && parsedTitle.isNotEmpty && parsedBody.isNotEmpty) {
+            if (parsedTitle != null &&
+                parsedBody != null &&
+                parsedTitle.isNotEmpty &&
+                parsedBody.isNotEmpty) {
               title = parsedTitle;
               body = parsedBody;
             } else {
               // Last resort: try to extract any meaningful content
-              final cleanMessage = aiMessage.replaceAll(RegExp(r'\*\*?(Title|Message|Content):?\*\*?\s*', caseSensitive: false), '').trim();
+              final cleanMessage = aiMessage
+                  .replaceAll(
+                    RegExp(
+                      r'\*\*?(Title|Message|Content):?\*\*?\s*',
+                      caseSensitive: false,
+                    ),
+                    '',
+                  )
+                  .trim();
               if (cleanMessage.isNotEmpty) {
                 // If it's a long message, split it reasonably
                 if (cleanMessage.length > 100) {
@@ -571,7 +644,9 @@ class NotificationService {
                     body = cleanMessage.substring(firstLineBreak + 1).trim();
                   } else {
                     title = '🤖 Smart Reminder';
-                    body = cleanMessage.length > 100 ? '${cleanMessage.substring(0, 97)}...' : cleanMessage;
+                    body = cleanMessage.length > 100
+                        ? '${cleanMessage.substring(0, 97)}...'
+                        : cleanMessage;
                   }
                 } else {
                   title = '🤖 Smart Reminder';
@@ -580,7 +655,9 @@ class NotificationService {
               } else {
                 // Ultimate fallback
                 title = '🤖 Smart Reminder';
-                body = aiMessage.length > 100 ? '${aiMessage.substring(0, 97)}...' : aiMessage;
+                body = aiMessage.length > 100
+                    ? '${aiMessage.substring(0, 97)}...'
+                    : aiMessage;
               }
             }
           }
@@ -635,7 +712,9 @@ class NotificationService {
     if (_settings?.notificationsEnabled == false) return;
     if (_settings?.dailySummaryEnabled == false) return;
     if (_isDailySummaryProcessing) {
-      debugPrint('Daily summary already processing, skipping duplicate schedule');
+      debugPrint(
+        'Daily summary already processing, skipping duplicate schedule',
+      );
       return;
     }
 
@@ -671,7 +750,9 @@ class NotificationService {
         });
       });
 
-      debugPrint('Daily summary scheduled for: $nextRun (delay: $initialDelay)');
+      debugPrint(
+        'Daily summary scheduled for: $nextRun (delay: $initialDelay)',
+      );
     } catch (e) {
       debugPrint('Error scheduling daily summary: $e');
     }
@@ -731,7 +812,11 @@ class NotificationService {
 
     // Check if we already sent daily summary today
     if (_lastDailySummaryDate != null) {
-      final lastSummary = DateTime(_lastDailySummaryDate!.year, _lastDailySummaryDate!.month, _lastDailySummaryDate!.day);
+      final lastSummary = DateTime(
+        _lastDailySummaryDate!.year,
+        _lastDailySummaryDate!.month,
+        _lastDailySummaryDate!.day,
+      );
       if (lastSummary.isAtSameMomentAs(today)) {
         debugPrint('Daily summary already sent today, skipping schedule');
         return false;
@@ -752,7 +837,11 @@ class NotificationService {
 
     // Check if we already sent daily summary today
     if (_lastDailySummaryDate != null) {
-      final lastSummary = DateTime(_lastDailySummaryDate!.year, _lastDailySummaryDate!.month, _lastDailySummaryDate!.day);
+      final lastSummary = DateTime(
+        _lastDailySummaryDate!.year,
+        _lastDailySummaryDate!.month,
+        _lastDailySummaryDate!.day,
+      );
       if (lastSummary.isAtSameMomentAs(today)) {
         debugPrint('Daily summary already sent today, skipping send');
         return false;
@@ -765,12 +854,20 @@ class NotificationService {
   // Todo reminder state management methods (similar to daily summary)
   bool _shouldSendTodoReminderNow(TodoModel todo) {
     if (_isTodoReminderProcessing[todo.id] == true) {
-      debugPrint('Todo reminder already processing for ${todo.id}, skipping duplicate send');
+      debugPrint(
+        'Todo reminder already processing for ${todo.id}, skipping duplicate send',
+      );
       return false;
     }
 
     final now = DateTime.now();
-    final currentMinute = DateTime(now.year, now.month, now.day, now.hour, now.minute);
+    final currentMinute = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+      now.minute,
+    );
 
     // Check if we already sent a reminder for this todo in the current minute
     if (_lastTodoReminderSent[todo.id] != null) {
@@ -782,7 +879,9 @@ class NotificationService {
         _lastTodoReminderSent[todo.id]!.minute,
       );
       if (lastSent.isAtSameMomentAs(currentMinute)) {
-        debugPrint('Todo reminder already sent this minute for ${todo.id}, skipping duplicate send');
+        debugPrint(
+          'Todo reminder already sent this minute for ${todo.id}, skipping duplicate send',
+        );
         return false;
       }
     }
@@ -793,7 +892,9 @@ class NotificationService {
   void _markTodoReminderSent(String todoId) {
     _lastTodoReminderSent[todoId] = DateTime.now();
     _isTodoReminderProcessing[todoId] = false;
-    debugPrint('Marked todo reminder as sent for $todoId at ${_lastTodoReminderSent[todoId]}');
+    debugPrint(
+      'Marked todo reminder as sent for $todoId at ${_lastTodoReminderSent[todoId]}',
+    );
   }
 
   void _clearTodoReminderState(String todoId) {
@@ -824,7 +925,9 @@ class NotificationService {
       try {
         todosBox = _hiveService.todosBox;
       } catch (e) {
-        debugPrint('Todos box not available for daily summary, attempting to open it: $e');
+        debugPrint(
+          'Todos box not available for daily summary, attempting to open it: $e',
+        );
         // Try to open the box directly
         todosBox = await Hive.openBox<TodoModel>('todos');
       }
@@ -836,19 +939,26 @@ class NotificationService {
         return;
       }
 
-      String title = await _getLocalizedString('dailyTodoSummary') ?? 'Daily Todo Summary';
-      String body = await _getLocalizedStringWithCount('youHavePendingTodos', todos.length) ??
+      String title =
+          await _getLocalizedString('dailyTodoSummary') ?? 'Daily Todo Summary';
+      String body =
+          await _getLocalizedStringWithCount(
+            'youHavePendingTodos',
+            todos.length,
+          ) ??
           'You have ${todos.length} pending todo${todos.length > 1 ? 's' : ''} to complete';
 
       // Try to get AI-generated content if smart notifications are enabled
       try {
         if (_aiProvider?.settings.enableSmartNotifications == true &&
             _aiProvider?.settings.isValid == true) {
-
           debugPrint('Generating AI-powered daily summary content');
           final prefs = await SharedPreferences.getInstance();
           final languageCode = prefs.getString('app_language') ?? 'zh';
-          final aiMessage = await _aiProvider?.generateDailySummary(todos, languageCode: languageCode);
+          final aiMessage = await _aiProvider?.generateDailySummary(
+            todos,
+            languageCode: languageCode,
+          );
           if (aiMessage != null && aiMessage.isNotEmpty) {
             // Parse the AI response to extract title and message
             // Try multiple formats that AI might return
@@ -856,16 +966,28 @@ class NotificationService {
             String? parsedBody;
 
             // Format 1: TITLE: [title] MESSAGE: [message]
-            var titleMatch = RegExp(r'TITLE:\s*(.+?)(?:\n|$|\s*MESSAGE:)', caseSensitive: false).firstMatch(aiMessage);
-            var messageMatch = RegExp(r'MESSAGE:\s*(.+?)(?:\n|$)', caseSensitive: false).firstMatch(aiMessage);
+            var titleMatch = RegExp(
+              r'TITLE:\s*(.+?)(?:\n|$|\s*MESSAGE:)',
+              caseSensitive: false,
+            ).firstMatch(aiMessage);
+            var messageMatch = RegExp(
+              r'MESSAGE:\s*(.+?)(?:\n|$)',
+              caseSensitive: false,
+            ).firstMatch(aiMessage);
 
             if (titleMatch != null && messageMatch != null) {
               parsedTitle = titleMatch.group(1)!.trim();
               parsedBody = messageMatch.group(1)!.trim();
             } else {
               // Format 2: **Title:** [title] **Message:** [message] (Markdown format)
-              titleMatch = RegExp(r'\*\*Title:\*\*\s*(.+?)(?:\n|$|\*\*Message:\*\*)', caseSensitive: false).firstMatch(aiMessage);
-              messageMatch = RegExp(r'\*\*Message:\*\*\s*(.+?)(?:\n|$)', caseSensitive: false).firstMatch(aiMessage);
+              titleMatch = RegExp(
+                r'\*\*Title:\*\*\s*(.+?)(?:\n|$|\*\*Message:\*\*)',
+                caseSensitive: false,
+              ).firstMatch(aiMessage);
+              messageMatch = RegExp(
+                r'\*\*Message:\*\*\s*(.+?)(?:\n|$)',
+                caseSensitive: false,
+              ).firstMatch(aiMessage);
 
               if (titleMatch != null && messageMatch != null) {
                 parsedTitle = titleMatch.group(1)!.trim();
@@ -878,30 +1000,63 @@ class NotificationService {
                   parsedBody = lines.sublist(1).join('\n').trim();
 
                   // Clean up common prefixes from title
-                  parsedTitle = parsedTitle.replaceAll(RegExp(r'^(Title:|🤖|Smart Reminder|AI Reminder|Daily)\s*', caseSensitive: false), '').trim();
+                  parsedTitle = parsedTitle
+                      .replaceAll(
+                        RegExp(
+                          r'^(Title:|🤖|Smart Reminder|AI Reminder|Daily)\s*',
+                          caseSensitive: false,
+                        ),
+                        '',
+                      )
+                      .trim();
 
                   // Clean up common prefixes from message
-                  parsedBody = parsedBody.replaceAll(RegExp(r'^(Message:|Body:|Content:)\s*', caseSensitive: false), '').trim();
+                  parsedBody = parsedBody
+                      .replaceAll(
+                        RegExp(
+                          r'^(Message:|Body:|Content:)\s*',
+                          caseSensitive: false,
+                        ),
+                        '',
+                      )
+                      .trim();
                 }
               }
             }
 
             // Use parsed values if successful, otherwise fallback
-            if (parsedTitle != null && parsedBody != null && parsedTitle.isNotEmpty && parsedBody.isNotEmpty) {
+            if (parsedTitle != null &&
+                parsedBody != null &&
+                parsedTitle.isNotEmpty &&
+                parsedBody.isNotEmpty) {
               // For daily summary, we keep the original title and only use AI message
               title = title; // Keep original title
               body = parsedBody;
-              debugPrint('AI-generated daily summary content applied successfully');
+              debugPrint(
+                'AI-generated daily summary content applied successfully',
+              );
             } else {
               // Last resort: try to extract any meaningful content
-              final cleanMessage = aiMessage.replaceAll(RegExp(r'\*\*?(Title|Message|Content):?\*\*?\s*', caseSensitive: false), '').trim();
+              final cleanMessage = aiMessage
+                  .replaceAll(
+                    RegExp(
+                      r'\*\*?(Title|Message|Content):?\*\*?\s*',
+                      caseSensitive: false,
+                    ),
+                    '',
+                  )
+                  .trim();
               if (cleanMessage.isNotEmpty) {
                 // For daily summary, we keep the original title
                 title = title; // Keep original title
-                body = cleanMessage.length > 100 ? '${cleanMessage.substring(0, 97)}...' : cleanMessage;
+                body = cleanMessage.length > 100
+                    ? '${cleanMessage.substring(0, 97)}...'
+                    : cleanMessage;
               } else {
                 // Ultimate fallback - keep original content
-                debugPrint('Could not parse AI daily summary response, using fallback');
+                debugPrint(
+                  'Could not parse AI daily summary response, using fallback',
+                );
               }
             }
           }
@@ -942,7 +1097,6 @@ class NotificationService {
       // Save the date after successful sending
       await _saveLastDailySummaryDate(DateTime.now());
       debugPrint('Daily summary notification sent successfully');
-
     } catch (e) {
       debugPrint('Error sending daily summary notification: $e');
     } finally {
@@ -996,7 +1150,11 @@ class NotificationService {
 
     bool hasSentToday = false;
     if (_lastDailySummaryDate != null) {
-      final lastSummary = DateTime(_lastDailySummaryDate!.year, _lastDailySummaryDate!.month, _lastDailySummaryDate!.day);
+      final lastSummary = DateTime(
+        _lastDailySummaryDate!.year,
+        _lastDailySummaryDate!.month,
+        _lastDailySummaryDate!.day,
+      );
       hasSentToday = lastSummary.isAtSameMomentAs(today);
     }
 
@@ -1010,7 +1168,6 @@ class NotificationService {
     };
   }
 
-  
   // 检查是否是提醒时间
   static bool isTimeForReminder(DateTime reminderTime, DateTime now) {
     // 只检查小时和分钟是否严格相等
@@ -1066,7 +1223,9 @@ class NotificationService {
       final languageCode = prefs.getString('app_language') ?? 'zh';
       final locale = Locale(languageCode);
       final l10n = await AppLocalizations.delegate.load(locale);
-      debugPrint('NotificationService: Loaded localizations for language: $languageCode');
+      debugPrint(
+        'NotificationService: Loaded localizations for language: $languageCode',
+      );
       return l10n;
     } catch (e) {
       debugPrint('Error getting localizations: $e');
@@ -1094,7 +1253,9 @@ class NotificationService {
       try {
         todosBox = _hiveService.todosBox;
       } catch (e) {
-        debugPrint('Todos box not available for rescheduling, attempting to open it: $e');
+        debugPrint(
+          'Todos box not available for rescheduling, attempting to open it: $e',
+        );
         // Try to open the box directly
         todosBox = await Hive.openBox<TodoModel>('todos');
       }
@@ -1115,7 +1276,8 @@ class NotificationService {
       }
 
       // Also reschedule daily summary if enabled and needed
-      if (_settings?.dailySummaryEnabled == true && _shouldScheduleDailySummary()) {
+      if (_settings?.dailySummaryEnabled == true &&
+          _shouldScheduleDailySummary()) {
         debugPrint('Rescheduling daily summary');
         await _scheduleDailySummary();
       } else {
@@ -1142,45 +1304,59 @@ class NotificationService {
     _dailySummaryTimer = null;
   }
 
-  Future<void> showPomodoroCompleteNotification(PomodoroModel session, {String? preparedContent}) async {
+  Future<void> showPomodoroCompleteNotification(
+    PomodoroModel session, {
+    String? preparedContent,
+  }) async {
     try {
       String title;
       String body;
 
       // Get localized strings or use defaults
       final l10n = await _getLocalizations();
-      debugPrint('NotificationService: Session type: ${session.isBreak ? "BREAK" : "WORK"}, Duration: ${session.duration}s, BreakDuration: ${session.breakDuration}s');
+      debugPrint(
+        'NotificationService: Session type: ${session.isBreak ? "BREAK" : "WORK"}, Duration: ${session.duration}s, BreakDuration: ${session.breakDuration}s',
+      );
 
       if (session.isBreak) {
         // Break session completed - time to get back to work
         title = l10n?.breakTimeComplete ?? 'Break Time Complete!';
         body = l10n?.timeToGetBackToWork ?? 'Time to get back to work!';
-        debugPrint('NotificationService: Break complete notification - Title: $title, Body: $body');
+        debugPrint(
+          'NotificationService: Break complete notification - Title: $title, Body: $body',
+        );
       } else {
         // Work session completed - time for break
         title = l10n?.pomodoroComplete ?? 'Pomodoro Complete!';
         // Determine if it's a short or long break based on the break duration
-        final breakType = session.breakDuration >= 900 ? 'long' : 'short'; // 900 seconds = 15 minutes
-        body = l10n?.greatJobTimeForBreak(breakType) ?? 'Great job! Time for a $breakType break.';
-        debugPrint('NotificationService: Work complete notification - Title: $title, Body: $body, BreakType: $breakType');
+        final breakType = session.breakDuration >= 900
+            ? 'long'
+            : 'short'; // 900 seconds = 15 minutes
+        body =
+            l10n?.greatJobTimeForBreak(breakType) ??
+            'Great job! Time for a $breakType break.';
+        debugPrint(
+          'NotificationService: Work complete notification - Title: $title, Body: $body, BreakType: $breakType',
+        );
       }
 
       // Try to use pre-prepared AI content first, then generate on-demand if not available
       try {
         if (_aiProvider?.settings.enableSmartNotifications == true &&
             _aiProvider?.settings.isValid == true) {
-
           String? aiMessage = preparedContent;
 
           // If no pre-prepared content, generate it now (fallback)
           if (aiMessage == null || aiMessage.isEmpty) {
-            debugPrint('No pre-prepared AI content available, generating now...');
+            debugPrint(
+              'No pre-prepared AI content available, generating now...',
+            );
             final prefs = await SharedPreferences.getInstance();
             final languageCode = prefs.getString('app_language') ?? 'zh';
 
             aiMessage = await _aiProvider?.generatePomodoroNotification(
               session,
-              languageCode: languageCode
+              languageCode: languageCode,
             );
           } else {
             debugPrint('Using pre-prepared AI notification content');
@@ -1193,16 +1369,28 @@ class NotificationService {
             String? parsedBody;
 
             // Format 1: TITLE: [title] MESSAGE: [message]
-            var titleMatch = RegExp(r'TITLE:\s*(.+?)(?:\n|$|\s*MESSAGE:)', caseSensitive: false).firstMatch(aiMessage);
-            var messageMatch = RegExp(r'MESSAGE:\s*(.+?)(?:\n|$)', caseSensitive: false).firstMatch(aiMessage);
+            var titleMatch = RegExp(
+              r'TITLE:\s*(.+?)(?:\n|$|\s*MESSAGE:)',
+              caseSensitive: false,
+            ).firstMatch(aiMessage);
+            var messageMatch = RegExp(
+              r'MESSAGE:\s*(.+?)(?:\n|$)',
+              caseSensitive: false,
+            ).firstMatch(aiMessage);
 
             if (titleMatch != null && messageMatch != null) {
               parsedTitle = titleMatch.group(1)!.trim();
               parsedBody = messageMatch.group(1)!.trim();
             } else {
               // Format 2: **Title:** [title] **Message:** [message] (Markdown format)
-              titleMatch = RegExp(r'\*\*Title:\*\*\s*(.+?)(?:\n|$|\*\*Message:\*\*)', caseSensitive: false).firstMatch(aiMessage);
-              messageMatch = RegExp(r'\*\*Message:\*\*\s*(.+?)(?:\n|$)', caseSensitive: false).firstMatch(aiMessage);
+              titleMatch = RegExp(
+                r'\*\*Title:\*\*\s*(.+?)(?:\n|$|\*\*Message:\*\*)',
+                caseSensitive: false,
+              ).firstMatch(aiMessage);
+              messageMatch = RegExp(
+                r'\*\*Message:\*\*\s*(.+?)(?:\n|$)',
+                caseSensitive: false,
+              ).firstMatch(aiMessage);
 
               if (titleMatch != null && messageMatch != null) {
                 parsedTitle = titleMatch.group(1)!.trim();
@@ -1215,22 +1403,51 @@ class NotificationService {
                   parsedBody = lines.sublist(1).join('\n').trim();
 
                   // Clean up common prefixes from title
-                  parsedTitle = parsedTitle.replaceAll(RegExp(r'^(Title:|🤖|Smart Reminder|AI Reminder|Pomodoro)\s*', caseSensitive: false), '').trim();
+                  parsedTitle = parsedTitle
+                      .replaceAll(
+                        RegExp(
+                          r'^(Title:|🤖|Smart Reminder|AI Reminder|Pomodoro)\s*',
+                          caseSensitive: false,
+                        ),
+                        '',
+                      )
+                      .trim();
 
                   // Clean up common prefixes from message
-                  parsedBody = parsedBody.replaceAll(RegExp(r'^(Message:|Body:|Content:)\s*', caseSensitive: false), '').trim();
+                  parsedBody = parsedBody
+                      .replaceAll(
+                        RegExp(
+                          r'^(Message:|Body:|Content:)\s*',
+                          caseSensitive: false,
+                        ),
+                        '',
+                      )
+                      .trim();
                 }
               }
             }
 
             // Use parsed values if successful, otherwise fallback
-            if (parsedTitle != null && parsedBody != null && parsedTitle.isNotEmpty && parsedBody.isNotEmpty) {
+            if (parsedTitle != null &&
+                parsedBody != null &&
+                parsedTitle.isNotEmpty &&
+                parsedBody.isNotEmpty) {
               title = parsedTitle;
               body = parsedBody;
-              debugPrint('AI-generated pomodoro notification content applied successfully');
+              debugPrint(
+                'AI-generated pomodoro notification content applied successfully',
+              );
             } else {
               // Last resort: try to extract any meaningful content
-              final cleanMessage = aiMessage.replaceAll(RegExp(r'\*\*?(Title|Message|Content):?\*\*?\s*', caseSensitive: false), '').trim();
+              final cleanMessage = aiMessage
+                  .replaceAll(
+                    RegExp(
+                      r'\*\*?(Title|Message|Content):?\*\*?\s*',
+                      caseSensitive: false,
+                    ),
+                    '',
+                  )
+                  .trim();
               if (cleanMessage.isNotEmpty) {
                 // If it's a long message, split it reasonably
                 if (cleanMessage.length > 100) {
@@ -1240,7 +1457,9 @@ class NotificationService {
                     body = cleanMessage.substring(firstLineBreak + 1).trim();
                   } else {
                     title = '🍅 Smart Pomodoro';
-                    body = cleanMessage.length > 100 ? '${cleanMessage.substring(0, 97)}...' : cleanMessage;
+                    body = cleanMessage.length > 100
+                        ? '${cleanMessage.substring(0, 97)}...'
+                        : cleanMessage;
                   }
                 } else {
                   title = '🍅 Smart Pomodoro';
@@ -1249,7 +1468,9 @@ class NotificationService {
               } else {
                 // Ultimate fallback
                 title = '🍅 Smart Pomodoro';
-                body = aiMessage.length > 100 ? '${aiMessage.substring(0, 97)}...' : aiMessage;
+                body = aiMessage.length > 100
+                    ? '${aiMessage.substring(0, 97)}...'
+                    : aiMessage;
               }
             }
           }

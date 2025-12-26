@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:easy_todo/services/notification_service.dart';
 import 'package:easy_todo/models/notification_settings_model.dart';
+import 'package:easy_todo/widgets/web_desktop_content.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
@@ -40,7 +41,8 @@ class _NotificationSettingsScreenState
 
   Future<void> _checkNotificationPermission() async {
     try {
-      final hasPermission = await _notificationService.hasNotificationPermission();
+      final hasPermission = await _notificationService
+          .hasNotificationPermission();
       setState(() => _hasPermission = hasPermission);
     } catch (e) {
       debugPrint('Error checking notification permission: $e');
@@ -50,7 +52,8 @@ class _NotificationSettingsScreenState
 
   Future<void> _requestNotificationPermission() async {
     try {
-      final granted = await _notificationService.requestNotificationPermission();
+      final granted = await _notificationService
+          .requestNotificationPermission();
 
       setState(() => _hasPermission = granted);
 
@@ -153,23 +156,29 @@ class _NotificationSettingsScreenState
           title: Text(l10n.notificationSettings),
           centerTitle: true,
         ),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const WebDesktopContent(
+          padding: EdgeInsets.zero,
+          child: Center(child: CircularProgressIndicator()),
+        ),
       );
     }
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.notificationSettings), centerTitle: true),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildPermissionCard(l10n),
-          const SizedBox(height: 16),
-          _buildGeneralSettingsCard(l10n),
-          const SizedBox(height: 16),
-          _buildDailySummaryCard(l10n),
-          const SizedBox(height: 16),
-          _buildTestCard(l10n),
-        ],
+      body: WebDesktopContent(
+        padding: EdgeInsets.zero,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _buildPermissionCard(l10n),
+            const SizedBox(height: 16),
+            _buildGeneralSettingsCard(l10n),
+            const SizedBox(height: 16),
+            _buildDailySummaryCard(l10n),
+            const SizedBox(height: 16),
+            _buildTestCard(l10n),
+          ],
+        ),
       ),
     );
   }

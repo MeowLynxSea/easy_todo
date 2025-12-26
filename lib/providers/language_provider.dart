@@ -25,7 +25,8 @@ class LanguageProvider extends ChangeNotifier {
     notifyListeners();
 
     // Trigger callback if language actually changed
-    if (previousLocale.languageCode != locale.languageCode && onLanguageChanged != null) {
+    if (previousLocale.languageCode != locale.languageCode &&
+        onLanguageChanged != null) {
       onLanguageChanged!();
     }
   }
@@ -49,6 +50,6 @@ class LanguageProvider extends ChangeNotifier {
     Locale('fr'),
     Locale('de'),
     Locale('ja'),
-    Locale('ko')
+    Locale('ko'),
   ];
 }

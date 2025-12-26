@@ -7,6 +7,7 @@ import 'package:easy_todo/services/backup_restore_service.dart';
 import 'package:easy_todo/services/file_service.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:easy_todo/widgets/web_desktop_content.dart';
 
 class BackupRestoreScreen extends StatefulWidget {
   const BackupRestoreScreen({super.key});
@@ -45,7 +46,8 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
         throw Exception(result['error']?.toString() ?? 'Unknown error');
       }
 
-      final fileName = (result['fileName'] as String?) ?? 'easy_todo_backup.json';
+      final fileName =
+          (result['fileName'] as String?) ?? 'easy_todo_backup.json';
       final backupJson = result['backupJson'] as String?;
       if (backupJson == null || backupJson.isEmpty) {
         throw Exception('Empty backup');
@@ -142,62 +144,72 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.backupRestore), centerTitle: true),
       body: _isLoading && _storageStats == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const WebDesktopContent(
+              padding: EdgeInsets.zero,
+              child: Center(child: CircularProgressIndicator()),
+            )
           : RefreshIndicator(
               onRefresh: _loadStats,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  _buildSummaryCard(l10n),
-                  const SizedBox(height: 16),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            l10n.quickActions,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+              child: WebDesktopContent(
+                padding: EdgeInsets.zero,
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    _buildSummaryCard(l10n),
+                    const SizedBox(height: 16),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l10n.quickActions,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            l10n.backupRestoreDescription,
-                            style: const TextStyle(color: Colors.grey),
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: _isLoading ? null : _exportBackup,
-                                  icon: const Icon(Icons.download),
-                                  label: Text(l10n.createBackup),
+                            const SizedBox(height: 12),
+                            Text(
+                              l10n.backupRestoreDescription,
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: _isLoading
+                                        ? null
+                                        : _exportBackup,
+                                    icon: const Icon(Icons.download),
+                                    label: Text(l10n.createBackup),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: _isLoading ? null : _importBackup,
-                                  icon: const Icon(Icons.upload_file),
-                                  label: Text(l10n.restoreBackup),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: _isLoading
+                                        ? null
+                                        : _importBackup,
+                                    icon: const Icon(Icons.upload_file),
+                                    label: Text(l10n.restoreBackup),
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            l10n.webBackupHint,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              l10n.webBackupHint,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
     );

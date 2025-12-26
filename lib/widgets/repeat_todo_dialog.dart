@@ -63,28 +63,37 @@ class _RepeatTodoDialogState extends State<RepeatTodoDialog> {
     setState(() => _isLoading = true);
 
     try {
-      final repeatTodo = RepeatTodoModel.create(
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim().isEmpty
-            ? null
-            : _descriptionController.text.trim(),
-        repeatType: _repeatType,
-        weekDays: _repeatType == RepeatType.weekly ? _selectedWeekDays : null,
-        dayOfMonth: _repeatType == RepeatType.monthly
-            ? _selectedDayOfMonth
-            : null,
-        startDate: _startDate,
-        endDate: _hasEndDate ? _endDate : null,
-        dataStatisticsEnabled: _dataStatisticsEnabled,
-        statisticsModes: _dataStatisticsEnabled ? _selectedStatisticsModes : null,
-        dataUnit: _dataStatisticsEnabled ? _dataUnitController.text.trim().isEmpty ? null : _dataUnitController.text.trim() : null,
-      ).copyWith(
-        id: widget.repeatTodo?.id,
-        isActive: _repeatEnabled,
-        createdAt: widget.repeatTodo?.createdAt,
-        lastGeneratedDate: widget.repeatTodo?.lastGeneratedDate,
-        order: widget.repeatTodo?.order ?? 0,
-      );
+      final repeatTodo =
+          RepeatTodoModel.create(
+            title: _titleController.text.trim(),
+            description: _descriptionController.text.trim().isEmpty
+                ? null
+                : _descriptionController.text.trim(),
+            repeatType: _repeatType,
+            weekDays: _repeatType == RepeatType.weekly
+                ? _selectedWeekDays
+                : null,
+            dayOfMonth: _repeatType == RepeatType.monthly
+                ? _selectedDayOfMonth
+                : null,
+            startDate: _startDate,
+            endDate: _hasEndDate ? _endDate : null,
+            dataStatisticsEnabled: _dataStatisticsEnabled,
+            statisticsModes: _dataStatisticsEnabled
+                ? _selectedStatisticsModes
+                : null,
+            dataUnit: _dataStatisticsEnabled
+                ? _dataUnitController.text.trim().isEmpty
+                      ? null
+                      : _dataUnitController.text.trim()
+                : null,
+          ).copyWith(
+            id: widget.repeatTodo?.id,
+            isActive: _repeatEnabled,
+            createdAt: widget.repeatTodo?.createdAt,
+            lastGeneratedDate: widget.repeatTodo?.lastGeneratedDate,
+            order: widget.repeatTodo?.order ?? 0,
+          );
 
       await widget.onAdd(repeatTodo);
 
@@ -102,7 +111,7 @@ class _RepeatTodoDialogState extends State<RepeatTodoDialog> {
         );
       }
     } finally {
-      if(mounted) {
+      if (mounted) {
         setState(() => _isLoading = false);
       }
     }
@@ -128,111 +137,113 @@ class _RepeatTodoDialogState extends State<RepeatTodoDialog> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-              Text(
-                widget.repeatTodo != null ? l10n.editRepeat : l10n.repeatTask,
-                style: Theme.of(context).textTheme.headlineSmall,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _titleController,
-                decoration: InputDecoration(
-                  labelText: l10n.todoTitle,
-                  hintText: l10n.addTodoHint,
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return l10n.repeatTaskTitleRequired;
-                  }
-                  return null;
-                },
-                readOnly: widget.repeatTodo != null,
-                textInputAction: TextInputAction.next,
-                onFieldSubmitted: (_) {
-                  FocusScope.of(context).nextFocus();
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _descriptionController,
-                decoration: InputDecoration(
-                  labelText: l10n.todoDescription,
-                  hintText: l10n.todoDescription.toLowerCase(),
-                ),
-                maxLines: 3,
-                readOnly: widget.repeatTodo != null,
-                textInputAction: TextInputAction.next,
-                onFieldSubmitted: (_) {
-                  FocusScope.of(context).nextFocus();
-                },
-              ),
-              const SizedBox(height: 16),
-              SwitchListTile(
-                title: Text(l10n.repeatEnabled),
-                subtitle: Text(l10n.repeatDescription),
-                value: _repeatEnabled,
-                onChanged: (value) {
-                  setState(() {
-                    _repeatEnabled = value;
-                  });
-                },
-                secondary: Icon(
-                  Icons.repeat,
-                  color: _repeatEnabled
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.grey,
-                ),
-              ),
-              if (_repeatEnabled) ...[
-                const SizedBox(height: 16),
-                _buildRepeatTypeSelector(),
-                const SizedBox(height: 16),
-                _buildRepeatTypeSpecificOptions(),
-                const SizedBox(height: 16),
-                _buildDateOptions(),
-                const SizedBox(height: 16),
-                _buildDataStatisticsOptions(),
-              ],
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: _isLoading
-                          ? null
-                          : () {
-                              Navigator.of(context).pop();
-                            },
-                      child: Text(l10n.cancel),
+                  Text(
+                    widget.repeatTodo != null
+                        ? l10n.editRepeat
+                        : l10n.repeatTask,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  TextFormField(
+                    controller: _titleController,
+                    decoration: InputDecoration(
+                      labelText: l10n.todoTitle,
+                      hintText: l10n.addTodoHint,
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return l10n.repeatTaskTitleRequired;
+                      }
+                      return null;
+                    },
+                    readOnly: widget.repeatTodo != null,
+                    textInputAction: TextInputAction.next,
+                    onFieldSubmitted: (_) {
+                      FocusScope.of(context).nextFocus();
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _descriptionController,
+                    decoration: InputDecoration(
+                      labelText: l10n.todoDescription,
+                      hintText: l10n.todoDescription.toLowerCase(),
+                    ),
+                    maxLines: 3,
+                    readOnly: widget.repeatTodo != null,
+                    textInputAction: TextInputAction.next,
+                    onFieldSubmitted: (_) {
+                      FocusScope.of(context).nextFocus();
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  SwitchListTile(
+                    title: Text(l10n.repeatEnabled),
+                    subtitle: Text(l10n.repeatDescription),
+                    value: _repeatEnabled,
+                    onChanged: (value) {
+                      setState(() {
+                        _repeatEnabled = value;
+                      });
+                    },
+                    secondary: Icon(
+                      Icons.repeat,
+                      color: _repeatEnabled
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.grey,
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _handleSubmit,
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(
-                              widget.repeatTodo != null
-                                  ? l10n.save
-                                  : l10n.addTodo,
-                            ),
-                    ),
+                  if (_repeatEnabled) ...[
+                    const SizedBox(height: 16),
+                    _buildRepeatTypeSelector(),
+                    const SizedBox(height: 16),
+                    _buildRepeatTypeSpecificOptions(),
+                    const SizedBox(height: 16),
+                    _buildDateOptions(),
+                    const SizedBox(height: 16),
+                    _buildDataStatisticsOptions(),
+                  ],
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: _isLoading
+                              ? null
+                              : () {
+                                  Navigator.of(context).pop();
+                                },
+                          child: Text(l10n.cancel),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _handleSubmit,
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  widget.repeatTodo != null
+                                      ? l10n.save
+                                      : l10n.addTodo,
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
-        ),
-      ),
       ),
     );
   }
@@ -346,7 +357,6 @@ class _RepeatTodoDialogState extends State<RepeatTodoDialog> {
       ],
     );
   }
-
 
   Widget _buildDateOptions() {
     final l10n = AppLocalizations.of(context)!;
@@ -536,7 +546,10 @@ class _RepeatTodoDialogState extends State<RepeatTodoDialog> {
     );
   }
 
-  String _getStatisticsModeDisplayName(StatisticsMode mode, AppLocalizations l10n) {
+  String _getStatisticsModeDisplayName(
+    StatisticsMode mode,
+    AppLocalizations l10n,
+  ) {
     switch (mode) {
       case StatisticsMode.average:
         return l10n.average;

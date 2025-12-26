@@ -72,7 +72,9 @@ class _ForcedUpdatePageState extends State<ForcedUpdatePage> {
 
                   // Title
                   Text(
-                    widget.updateInfo.forceUpdate ? l10n.requiredUpdate : l10n.updateAvailable,
+                    widget.updateInfo.forceUpdate
+                        ? l10n.requiredUpdate
+                        : l10n.updateAvailable,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -83,7 +85,9 @@ class _ForcedUpdatePageState extends State<ForcedUpdatePage> {
 
                   // Subtitle
                   Text(
-                    widget.updateInfo.forceUpdate ? l10n.forceUpdateMessage : l10n.optionalUpdateMessage,
+                    widget.updateInfo.forceUpdate
+                        ? l10n.forceUpdateMessage
+                        : l10n.optionalUpdateMessage,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -253,7 +257,9 @@ class _ForcedUpdatePageState extends State<ForcedUpdatePage> {
                         Navigator.of(context).pop();
                       },
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Theme.of(context).colorScheme.onSurface,
+                        foregroundColor: Theme.of(
+                          context,
+                        ).colorScheme.onSurface,
                         side: BorderSide(
                           color: Theme.of(context).colorScheme.outline,
                         ),
@@ -276,7 +282,9 @@ class _ForcedUpdatePageState extends State<ForcedUpdatePage> {
                                 ?.copyWith(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.onSurface,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
                                 ),
                           ),
                         ],
@@ -425,7 +433,9 @@ class _ForcedUpdatePageState extends State<ForcedUpdatePage> {
             SnackBar(
               content: Text(
                 l10n.startingInstaller,
-                style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
               ),
               backgroundColor: Theme.of(context).colorScheme.primary,
             ),

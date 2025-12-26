@@ -161,11 +161,20 @@ class AICacheService {
   }
 
   // Generate cache keys for different AI operations
-  static String getCategorizationKey(String title, String description, String language) {
+  static String getCategorizationKey(
+    String title,
+    String description,
+    String language,
+  ) {
     return 'categorization_${title.hashCode}_${description.hashCode}_$language';
   }
 
-  static String getPriorityKey(String title, String description, String language, {bool hasDeadline = false}) {
+  static String getPriorityKey(
+    String title,
+    String description,
+    String language, {
+    bool hasDeadline = false,
+  }) {
     return 'priority_${title.hashCode}_${description.hashCode}_$language${hasDeadline ? '_deadline' : ''}';
   }
 
@@ -214,13 +223,24 @@ class AICacheService {
     }
   }
 
-  static String getMotivationKey(String name, String description, dynamic value, String language) {
+  static String getMotivationKey(
+    String name,
+    String description,
+    dynamic value,
+    String language,
+  ) {
     final now = DateTime.now();
     final dateString = '${now.year}-${now.month}-${now.day}';
     return 'motivation_${name.hashCode}_${description.hashCode}_${value}_${language}_$dateString';
   }
 
-  static String getNotificationKey(String title, String category, int priority, String language, {DateTime? reminderTime}) {
+  static String getNotificationKey(
+    String title,
+    String category,
+    int priority,
+    String language, {
+    DateTime? reminderTime,
+  }) {
     // 添加提醒时间因素到缓存键
     final timeHash = reminderTime != null
         ? '${reminderTime.hour}_${reminderTime.minute.toString().padLeft(2, '0')}'
@@ -229,7 +249,12 @@ class AICacheService {
   }
 
   // Backward compatibility method (without reminder time parameter)
-  static String getNotificationKeyLegacy(String title, String category, int priority, String language) {
+  static String getNotificationKeyLegacy(
+    String title,
+    String category,
+    int priority,
+    String language,
+  ) {
     return 'notification_${title.hashCode}_$category${priority}_$language';
   }
 
@@ -245,9 +270,23 @@ class AICacheService {
       final keysToDelete = <String>[];
 
       // Generate possible cache keys for this todo
-      final categorizationKey = getCategorizationKey(todo.title, todo.description ?? '', language);
-      final priorityKeyWithDeadline = getPriorityKey(todo.title, todo.description ?? '', language, hasDeadline: true);
-      final priorityKeyWithoutDeadline = getPriorityKey(todo.title, todo.description ?? '', language, hasDeadline: false);
+      final categorizationKey = getCategorizationKey(
+        todo.title,
+        todo.description ?? '',
+        language,
+      );
+      final priorityKeyWithDeadline = getPriorityKey(
+        todo.title,
+        todo.description ?? '',
+        language,
+        hasDeadline: true,
+      );
+      final priorityKeyWithoutDeadline = getPriorityKey(
+        todo.title,
+        todo.description ?? '',
+        language,
+        hasDeadline: false,
+      );
 
       // Generate all possible notification cache keys (with different reminder times)
       final notificationKeys = <String>[];
@@ -284,7 +323,12 @@ class AICacheService {
       notificationKeys.add(oldNotificationKey);
 
       // Add keys to deletion list
-      keysToDelete.addAll([categorizationKey, priorityKeyWithDeadline, priorityKeyWithoutDeadline, ...notificationKeys]);
+      keysToDelete.addAll([
+        categorizationKey,
+        priorityKeyWithDeadline,
+        priorityKeyWithoutDeadline,
+        ...notificationKeys,
+      ]);
 
       // Also clear any cache keys that might contain partial matches
       for (final key in _cacheBox!.keys) {
@@ -311,7 +355,9 @@ class AICacheService {
     try {
       final keysToDelete = <String>[];
       for (final key in _cacheBox!.keys) {
-        if (key.startsWith('motivation_') || key.startsWith('incentive_') || key.startsWith('completion_')) {
+        if (key.startsWith('motivation_') ||
+            key.startsWith('incentive_') ||
+            key.startsWith('completion_')) {
           keysToDelete.add(key);
         }
       }
@@ -320,7 +366,9 @@ class AICacheService {
         await _cacheBox!.deleteAll(keysToDelete);
       }
     } catch (e) {
-      debugPrint('AICacheService: Error clearing motivational messages cache: $e');
+      debugPrint(
+        'AICacheService: Error clearing motivational messages cache: $e',
+      );
     }
   }
 
@@ -349,7 +397,9 @@ class AICacheService {
         await _cacheBox!.deleteAll(keysToDelete);
       }
     } catch (e) {
-      debugPrint('AICacheService: Error clearing previous day motivational messages cache: $e');
+      debugPrint(
+        'AICacheService: Error clearing previous day motivational messages cache: $e',
+      );
     }
   }
 

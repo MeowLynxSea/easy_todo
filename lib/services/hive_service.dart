@@ -154,7 +154,9 @@ class HiveService {
         await repeatBox.close();
         await statsBox.close();
 
-        debugPrint('Backed up ${repeatTodosBackup.length} repeat todos and ${statisticsDataBackup.length} statistics data');
+        debugPrint(
+          'Backed up ${repeatTodosBackup.length} repeat todos and ${statisticsDataBackup.length} statistics data',
+        );
       } catch (e) {
         debugPrint('Could not backup data: $e');
       }
@@ -181,7 +183,9 @@ class HiveService {
       }
 
       if (statisticsDataBackup.isNotEmpty) {
-        final restoredBox = Hive.box<StatisticsDataModel>(_statisticsDataBoxName);
+        final restoredBox = Hive.box<StatisticsDataModel>(
+          _statisticsDataBoxName,
+        );
         for (final data in statisticsDataBackup) {
           try {
             await restoredBox.put(data.id, data);
@@ -217,7 +221,6 @@ class HiveService {
       final defaultSettings = AISettingsModel.create();
       await newBox.put('settings', defaultSettings);
       debugPrint('Default AI settings created');
-
     } catch (e) {
       debugPrint('Error recovering AI settings: $e');
       // As a last resort, try to continue without AI settings

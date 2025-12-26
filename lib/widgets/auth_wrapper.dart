@@ -46,8 +46,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
       debugPrint('Localization not available in auth wrapper: $e');
     }
 
-    final isAuthenticated = await appSettingsProvider
-        .authenticateForAppAccess(reason: authReason);
+    final isAuthenticated = await appSettingsProvider.authenticateForAppAccess(
+      reason: authReason,
+    );
 
     if (mounted) {
       setState(() {

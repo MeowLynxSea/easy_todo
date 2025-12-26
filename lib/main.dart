@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
@@ -22,6 +23,9 @@ import 'package:easy_todo/screens/preference_screen.dart';
 import 'package:easy_todo/screens/forced_update_page.dart';
 import 'package:easy_todo/widgets/auth_wrapper.dart';
 import 'package:easy_todo/services/timezone_service.dart';
+import 'package:easy_todo/utils/app_scroll_behavior.dart';
+import 'package:easy_todo/utils/responsive.dart';
+import 'package:easy_todo/widgets/responsive_web_frame.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -37,11 +41,9 @@ void main() async {
     final detectedTimezone = timezoneService.detectTimezone();
     await timezoneService.setCustomTimezone(detectedTimezone);
 
-
     // Print detailed timezone information
     // final timezoneInfo = timezoneService.getTimezoneInfo();
-
-  } catch(e) {
+  } catch (e) {
     rethrow;
   }
 
@@ -51,7 +53,9 @@ void main() async {
   } catch (e) {
     debugPrint('Hive initialization failed: $e');
     // If the error is related to AI settings schema, try to recover
-    if (e.toString().contains('type cast') || e.toString().contains('bool') || e.toString().contains('AISettingsModel')) {
+    if (e.toString().contains('type cast') ||
+        e.toString().contains('bool') ||
+        e.toString().contains('AISettingsModel')) {
       try {
         // Delete the corrupted AI settings box and try again
         await Hive.deleteBoxFromDisk(HiveService.aiSettingsBoxName);
@@ -102,6 +106,12 @@ class MyApp extends StatelessWidget {
             darkTheme: themeProvider.getDarkTheme(),
             themeMode: themeProvider.themeMode,
             debugShowCheckedModeBanner: false,
+            scrollBehavior: const AppScrollBehavior(),
+            builder: (context, child) {
+              return ResponsiveWebFrame(
+                child: child ?? const SizedBox.shrink(),
+              );
+            },
             navigatorKey: navigatorKey,
             locale: languageProvider.locale,
             localizationsDelegates: [
@@ -122,12 +132,18 @@ class MyApp extends StatelessWidget {
                   child: MainNavigationScreen(),
                   onAuthComplete: () {
                     // Connect AI provider and language provider to todo provider after auth
-                    final todoProvider = Provider.of<TodoProvider>(materialAppContext, listen: false);
+                    final todoProvider = Provider.of<TodoProvider>(
+                      materialAppContext,
+                      listen: false,
+                    );
                     todoProvider.setAIProvider(aiProvider);
                     todoProvider.setLanguageProvider(languageProvider);
 
                     // Connect AI provider and todo provider to pomodoro provider
-                    final pomodoroProvider = Provider.of<PomodoroProvider>(materialAppContext, listen: false);
+                    final pomodoroProvider = Provider.of<PomodoroProvider>(
+                      materialAppContext,
+                      listen: false,
+                    );
                     pomodoroProvider.setAIProvider(aiProvider);
                     pomodoroProvider.setTodoProvider(todoProvider);
 
@@ -160,6 +176,12 @@ class MainNavigationScreen extends StatefulWidget {
 
   @override
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
+}
+
+class _GoToTabIntent extends Intent {
+  final int index;
+
+  const _GoToTabIntent(this.index);
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen>
@@ -219,7 +241,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
               SnackBar(
                 content: Text(
                   AppLocalizations.of(context)!.updateAvailable,
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
                 action: SnackBarAction(
                   label: AppLocalizations.of(context)!.updateNow,
@@ -280,12 +304,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       final midnight = DateTime(now.year, now.month, now.day + 1);
       final durationUntilMidnight = midnight.difference(now);
 
-
       // 添加额外的调试信息
 
       Future.delayed(durationUntilMidnight, () {
         if (mounted) {
-          final todoProvider = Provider.of<TodoProvider>(context, listen: false);
+          final todoProvider = Provider.of<TodoProvider>(
+            context,
+            listen: false,
+          );
           todoProvider.forceRefreshAllRepeatTasks();
           // Schedule next day's check
           _scheduleMidnightCheck();
@@ -368,57 +394,174 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Scaffold(
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        children: _screens,
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+    final desktopWeb = isWebDesktop(context);
+    final desktopWebWide = isWebDesktopWide(context);
+
+    final pageView = PageView(
+      controller: _pageController,
+      physics: desktopWeb ? const NeverScrollableScrollPhysics() : null,
+      onPageChanged: (index) {
+        setState(() {
+          _currentIndex = index;
+        });
+      },
+      children: _screens,
+    );
+
+    final scaffold = Scaffold(
+      body: desktopWeb
+          ? Row(
               children: [
-                _buildNavItem(
-                  icon: Icons.task_alt,
-                  label: l10n.todos,
-                  index: 0,
+                SafeArea(
+                  child: NavigationRail(
+                    selectedIndex: _currentIndex,
+                    onDestinationSelected: _onTabTapped,
+                    extended: desktopWebWide,
+                    labelType: desktopWebWide
+                        ? NavigationRailLabelType.none
+                        : NavigationRailLabelType.selected,
+                    leading: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 16,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.task_alt,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          if (desktopWebWide) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              l10n.appTitle,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    destinations: [
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.task_alt_outlined),
+                        selectedIcon: const Icon(Icons.task_alt),
+                        label: Text(l10n.todos),
+                      ),
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.history_outlined),
+                        selectedIcon: const Icon(Icons.history),
+                        label: Text(l10n.history),
+                      ),
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.bar_chart_outlined),
+                        selectedIcon: const Icon(Icons.bar_chart),
+                        label: Text(l10n.stats),
+                      ),
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.settings_outlined),
+                        selectedIcon: const Icon(Icons.settings),
+                        label: Text(l10n.preferences),
+                      ),
+                    ],
+                  ),
                 ),
-                _buildNavItem(
-                  icon: Icons.history,
-                  label: l10n.history,
-                  index: 1,
+                VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outlineVariant.withValues(alpha: 0.6),
                 ),
-                _buildNavItem(
-                  icon: Icons.bar_chart,
-                  label: l10n.stats,
-                  index: 2,
-                ),
-                _buildNavItem(
-                  icon: Icons.settings_outlined,
-                  label: l10n.preferences,
-                  index: 3,
-                ),
+                Expanded(child: pageView),
               ],
+            )
+          : pageView,
+      bottomNavigationBar: desktopWeb
+          ? null
+          : Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildNavItem(
+                        icon: Icons.task_alt,
+                        label: l10n.todos,
+                        index: 0,
+                      ),
+                      _buildNavItem(
+                        icon: Icons.history,
+                        label: l10n.history,
+                        index: 1,
+                      ),
+                      _buildNavItem(
+                        icon: Icons.bar_chart,
+                        label: l10n.stats,
+                        index: 2,
+                      ),
+                      _buildNavItem(
+                        icon: Icons.settings_outlined,
+                        label: l10n.preferences,
+                        index: 3,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ),
+    );
+
+    if (!desktopWeb) return scaffold;
+
+    return Shortcuts(
+      shortcuts: const {
+        SingleActivator(LogicalKeyboardKey.digit1, control: true):
+            _GoToTabIntent(0),
+        SingleActivator(LogicalKeyboardKey.digit2, control: true):
+            _GoToTabIntent(1),
+        SingleActivator(LogicalKeyboardKey.digit3, control: true):
+            _GoToTabIntent(2),
+        SingleActivator(LogicalKeyboardKey.digit4, control: true):
+            _GoToTabIntent(3),
+        SingleActivator(LogicalKeyboardKey.digit1, meta: true): _GoToTabIntent(
+          0,
         ),
+        SingleActivator(LogicalKeyboardKey.digit2, meta: true): _GoToTabIntent(
+          1,
+        ),
+        SingleActivator(LogicalKeyboardKey.digit3, meta: true): _GoToTabIntent(
+          2,
+        ),
+        SingleActivator(LogicalKeyboardKey.digit4, meta: true): _GoToTabIntent(
+          3,
+        ),
+      },
+      child: Actions(
+        actions: {
+          _GoToTabIntent: CallbackAction<_GoToTabIntent>(
+            onInvoke: (intent) {
+              _onTabTapped(intent.index);
+              return null;
+            },
+          ),
+        },
+        child: Focus(autofocus: true, child: scaffold),
       ),
     );
   }

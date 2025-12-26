@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:easy_todo/providers/ai_provider.dart';
 import 'package:easy_todo/providers/todo_provider.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
+import 'package:easy_todo/widgets/web_desktop_content.dart';
 
 class AIDebugScreen extends StatefulWidget {
   const AIDebugScreen({super.key});
@@ -39,183 +40,189 @@ class _AIDebugScreenState extends State<AIDebugScreen> {
         title: Text(AppLocalizations.of(context)!.aiDebugInfo),
         centerTitle: true,
       ),
-      body: Consumer2<AIProvider, TodoProvider>(
-        builder: (context, aiProvider, todoProvider, child) {
-          final l10n = AppLocalizations.of(context)!;
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              _buildSection(
-                title: l10n.aiSettingsStatus,
-                children: [
-                  _buildInfoRow(
-                    l10n.aiFeaturesEnabled,
-                    aiProvider.settings.enableAIFeatures.toString(),
-                  ),
-                  _buildInfoRow(
-                    l10n.aiServiceValid,
-                    aiProvider.isAIServiceValid.toString(),
-                  ),
-                  _buildInfoRow(
-                    l10n.apiEndpoint,
-                    aiProvider.settings.apiEndpoint.isEmpty
-                        ? l10n.notConfigured
-                        : aiProvider.settings.apiEndpoint,
-                  ),
-                  _buildInfoRow(l10n.modelName, aiProvider.settings.modelName),
-                  _buildInfoRow(
-                    l10n.apiKey,
-                    aiProvider.settings.apiKey.isEmpty
-                        ? l10n.notConfigured
-                        : l10n.configured(aiProvider.settings.apiKey.length),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildSection(
-                title: l10n.aiFeatureToggles,
-                children: [
-                  _buildInfoRow(
-                    l10n.autoCategorization,
-                    aiProvider.settings.enableAutoCategorization.toString(),
-                  ),
-                  _buildInfoRow(
-                    l10n.prioritySorting,
-                    aiProvider.settings.enablePrioritySorting.toString(),
-                  ),
-                  _buildInfoRow(
-                    l10n.motivationalMessages,
-                    aiProvider.settings.enableMotivationalMessages.toString(),
-                  ),
-                  _buildInfoRow(
-                    l10n.smartNotifications,
-                    aiProvider.settings.enableSmartNotifications.toString(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildSection(
-                title: l10n.aiTodoProviderConnection,
-                children: [
-                  _buildInfoRow(
-                    l10n.aiProviderConnected,
-                    todoProvider.aiProvider != null ? l10n.yes : l10n.no,
-                  ),
-                  _buildInfoRow(
-                    l10n.totalTodos,
-                    todoProvider.allTodos.length.toString(),
-                  ),
-                  _buildInfoRow(
-                    l10n.aiProcessedTodos,
-                    todoProvider.allTodos
-                        .where((t) => t.aiProcessed)
-                        .length
-                        .toString(),
-                  ),
-                  _buildInfoRow(
-                    l10n.todosWithAICategory,
-                    todoProvider.allTodos
-                        .where((t) => t.aiCategory != null)
-                        .length
-                        .toString(),
-                  ),
-                  _buildInfoRow(
-                    l10n.todosWithAIPriority,
-                    todoProvider.allTodos
-                        .where((t) => t.aiPriority > 0)
-                        .length
-                        .toString(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildSection(
-                title: l10n.aiMessages,
-                children: [
-                  _buildInfoRow(
-                    l10n.motivationalMessages,
-                    aiProvider.motivationalMessages.length.toString(),
-                  ),
-                  _buildInfoRow(
-                    l10n.completionMessages,
-                    aiProvider.completionMessages.length.toString(),
-                  ),
-                  if (aiProvider.lastError != null)
+      body: WebDesktopContent(
+        padding: EdgeInsets.zero,
+        child: Consumer2<AIProvider, TodoProvider>(
+          builder: (context, aiProvider, todoProvider, child) {
+            final l10n = AppLocalizations.of(context)!;
+            return ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _buildSection(
+                  title: l10n.aiSettingsStatus,
+                  children: [
                     _buildInfoRow(
-                      l10n.lastError,
-                      aiProvider.lastError!,
-                      isError: true,
-                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildSection(
-                title: l10n.aiApiRequestManager,
-                children: [
-                  if (aiProvider.isAIServiceValid) ...[
-                    _buildInfoRow(
-                      l10n.pendingRequests,
-                      aiProvider
-                              .getRequestManagerStats()['pending_requests']
-                              ?.toString() ??
-                          '0',
+                      l10n.aiFeaturesEnabled,
+                      aiProvider.settings.enableAIFeatures.toString(),
                     ),
                     _buildInfoRow(
-                      l10n.currentWindowRequests,
-                      aiProvider
-                              .getRequestManagerStats()['current_window_requests']
-                              ?.toString() ??
-                          '0',
+                      l10n.aiServiceValid,
+                      aiProvider.isAIServiceValid.toString(),
                     ),
                     _buildInfoRow(
-                      l10n.maxRequestsPerMinute,
-                      aiProvider
-                              .getRequestManagerStats()['max_requests_per_minute']
-                              ?.toString() ??
-                          '20',
+                      l10n.apiEndpoint,
+                      aiProvider.settings.apiEndpoint.isEmpty
+                          ? l10n.notConfigured
+                          : aiProvider.settings.apiEndpoint,
                     ),
-                    const SizedBox(height: 8),
-                    _buildSubSection(
-                      title: l10n.aiCurrentRequestQueue,
-                      child: _buildRequestQueueList(
-                        aiProvider.getRequestQueueInfo(),
-                        l10n,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildSubSection(
-                      title: l10n.aiRecentRequests,
-                      child: _buildRecentRequestsList(
-                        aiProvider.getRecentRequests(),
-                        l10n,
-                      ),
-                    ),
-                  ] else
                     _buildInfoRow(
-                      l10n.status,
-                      l10n.aiServiceNotAvailable,
-                      isError: true,
+                      l10n.modelName,
+                      aiProvider.settings.modelName,
                     ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () async {
-                  final messenger = ScaffoldMessenger.of(context);
-                  final l10n = AppLocalizations.of(context)!;
-                  await todoProvider.processUnprocessedTodosWithAI();
-                  if (!context.mounted) return;
-                  messenger.showSnackBar(
-                    SnackBar(content: Text(l10n.processingUnprocessedTodos)),
-                  );
-                },
-                child: Text(
-                  AppLocalizations.of(context)!.processAllTodosWithAI,
+                    _buildInfoRow(
+                      l10n.apiKey,
+                      aiProvider.settings.apiKey.isEmpty
+                          ? l10n.notConfigured
+                          : l10n.configured(aiProvider.settings.apiKey.length),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          );
-        },
+                const SizedBox(height: 16),
+                _buildSection(
+                  title: l10n.aiFeatureToggles,
+                  children: [
+                    _buildInfoRow(
+                      l10n.autoCategorization,
+                      aiProvider.settings.enableAutoCategorization.toString(),
+                    ),
+                    _buildInfoRow(
+                      l10n.prioritySorting,
+                      aiProvider.settings.enablePrioritySorting.toString(),
+                    ),
+                    _buildInfoRow(
+                      l10n.motivationalMessages,
+                      aiProvider.settings.enableMotivationalMessages.toString(),
+                    ),
+                    _buildInfoRow(
+                      l10n.smartNotifications,
+                      aiProvider.settings.enableSmartNotifications.toString(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildSection(
+                  title: l10n.aiTodoProviderConnection,
+                  children: [
+                    _buildInfoRow(
+                      l10n.aiProviderConnected,
+                      todoProvider.aiProvider != null ? l10n.yes : l10n.no,
+                    ),
+                    _buildInfoRow(
+                      l10n.totalTodos,
+                      todoProvider.allTodos.length.toString(),
+                    ),
+                    _buildInfoRow(
+                      l10n.aiProcessedTodos,
+                      todoProvider.allTodos
+                          .where((t) => t.aiProcessed)
+                          .length
+                          .toString(),
+                    ),
+                    _buildInfoRow(
+                      l10n.todosWithAICategory,
+                      todoProvider.allTodos
+                          .where((t) => t.aiCategory != null)
+                          .length
+                          .toString(),
+                    ),
+                    _buildInfoRow(
+                      l10n.todosWithAIPriority,
+                      todoProvider.allTodos
+                          .where((t) => t.aiPriority > 0)
+                          .length
+                          .toString(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildSection(
+                  title: l10n.aiMessages,
+                  children: [
+                    _buildInfoRow(
+                      l10n.motivationalMessages,
+                      aiProvider.motivationalMessages.length.toString(),
+                    ),
+                    _buildInfoRow(
+                      l10n.completionMessages,
+                      aiProvider.completionMessages.length.toString(),
+                    ),
+                    if (aiProvider.lastError != null)
+                      _buildInfoRow(
+                        l10n.lastError,
+                        aiProvider.lastError!,
+                        isError: true,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildSection(
+                  title: l10n.aiApiRequestManager,
+                  children: [
+                    if (aiProvider.isAIServiceValid) ...[
+                      _buildInfoRow(
+                        l10n.pendingRequests,
+                        aiProvider
+                                .getRequestManagerStats()['pending_requests']
+                                ?.toString() ??
+                            '0',
+                      ),
+                      _buildInfoRow(
+                        l10n.currentWindowRequests,
+                        aiProvider
+                                .getRequestManagerStats()['current_window_requests']
+                                ?.toString() ??
+                            '0',
+                      ),
+                      _buildInfoRow(
+                        l10n.maxRequestsPerMinute,
+                        aiProvider
+                                .getRequestManagerStats()['max_requests_per_minute']
+                                ?.toString() ??
+                            '20',
+                      ),
+                      const SizedBox(height: 8),
+                      _buildSubSection(
+                        title: l10n.aiCurrentRequestQueue,
+                        child: _buildRequestQueueList(
+                          aiProvider.getRequestQueueInfo(),
+                          l10n,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildSubSection(
+                        title: l10n.aiRecentRequests,
+                        child: _buildRecentRequestsList(
+                          aiProvider.getRecentRequests(),
+                          l10n,
+                        ),
+                      ),
+                    ] else
+                      _buildInfoRow(
+                        l10n.status,
+                        l10n.aiServiceNotAvailable,
+                        isError: true,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    final l10n = AppLocalizations.of(context)!;
+                    await todoProvider.processUnprocessedTodosWithAI();
+                    if (!context.mounted) return;
+                    messenger.showSnackBar(
+                      SnackBar(content: Text(l10n.processingUnprocessedTodos)),
+                    );
+                  },
+                  child: Text(
+                    AppLocalizations.of(context)!.processAllTodosWithAI,
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

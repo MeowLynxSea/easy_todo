@@ -4,6 +4,7 @@ import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:easy_todo/theme/app_theme.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:easy_todo/widgets/web_desktop_content.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -34,25 +35,28 @@ class _AboutScreenState extends State<AboutScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.aboutEasyTodo), centerTitle: true),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // App Icon and Basic Info
-            _buildAppInfoSection(l10n),
-            const SizedBox(height: 24),
+      body: WebDesktopContent(
+        padding: EdgeInsets.zero,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              // App Icon and Basic Info
+              _buildAppInfoSection(l10n),
+              const SizedBox(height: 24),
 
-            // Description
-            _buildDescriptionSection(l10n),
-            const SizedBox(height: 24),
+              // Description
+              _buildDescriptionSection(l10n),
+              const SizedBox(height: 24),
 
-            // Developer Information
-            _buildDeveloperSection(l10n),
-            const SizedBox(height: 24),
+              // Developer Information
+              _buildDeveloperSection(l10n),
+              const SizedBox(height: 24),
 
-            // Open Source Licenses
-            _buildOpenSourceSection(l10n),
-          ],
+              // Open Source Licenses
+              _buildOpenSourceSection(l10n),
+            ],
+          ),
         ),
       ),
     );

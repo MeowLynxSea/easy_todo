@@ -180,8 +180,7 @@ class AppTheme {
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         visualDensity: VisualDensity.standard,
       ),
-
-      );
+    );
   }
 
   static ThemeData get darkTheme {
@@ -346,4 +345,3 @@ class AppTheme {
     );
   }
 }
-

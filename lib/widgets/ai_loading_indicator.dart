@@ -31,11 +31,7 @@ class AILoadingIndicator extends StatelessWidget {
             ),
           )
         else
-          Icon(
-            Icons.check_circle,
-            size: size,
-            color: color ?? Colors.green,
-          ),
+          Icon(Icons.check_circle, size: size, color: color ?? Colors.green),
         const SizedBox(width: 8),
         Flexible(
           child: Text(
@@ -100,7 +96,11 @@ class RepeatTodoAIStatus extends StatelessWidget {
     );
   }
 
-  String _getLocalizedStatus(String? status, bool isProcessing, AppLocalizations l10n) {
+  String _getLocalizedStatus(
+    String? status,
+    bool isProcessing,
+    AppLocalizations l10n,
+  ) {
     if (status != null) {
       // Convert hardcoded status strings to localized ones
       switch (status) {

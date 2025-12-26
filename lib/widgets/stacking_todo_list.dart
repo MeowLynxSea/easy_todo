@@ -129,7 +129,9 @@ class _StackingTodoListState extends State<StackingTodoList> {
                             sigmaY: 4.0,
                           ),
                           child: StackingTodoCard(
-                            key: ValueKey('todo_${widget.todos[index].id}_${widget.todos[index].createdAt.millisecondsSinceEpoch}_bg'),
+                            key: ValueKey(
+                              'todo_${widget.todos[index].id}_${widget.todos[index].createdAt.millisecondsSinceEpoch}_bg',
+                            ),
                             todo: widget.todos[index],
                             currentIndex: index + 1,
                             totalCount: widget.todos.length,
@@ -154,8 +156,14 @@ class _StackingTodoListState extends State<StackingTodoList> {
                                   )
                                 : null,
                             isActive: false,
-                            showCategoryLoading: widget.isProcessingCategories && (widget.todos[index].aiCategory == null || !widget.todos[index].aiProcessed),
-                            showPriorityLoading: widget.isProcessingPriorities && (widget.todos[index].aiPriority == 0 || !widget.todos[index].aiProcessed),
+                            showCategoryLoading:
+                                widget.isProcessingCategories &&
+                                (widget.todos[index].aiCategory == null ||
+                                    !widget.todos[index].aiProcessed),
+                            showPriorityLoading:
+                                widget.isProcessingPriorities &&
+                                (widget.todos[index].aiPriority == 0 ||
+                                    !widget.todos[index].aiProcessed),
                           ),
                         ),
                       ),
@@ -185,7 +193,9 @@ class _StackingTodoListState extends State<StackingTodoList> {
                           );
                         },
                     child: StackingTodoCard(
-                      key: ValueKey('todo_${widget.todos[_currentIndex].id}_${widget.todos[_currentIndex].createdAt.millisecondsSinceEpoch}'),
+                      key: ValueKey(
+                        'todo_${widget.todos[_currentIndex].id}_${widget.todos[_currentIndex].createdAt.millisecondsSinceEpoch}',
+                      ),
                       todo: widget.todos[_currentIndex],
                       currentIndex: _currentIndex + 1,
                       totalCount: widget.todos.length,
@@ -206,8 +216,14 @@ class _StackingTodoListState extends State<StackingTodoList> {
                             )
                           : null,
                       isActive: true,
-                      showCategoryLoading: widget.isProcessingCategories && (widget.todos[_currentIndex].aiCategory == null || !widget.todos[_currentIndex].aiProcessed),
-                      showPriorityLoading: widget.isProcessingPriorities && (widget.todos[_currentIndex].aiPriority == 0 || !widget.todos[_currentIndex].aiProcessed),
+                      showCategoryLoading:
+                          widget.isProcessingCategories &&
+                          (widget.todos[_currentIndex].aiCategory == null ||
+                              !widget.todos[_currentIndex].aiProcessed),
+                      showPriorityLoading:
+                          widget.isProcessingPriorities &&
+                          (widget.todos[_currentIndex].aiPriority == 0 ||
+                              !widget.todos[_currentIndex].aiProcessed),
                     ),
                   ),
                 ),

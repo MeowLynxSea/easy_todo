@@ -21,11 +21,15 @@ class StatisticsDataService {
       final n = sortedData.length.toDouble();
       final sumX = n * (n - 1) / 2; // Sum of 0 to n-1
       final sumY = sortedData.map((d) => d.value).reduce((a, b) => a + b);
-      final sumXY = sortedData.asMap().entries.map((entry) {
-        final index = entry.key.toDouble();
-        final value = entry.value.value;
-        return index * value;
-      }).reduce((a, b) => a + b);
+      final sumXY = sortedData
+          .asMap()
+          .entries
+          .map((entry) {
+            final index = entry.key.toDouble();
+            final value = entry.value.value;
+            return index * value;
+          })
+          .reduce((a, b) => a + b);
       final sumX2 = n * (n - 1) * (2 * n - 1) / 6; // Sum of squares
 
       final slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
@@ -101,12 +105,16 @@ class StatisticsDataService {
     }
 
     // Calculate moving average for trend detection
-    final windowSize = (sortedData.length / 3).floor().clamp(2, sortedData.length);
+    final windowSize = (sortedData.length / 3).floor().clamp(
+      2,
+      sortedData.length,
+    );
     final movingAverages = <double>[];
 
     for (int i = 0; i <= sortedData.length - windowSize; i++) {
       final window = sortedData.sublist(i, i + windowSize);
-      final avg = window.map((d) => d.value).reduce((a, b) => a + b) / window.length;
+      final avg =
+          window.map((d) => d.value).reduce((a, b) => a + b) / window.length;
       movingAverages.add(avg);
     }
 
@@ -115,14 +123,21 @@ class StatisticsDataService {
     double strength = 0.0;
 
     if (movingAverages.length > 1) {
-      final firstHalf = movingAverages.sublist(0, (movingAverages.length / 2).floor());
-      final secondHalf = movingAverages.sublist((movingAverages.length / 2).ceil());
+      final firstHalf = movingAverages.sublist(
+        0,
+        (movingAverages.length / 2).floor(),
+      );
+      final secondHalf = movingAverages.sublist(
+        (movingAverages.length / 2).ceil(),
+      );
 
       final firstAvg = firstHalf.reduce((a, b) => a + b) / firstHalf.length;
       final secondAvg = secondHalf.reduce((a, b) => a + b) / secondHalf.length;
 
       final difference = secondAvg - firstAvg;
-      final avgValue = sortedData.map((d) => d.value).reduce((a, b) => a + b) / sortedData.length;
+      final avgValue =
+          sortedData.map((d) => d.value).reduce((a, b) => a + b) /
+          sortedData.length;
 
       strength = avgValue != 0 ? (difference / avgValue).abs() : 0.0;
 
@@ -144,12 +159,16 @@ class StatisticsDataService {
     final currentDate = endDate;
 
     for (int i = 6; i >= 0; i--) {
-      final weekStart = currentDate.subtract(Duration(days: currentDate.weekday + i * 7));
+      final weekStart = currentDate.subtract(
+        Duration(days: currentDate.weekday + i * 7),
+      );
       final weekEnd = weekStart.add(const Duration(days: 6));
 
       final weekData = data.where((d) {
-        return d.todoCreatedAt.isAfter(weekStart.subtract(const Duration(days: 1))) &&
-               d.todoCreatedAt.isBefore(weekEnd.add(const Duration(days: 1)));
+        return d.todoCreatedAt.isAfter(
+              weekStart.subtract(const Duration(days: 1)),
+            ) &&
+            d.todoCreatedAt.isBefore(weekEnd.add(const Duration(days: 1)));
       }).toList();
 
       if (weekData.isNotEmpty) {
@@ -182,11 +201,17 @@ class StatisticsDataService {
 
     for (int i = 3; i >= 0; i--) {
       final month = DateTime(currentDate.year, currentDate.month - i, 1);
-      final nextMonth = DateTime(currentDate.year, currentDate.month - i + 1, 1);
+      final nextMonth = DateTime(
+        currentDate.year,
+        currentDate.month - i + 1,
+        1,
+      );
 
       final monthData = data.where((d) {
-        return d.todoCreatedAt.isAfter(month.subtract(const Duration(days: 1))) &&
-               d.todoCreatedAt.isBefore(nextMonth);
+        return d.todoCreatedAt.isAfter(
+              month.subtract(const Duration(days: 1)),
+            ) &&
+            d.todoCreatedAt.isBefore(nextMonth);
       }).toList();
 
       if (monthData.isNotEmpty) {
@@ -240,7 +265,11 @@ class StatisticsDataService {
     // Find best and worst days
     final dailyTotals = <DateTime, double>{};
     for (final item in filteredData) {
-      final day = DateTime(item.todoCreatedAt.year, item.todoCreatedAt.month, item.todoCreatedAt.day);
+      final day = DateTime(
+        item.todoCreatedAt.year,
+        item.todoCreatedAt.month,
+        item.todoCreatedAt.day,
+      );
       dailyTotals[day] = (dailyTotals[day] ?? 0) + item.value;
     }
 
@@ -284,10 +313,7 @@ class StatisticsDataService {
     return data.asMap().entries.map((entry) {
       final values = entry.value['values'] as List<double>;
       final total = values.isNotEmpty ? values.reduce((a, b) => a + b) : 0.0;
-      return FlSpot(
-        entry.key.toDouble(),
-        total,
-      );
+      return FlSpot(entry.key.toDouble(), total);
     }).toList();
   }
 }

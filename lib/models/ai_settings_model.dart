@@ -84,10 +84,14 @@ class AISettingsModel extends HiveObject {
       apiEndpoint: apiEndpoint ?? this.apiEndpoint,
       apiKey: apiKey ?? this.apiKey,
       modelName: modelName ?? this.modelName,
-      enableAutoCategorization: enableAutoCategorization ?? this.enableAutoCategorization,
-      enablePrioritySorting: enablePrioritySorting ?? this.enablePrioritySorting,
-      enableMotivationalMessages: enableMotivationalMessages ?? this.enableMotivationalMessages,
-      enableSmartNotifications: enableSmartNotifications ?? this.enableSmartNotifications,
+      enableAutoCategorization:
+          enableAutoCategorization ?? this.enableAutoCategorization,
+      enablePrioritySorting:
+          enablePrioritySorting ?? this.enablePrioritySorting,
+      enableMotivationalMessages:
+          enableMotivationalMessages ?? this.enableMotivationalMessages,
+      enableSmartNotifications:
+          enableSmartNotifications ?? this.enableSmartNotifications,
       temperature: temperature ?? this.temperature,
       maxTokens: maxTokens ?? this.maxTokens,
       requestTimeout: requestTimeout ?? this.requestTimeout,
@@ -102,8 +106,8 @@ class AISettingsModel extends HiveObject {
   }
 
   bool get isValid =>
-    enableAIFeatures &&
-    apiEndpoint.isNotEmpty &&
-    modelName.isNotEmpty &&
-    (apiFormat == 'ollama' || apiKey.isNotEmpty);
+      enableAIFeatures &&
+      apiEndpoint.isNotEmpty &&
+      modelName.isNotEmpty &&
+      (apiFormat == 'ollama' || apiKey.isNotEmpty);
 }

@@ -102,65 +102,70 @@ class BackupRestoreService {
         await _hiveService.repeatTodosBox.clear();
         await _hiveService.statisticsDataBox.clear();
 
-      // 恢复todos
-      final todosData = backupData['todos'] as List;
-      for (var todoData in todosData) {
-        final todo = TodoModel.fromJson(todoData);
-        await _hiveService.todosBox.put(todo.id, todo);
-      }
-
-      // 恢复statistics
-      final statisticsData = backupData['statistics'] as List;
-      for (var statData in statisticsData) {
-        final statistic = StatisticsModel.fromJson(statData);
-        await _hiveService.statisticsBox.add(statistic);
-      }
-
-      // 恢复pomodoroSessions (如果存在，兼容旧版本)
-      int pomodoroCount = 0;
-      if (backupData.containsKey('pomodoroSessions')) {
-        final pomodoroData = backupData['pomodoroSessions'] as List;
-        for (var sessionData in pomodoroData) {
-          final session = PomodoroModel.fromJson(sessionData);
-          await _hiveService.pomodoroBox.put(session.id, session);
-          pomodoroCount++;
+        // 恢复todos
+        final todosData = backupData['todos'] as List;
+        for (var todoData in todosData) {
+          final todo = TodoModel.fromJson(todoData);
+          await _hiveService.todosBox.put(todo.id, todo);
         }
-      }
 
-      // 恢复repeatTodos (如果存在，兼容新版本)
-      int repeatTodosCount = 0;
-      if (backupData.containsKey('repeatTodos')) {
-        final repeatTodosData = backupData['repeatTodos'] as List;
-        for (var repeatTodoData in repeatTodosData) {
-          final repeatTodo = RepeatTodoModel.fromJson(repeatTodoData);
-          await _hiveService.repeatTodosBox.put(repeatTodo.id, repeatTodo);
-          repeatTodosCount++;
+        // 恢复statistics
+        final statisticsData = backupData['statistics'] as List;
+        for (var statData in statisticsData) {
+          final statistic = StatisticsModel.fromJson(statData);
+          await _hiveService.statisticsBox.add(statistic);
         }
-      }
 
-      // 恢复statisticsData (如果存在，兼容新版本)
-      int statisticsDataCount = 0;
-      if (backupData.containsKey('statisticsData')) {
-        final statisticsDataList = backupData['statisticsData'] as List;
-        for (var statisticsDataJson in statisticsDataList) {
-          final statisticsData = StatisticsDataModel.fromJson(statisticsDataJson);
-          await _hiveService.statisticsDataBox.put(statisticsData.id, statisticsData);
-          statisticsDataCount++;
+        // 恢复pomodoroSessions (如果存在，兼容旧版本)
+        int pomodoroCount = 0;
+        if (backupData.containsKey('pomodoroSessions')) {
+          final pomodoroData = backupData['pomodoroSessions'] as List;
+          for (var sessionData in pomodoroData) {
+            final session = PomodoroModel.fromJson(sessionData);
+            await _hiveService.pomodoroBox.put(session.id, session);
+            pomodoroCount++;
+          }
         }
-      }
 
-      // 数据一致性检查：确保重复任务和生成的任务状态一致
-      _ensureRepeatTodoConsistency();
+        // 恢复repeatTodos (如果存在，兼容新版本)
+        int repeatTodosCount = 0;
+        if (backupData.containsKey('repeatTodos')) {
+          final repeatTodosData = backupData['repeatTodos'] as List;
+          for (var repeatTodoData in repeatTodosData) {
+            final repeatTodo = RepeatTodoModel.fromJson(repeatTodoData);
+            await _hiveService.repeatTodosBox.put(repeatTodo.id, repeatTodo);
+            repeatTodosCount++;
+          }
+        }
 
-      return {
-        'success': true,
-        'todosCount': todosData.length,
-        'statisticsCount': statisticsData.length,
-        'pomodoroCount': pomodoroCount,
-        'repeatTodosCount': repeatTodosCount,
-        'statisticsDataCount': statisticsDataCount,
-        'backupDate': backupData['backupDate'],
-      };
+        // 恢复statisticsData (如果存在，兼容新版本)
+        int statisticsDataCount = 0;
+        if (backupData.containsKey('statisticsData')) {
+          final statisticsDataList = backupData['statisticsData'] as List;
+          for (var statisticsDataJson in statisticsDataList) {
+            final statisticsData = StatisticsDataModel.fromJson(
+              statisticsDataJson,
+            );
+            await _hiveService.statisticsDataBox.put(
+              statisticsData.id,
+              statisticsData,
+            );
+            statisticsDataCount++;
+          }
+        }
+
+        // 数据一致性检查：确保重复任务和生成的任务状态一致
+        _ensureRepeatTodoConsistency();
+
+        return {
+          'success': true,
+          'todosCount': todosData.length,
+          'statisticsCount': statisticsData.length,
+          'pomodoroCount': pomodoroCount,
+          'repeatTodosCount': repeatTodosCount,
+          'statisticsDataCount': statisticsDataCount,
+          'backupDate': backupData['backupDate'],
+        };
       } catch (restoreError) {
         // 恢复失败时，尝试恢复原始数据
         try {
@@ -191,14 +196,18 @@ class BackupRestoreService {
 
     for (final repeatTodo in repeatTodos) {
       // 检查是否有对应的已生成的任务
-      final generatedTodos = todos.where(
-        (todo) => todo.repeatTodoId == repeatTodo.id && todo.isGeneratedFromRepeat
-      ).toList();
+      final generatedTodos = todos
+          .where(
+            (todo) =>
+                todo.repeatTodoId == repeatTodo.id &&
+                todo.isGeneratedFromRepeat,
+          )
+          .toList();
 
       if (generatedTodos.isNotEmpty) {
         // 找到最新的生成任务
         final latestGenerated = generatedTodos.reduce(
-          (a, b) => a.createdAt.isAfter(b.createdAt) ? a : b
+          (a, b) => a.createdAt.isAfter(b.createdAt) ? a : b,
         );
 
         // 确保重复任务的 lastGeneratedDate 不晚于最新生成的任务
@@ -319,11 +328,11 @@ class BackupRestoreService {
         },
         'repeatTodos': {
           'total': repeatTodos.length,
-          'dataStatisticsEnabled': repeatTodos.where((rt) => rt.dataStatisticsEnabled).length,
+          'dataStatisticsEnabled': repeatTodos
+              .where((rt) => rt.dataStatisticsEnabled)
+              .length,
         },
-        'statisticsData': {
-          'total': statisticsDataCount,
-        },
+        'statisticsData': {'total': statisticsDataCount},
         'storage': {
           'dataSize': estimatedDataSize,
           'backupSize': storageInfo['backupSize'],

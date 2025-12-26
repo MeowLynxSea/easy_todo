@@ -10,6 +10,7 @@ import 'package:easy_todo/providers/ai_provider.dart';
 import 'package:easy_todo/theme/app_theme.dart';
 import 'package:easy_todo/screens/data_statistics_screen.dart';
 import 'package:easy_todo/models/repeat_todo_model.dart';
+import 'package:easy_todo/widgets/web_desktop_content.dart';
 
 // 数据统计按钮的内容组件
 class _DataStatsButtonContent extends StatelessWidget {
@@ -48,9 +49,8 @@ class _DataStatsButtonContent extends StatelessWidget {
 
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => DataStatisticsScreen(
-                navigationSource: navigationSource,
-              ),
+              builder: (context) =>
+                  DataStatisticsScreen(navigationSource: navigationSource),
             ),
           );
         },
@@ -88,13 +88,24 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   }
 
   // 检查重复任务是否应该在今天生成
-  bool _shouldGenerateForToday(RepeatTodoModel repeatTodo, DateTime currentDate) {
+  bool _shouldGenerateForToday(
+    RepeatTodoModel repeatTodo,
+    DateTime currentDate,
+  ) {
     // 使用本地时间进行判断
-    final today = DateTime(currentDate.year, currentDate.month, currentDate.day);
+    final today = DateTime(
+      currentDate.year,
+      currentDate.month,
+      currentDate.day,
+    );
 
     // 检查是否已过开始日期
     if (repeatTodo.startDate != null) {
-      final startDate = DateTime(repeatTodo.startDate!.year, repeatTodo.startDate!.month, repeatTodo.startDate!.day);
+      final startDate = DateTime(
+        repeatTodo.startDate!.year,
+        repeatTodo.startDate!.month,
+        repeatTodo.startDate!.day,
+      );
       if (today.isBefore(startDate)) {
         return false;
       }
@@ -102,7 +113,11 @@ class _StatisticsScreenState extends State<StatisticsScreen>
 
     // 检查是否已过结束日期
     if (repeatTodo.endDate != null) {
-      final endDate = DateTime(repeatTodo.endDate!.year, repeatTodo.endDate!.month, repeatTodo.endDate!.day);
+      final endDate = DateTime(
+        repeatTodo.endDate!.year,
+        repeatTodo.endDate!.month,
+        repeatTodo.endDate!.day,
+      );
       if (today.isAfter(endDate)) {
         return false;
       }
@@ -114,7 +129,9 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         return true; // 每天都生成
 
       case RepeatType.weekly:
-        if (repeatTodo.weekDays == null || repeatTodo.weekDays!.isEmpty) return false;
+        if (repeatTodo.weekDays == null || repeatTodo.weekDays!.isEmpty) {
+          return false;
+        }
         // 使用本地时间的星期几进行判断
         return repeatTodo.weekDays!.contains(currentDate.weekday);
 
@@ -128,7 +145,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
 
         // 如果指定的日期超过了本月的最大天数，则在本月的最后一天生成
         final lastDayOfMonth = DateTime(today.year, today.month + 1, 0).day;
-        if (repeatTodo.dayOfMonth! > lastDayOfMonth && today.day == lastDayOfMonth) {
+        if (repeatTodo.dayOfMonth! > lastDayOfMonth &&
+            today.day == lastDayOfMonth) {
           return true;
         }
 
@@ -148,13 +166,18 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       final localTimeZoneName = DateTime.now().timeZoneName;
       String? timeZoneId;
 
-      if (localTimeZoneName.contains('CST') || localTimeZoneName.contains('GMT+8') || localTimeZoneName.contains('UTC+8')) {
+      if (localTimeZoneName.contains('CST') ||
+          localTimeZoneName.contains('GMT+8') ||
+          localTimeZoneName.contains('UTC+8')) {
         timeZoneId = 'Asia/Shanghai';
-      } else if (localTimeZoneName.contains('PST') || localTimeZoneName.contains('GMT-8')) {
+      } else if (localTimeZoneName.contains('PST') ||
+          localTimeZoneName.contains('GMT-8')) {
         timeZoneId = 'America/Los_Angeles';
-      } else if (localTimeZoneName.contains('EST') || localTimeZoneName.contains('GMT-5')) {
+      } else if (localTimeZoneName.contains('EST') ||
+          localTimeZoneName.contains('GMT-5')) {
         timeZoneId = 'America/New_York';
-      } else if (localTimeZoneName.contains('JST') || localTimeZoneName.contains('GMT+9')) {
+      } else if (localTimeZoneName.contains('JST') ||
+          localTimeZoneName.contains('GMT+9')) {
         timeZoneId = 'Asia/Tokyo';
       } else if (localTimeZoneName.contains('GMT')) {
         final offset = DateTime.now().timeZoneOffset.inHours;
@@ -250,71 +273,76 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               ],
             ),
           ),
-          body: Column(
-            children: [
-              // Data Statistics button will be moved to bottom
+          body: WebDesktopContent(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                // Data Statistics button will be moved to bottom
 
-              // Main content
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildDailyView(todoProvider, pomodoroProvider),
-                    _buildWeeklyView(todoProvider, pomodoroProvider),
-                    _buildMonthlyView(todoProvider, pomodoroProvider),
-                    _buildOverviewView(todoProvider, pomodoroProvider),
-                  ],
+                // Main content
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildDailyView(todoProvider, pomodoroProvider),
+                      _buildWeeklyView(todoProvider, pomodoroProvider),
+                      _buildMonthlyView(todoProvider, pomodoroProvider),
+                      _buildOverviewView(todoProvider, pomodoroProvider),
+                    ],
+                  ),
                 ),
-              ),
 
-              // Data Statistics button at bottom
-              _buildDataStatsButton(todoProvider, l10n),
-            ],
+                // Data Statistics button at bottom
+                _buildDataStatsButton(todoProvider, l10n),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  
-  Widget _buildDataStatsButton(TodoProvider todoProvider, AppLocalizations l10n) {
+  Widget _buildDataStatsButton(
+    TodoProvider todoProvider,
+    AppLocalizations l10n,
+  ) {
     final repeatTodosWithStats = todoProvider.repeatTodos
         .where((rt) => rt.dataStatisticsEnabled)
         .toList();
 
     // 判断是否应该显示按钮
-    final shouldShowButton = repeatTodosWithStats.isNotEmpty && _currentTabIndex != 0;
+    final shouldShowButton =
+        repeatTodosWithStats.isNotEmpty && _currentTabIndex != 0;
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
       reverseDuration: const Duration(milliseconds: 300),
       transitionBuilder: (Widget child, Animation<double> animation) {
         // 使用向下滑动动画
-        final slideAnimation = Tween<Offset>(
-          begin: const Offset(0, 1.0), // 从下方开始
-          end: Offset.zero, // 到正常位置
-        ).animate(CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOut,
-          reverseCurve: Curves.easeIn,
-        ));
+        final slideAnimation =
+            Tween<Offset>(
+              begin: const Offset(0, 1.0), // 从下方开始
+              end: Offset.zero, // 到正常位置
+            ).animate(
+              CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOut,
+                reverseCurve: Curves.easeIn,
+              ),
+            );
 
         // 使用淡入淡出动画
-        final fadeAnimation = Tween<double>(
-          begin: 0.0,
-          end: 1.0,
-        ).animate(CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOut,
-          reverseCurve: Curves.easeIn,
-        ));
+        final fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+          CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOut,
+            reverseCurve: Curves.easeIn,
+          ),
+        );
 
         return SlideTransition(
           position: slideAnimation,
-          child: FadeTransition(
-            opacity: fadeAnimation,
-            child: child,
-          ),
+          child: FadeTransition(opacity: fadeAnimation, child: child),
         );
       },
       child: shouldShowButton
@@ -328,7 +356,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     );
   }
 
-Widget _buildDailyView(
+  Widget _buildDailyView(
     TodoProvider todoProvider,
     PomodoroProvider pomodoroProvider,
   ) {
@@ -637,42 +665,42 @@ Widget _buildDailyView(
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatItem(
-                  l10n.created,
-                  stats['created'].toString(),
-                  AppTheme.primaryColor,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatItem(
+                    l10n.created,
+                    stats['created'].toString(),
+                    AppTheme.primaryColor,
+                  ),
                 ),
-              ),
-              Expanded(
-                child: _buildStatItem(
-                  l10n.completedTodos,
-                  stats['completed'].toString(),
-                  AppTheme.secondaryColor,
+                Expanded(
+                  child: _buildStatItem(
+                    l10n.completedTodos,
+                    stats['completed'].toString(),
+                    AppTheme.secondaryColor,
+                  ),
                 ),
-              ),
-              Expanded(
-                child: _buildStatItem(
-                  l10n.completionRate,
-                  '${stats['rate'].toStringAsFixed(1)}%',
-                  stats['rate'] >= 70
-                      ? AppTheme.secondaryColor
-                      : Colors.orange,
+                Expanded(
+                  child: _buildStatItem(
+                    l10n.completionRate,
+                    '${stats['rate'].toStringAsFixed(1)}%',
+                    stats['rate'] >= 70
+                        ? AppTheme.secondaryColor
+                        : Colors.orange,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -694,22 +722,31 @@ Widget _buildDailyView(
     );
   }
 
-  Widget _buildDataEntryProgressCard(TodoProvider todoProvider, AppLocalizations l10n) {
+  Widget _buildDataEntryProgressCard(
+    TodoProvider todoProvider,
+    AppLocalizations l10n,
+  ) {
     // 获取今天有数据统计的重复任务
     final today = _getLocalNow();
     final todayDate = DateTime(today.year, today.month, today.day);
 
     // 计算今天需要填写数据的任务总数（只计算今天应该生成的重复任务）
     final totalDataEntryTasks = todoProvider.repeatTodos
-        .where((rt) => rt.dataStatisticsEnabled && _shouldGenerateForToday(rt, todayDate))
+        .where(
+          (rt) =>
+              rt.dataStatisticsEnabled &&
+              _shouldGenerateForToday(rt, todayDate),
+        )
         .length;
 
     // 计算今天已经填写数据的任务数
     final completedDataEntryTasks = todoProvider.statisticsData
-        .where((data) =>
-            data.todoCreatedAt.year == today.year &&
-            data.todoCreatedAt.month == today.month &&
-            data.todoCreatedAt.day == today.day)
+        .where(
+          (data) =>
+              data.todoCreatedAt.year == today.year &&
+              data.todoCreatedAt.month == today.month &&
+              data.todoCreatedAt.day == today.day,
+        )
         .map((data) => data.repeatTodoId)
         .toSet()
         .length;
@@ -734,7 +771,9 @@ Widget _buildDailyView(
               value: dataEntryProgress / 100,
               backgroundColor: Colors.grey[200],
               valueColor: AlwaysStoppedAnimation<Color>(
-                dataEntryProgress >= 70 ? AppTheme.secondaryColor : Colors.orange,
+                dataEntryProgress >= 70
+                    ? AppTheme.secondaryColor
+                    : Colors.orange,
               ),
             ),
             const SizedBox(height: 8),
@@ -1033,9 +1072,9 @@ Widget _buildDailyView(
     final thirtyDaysAgo = now.subtract(const Duration(days: 30));
 
     final completedTodos = provider.allTodos
-        .where((todo) =>
-            todo.isCompleted &&
-            todo.createdAt.isAfter(thirtyDaysAgo))
+        .where(
+          (todo) => todo.isCompleted && todo.createdAt.isAfter(thirtyDaysAgo),
+        )
         .toList();
 
     if (completedTodos.isEmpty) return null;
@@ -1053,17 +1092,19 @@ Widget _buildDailyView(
     return {'day': bestDay.key, 'completed': bestDay.value};
   }
 
-  
-  
   Map<String, dynamic> _getTodayPomodoroStats(PomodoroProvider provider) {
     final now = _getLocalNow();
     final today = DateTime(now.year, now.month, now.day);
     final tomorrow = today.add(const Duration(days: 1));
 
-    final todaySessions = provider.pomodoroSessions.where((session) =>
-        session.startTime.isAtSameMomentAs(today) ||
-        (session.startTime.isAfter(today) && session.startTime.isBefore(tomorrow))
-    ).toList();
+    final todaySessions = provider.pomodoroSessions
+        .where(
+          (session) =>
+              session.startTime.isAtSameMomentAs(today) ||
+              (session.startTime.isAfter(today) &&
+                  session.startTime.isBefore(tomorrow)),
+        )
+        .toList();
 
     final focusSessions = todaySessions
         .where((s) => s.isCompleted && !s.isBreak)
@@ -1077,7 +1118,9 @@ Widget _buildDailyView(
       0,
       (total, session) => total + (session.actualDuration ?? 0),
     );
-    final averageTime = focusSessions.isNotEmpty ? totalTime / focusSessions.length : 0.0;
+    final averageTime = focusSessions.isNotEmpty
+        ? totalTime / focusSessions.length
+        : 0.0;
 
     return {
       'sessions': completedSessions,
@@ -1170,7 +1213,8 @@ Widget _buildDailyView(
       final daySessions = provider.pomodoroSessions
           .where(
             (session) =>
-                (session.startTime.isAtSameMomentAs(dayStart) || session.startTime.isAfter(dayStart)) &&
+                (session.startTime.isAtSameMomentAs(dayStart) ||
+                    session.startTime.isAfter(dayStart)) &&
                 session.startTime.isBefore(dayEnd) &&
                 session.isCompleted &&
                 !session.isBreak,
@@ -1199,13 +1243,18 @@ Widget _buildDailyView(
     // Calculate 4 weeks from the first day of month
     final monthData = List.generate(4, (weekIndex) {
       final weekStart = firstDayOfMonth.add(Duration(days: weekIndex * 7));
-      final weekStartDay = DateTime(weekStart.year, weekStart.month, weekStart.day);
+      final weekStartDay = DateTime(
+        weekStart.year,
+        weekStart.month,
+        weekStart.day,
+      );
       final weekEnd = weekStartDay.add(const Duration(days: 7));
 
       final weekSessions = provider.pomodoroSessions
           .where(
             (session) =>
-                (session.startTime.isAtSameMomentAs(weekStartDay) || session.startTime.isAfter(weekStartDay)) &&
+                (session.startTime.isAtSameMomentAs(weekStartDay) ||
+                    session.startTime.isAfter(weekStartDay)) &&
                 session.startTime.isBefore(weekEnd) &&
                 session.isCompleted &&
                 !session.isBreak,
@@ -1393,16 +1442,29 @@ Widget _buildDailyView(
     final todayEnd = todayStart.add(const Duration(days: 1));
 
     final weekStart = now.subtract(Duration(days: now.weekday - 1));
-    final weekStartDay = DateTime(weekStart.year, weekStart.month, weekStart.day);
+    final weekStartDay = DateTime(
+      weekStart.year,
+      weekStart.month,
+      weekStart.day,
+    );
     final weekEnd = weekStartDay.add(const Duration(days: 7));
 
     final monthStart = DateTime(now.year, now.month, 1);
     final monthEnd = DateTime(now.year, now.month + 1, 1);
 
     // Get completed sessions and time for each period
-    final todayTime = provider.getTotalTimeSpent(startDate: todayStart, endDate: todayEnd);
-    final weekTime = provider.getTotalTimeSpent(startDate: weekStartDay, endDate: weekEnd);
-    final monthTime = provider.getTotalTimeSpent(startDate: monthStart, endDate: monthEnd);
+    final todayTime = provider.getTotalTimeSpent(
+      startDate: todayStart,
+      endDate: todayEnd,
+    );
+    final weekTime = provider.getTotalTimeSpent(
+      startDate: weekStartDay,
+      endDate: weekEnd,
+    );
+    final monthTime = provider.getTotalTimeSpent(
+      startDate: monthStart,
+      endDate: monthEnd,
+    );
 
     final todaySessions = provider.getTodaySessions();
     final weekSessions = provider.getWeekSessions();
@@ -1469,7 +1531,10 @@ Widget _buildDailyView(
   }
 
   // Build AI-generated incentive message
-  Widget _buildAIIncentiveMessage(Map<String, dynamic> todayStats, AppLocalizations l10n) {
+  Widget _buildAIIncentiveMessage(
+    Map<String, dynamic> todayStats,
+    AppLocalizations l10n,
+  ) {
     final completed = todayStats['completed'] as int;
     final total = todayStats['created'] as int;
     final completionRate = todayStats['rate'] as double;
@@ -1477,7 +1542,8 @@ Widget _buildDailyView(
     return Consumer<AIProvider>(
       builder: (context, aiProvider, child) {
         // Check if AI features are disabled OR motivational messages are disabled
-        if (!aiProvider.settings.enableAIFeatures || !aiProvider.settings.enableMotivationalMessages) {
+        if (!aiProvider.settings.enableAIFeatures ||
+            !aiProvider.settings.enableMotivationalMessages) {
           return const SizedBox.shrink();
         }
         return FutureBuilder<String?>(
@@ -1492,18 +1558,16 @@ Widget _buildDailyView(
             // Check for error or null data
             if (snapshot.hasError || snapshot.data == null) {
               // Check if there's a specific error message from the provider
-              final errorMessage = aiProvider.lastError ?? l10n.aiServiceNotAvailableCheckSettings;
+              final errorMessage =
+                  aiProvider.lastError ??
+                  l10n.aiServiceNotAvailableCheckSettings;
 
               return Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.error_outline,
-                        color: Colors.red,
-                        size: 24,
-                      ),
+                      Icon(Icons.error_outline, color: Colors.red, size: 24),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
@@ -1552,13 +1616,7 @@ Widget _buildDailyView(
         );
       },
     );
-
   }
 }
 
-enum StatisticsTimePeriod {
-  today,
-  thisWeek,
-  thisMonth,
-  overview,
-}
+enum StatisticsTimePeriod { today, thisWeek, thisMonth, overview }

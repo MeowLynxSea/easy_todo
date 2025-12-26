@@ -21,4 +21,3 @@ class BiometricService {
 
   Future<void> stopAuthentication() async {}
 }
-

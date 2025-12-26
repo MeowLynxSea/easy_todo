@@ -24,7 +24,9 @@ class CacheService {
         tz.initializeTimeZones();
         return tz.TZDateTime.now(tz.UTC);
       } catch (fallbackError) {
-        debugPrint('CacheService: Fallback timezone initialization failed: $fallbackError');
+        debugPrint(
+          'CacheService: Fallback timezone initialization failed: $fallbackError',
+        );
         return DateTime.now();
       }
     }
@@ -75,7 +77,10 @@ class CacheService {
   }
 
   // Cache statistics data
-  static Future<void> cacheStats(StatisticsDataModel stats, String cacheKey) async {
+  static Future<void> cacheStats(
+    StatisticsDataModel stats,
+    String cacheKey,
+  ) async {
     final box = Hive.box(_statsCacheBox);
     final cacheData = {
       'stats': stats.toJson(),
@@ -140,10 +145,12 @@ class CacheService {
         if (cachedData['todos'] != null) {
           final todos = cachedData['todos'] as List;
           // Check if this todo exists in the cached list
-          final containsTodo = todos.any((todoJson) => todoJson['id'] == todoId);
+          final containsTodo = todos.any(
+            (todoJson) => todoJson['id'] == todoId,
+          );
           if (containsTodo) {
             await todoBox.delete(key);
-            }
+          }
         }
       } catch (e) {
         // Invalid cache data, delete it
@@ -168,7 +175,9 @@ class CacheService {
     for (final key in todoBox.keys) {
       try {
         final data = jsonDecode(todoBox.get(key));
-        final timestamp = DateTime.fromMillisecondsSinceEpoch(data['timestamp']);
+        final timestamp = DateTime.fromMillisecondsSinceEpoch(
+          data['timestamp'],
+        );
 
         if (now.difference(timestamp) > _cacheDuration) {
           todoBox.delete(key);
@@ -182,7 +191,9 @@ class CacheService {
     for (final key in statsBox.keys) {
       try {
         final data = jsonDecode(statsBox.get(key));
-        final timestamp = DateTime.fromMillisecondsSinceEpoch(data['timestamp']);
+        final timestamp = DateTime.fromMillisecondsSinceEpoch(
+          data['timestamp'],
+        );
 
         if (now.difference(timestamp) > _cacheDuration) {
           statsBox.delete(key);
@@ -210,7 +221,11 @@ class CacheService {
     return entry.data as T;
   }
 
-  static void setMemoryCache<T>(String key, T data, {Duration duration = const Duration(minutes: 30)}) {
+  static void setMemoryCache<T>(
+    String key,
+    T data, {
+    Duration duration = const Duration(minutes: 30),
+  }) {
     // 确保时区已初始化
     try {
       tz.initializeTimeZones();

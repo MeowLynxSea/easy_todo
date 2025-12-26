@@ -80,9 +80,10 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   ThemeData getTheme(BuildContext context) {
-    final bool isDark = _themeMode == ThemeMode.dark ||
-                       (_themeMode == ThemeMode.system &&
-                        Theme.of(context).brightness == Brightness.dark);
+    final bool isDark =
+        _themeMode == ThemeMode.dark ||
+        (_themeMode == ThemeMode.system &&
+            Theme.of(context).brightness == Brightness.dark);
 
     return isDark ? _getDarkTheme(context) : _getLightTheme(context);
   }
@@ -108,10 +109,7 @@ class ThemeProvider extends ChangeNotifier {
         elevation: 0,
         scrolledUnderElevation: 1,
       ),
-      cardTheme: CardThemeData(
-        elevation: 2,
-        shadowColor: Color(0x0F000000),
-      ),
+      cardTheme: CardThemeData(elevation: 2, shadowColor: Color(0x0F000000)),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           elevation: 2,
@@ -148,10 +146,7 @@ class ThemeProvider extends ChangeNotifier {
         scrolledUnderElevation: 1,
         backgroundColor: const Color(0xFF1E1E1E),
       ),
-      cardTheme: CardThemeData(
-        elevation: 2,
-        shadowColor: Color(0x1A000000),
-      ),
+      cardTheme: CardThemeData(elevation: 2, shadowColor: Color(0x1A000000)),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           elevation: 2,
@@ -230,7 +225,9 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   String _colorsToString(Map<String, Color> colors) {
-    return colors.entries.map((entry) => '${entry.key}:${entry.value.toARGB32()}').join(',');
+    return colors.entries
+        .map((entry) => '${entry.key}:${entry.value.toARGB32()}')
+        .join(',');
   }
 
   Map<String, Color> _parseColorsFromString(String colorsString) {

@@ -82,7 +82,7 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
         );
       }
     } finally {
-      if(mounted) {
+      if (mounted) {
         setState(() => _isLoading = false);
       }
     }
@@ -108,142 +108,147 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-              Text(
-                widget.todo != null ? l10n.edit : l10n.addTodo,
-                style: Theme.of(context).textTheme.headlineSmall,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _titleController,
-                decoration: InputDecoration(
-                  labelText: l10n.todoTitle,
-                  hintText: l10n.addTodoHint,
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return l10n.titleRequired;
-                  }
-                  return null;
-                },
-                readOnly: widget.todo != null,
-                textInputAction: widget.todo == null
-                    ? TextInputAction.next
-                    : TextInputAction.done,
-                onFieldSubmitted: widget.todo == null
-                    ? (_) {
-                        FocusScope.of(context).nextFocus();
+                  Text(
+                    widget.todo != null ? l10n.edit : l10n.addTodo,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  TextFormField(
+                    controller: _titleController,
+                    decoration: InputDecoration(
+                      labelText: l10n.todoTitle,
+                      hintText: l10n.addTodoHint,
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return l10n.titleRequired;
                       }
-                    : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _descriptionController,
-                decoration: InputDecoration(
-                  labelText: l10n.todoDescription,
-                  hintText: l10n.todoDescription.toLowerCase(),
-                ),
-                maxLines: 3,
-                readOnly: widget.todo != null,
-                textInputAction: widget.todo == null
-                    ? TextInputAction.next
-                    : TextInputAction.done,
-                onFieldSubmitted: widget.todo == null
-                    ? (_) {
-                        FocusScope.of(context).nextFocus();
-                      }
-                    : null,
-              ),
-              const SizedBox(height: 16),
-              SwitchListTile(
-                title: Text(l10n.enableReminder),
-                subtitle: _reminderTime != null
-                    ? Text(
-                        l10n.timeFormat(
-                          _reminderTime!.hour.toString().padLeft(2, '0'),
-                          _reminderTime!.minute.toString().padLeft(2, '0'),
-                        ),
-                      )
-                    : Text(l10n.noReminderSet),
-                value: _reminderEnabled,
-                onChanged: (value) {
-                  setState(() {
-                    _reminderEnabled = value;
-                    if (!value) {
-                      _reminderTime = null;
-                    }
-                  });
-                },
-                secondary: Icon(
-                  Icons.alarm_outlined,
-                  color: _reminderEnabled
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.grey,
-                ),
-              ),
-              if (_reminderEnabled) ...[
-                const SizedBox(height: 16),
-                ListTile(
-                  title: Text(l10n.reminderTime),
-                  subtitle: _reminderTime != null
-                      ? Text(
-                          l10n.timeFormat(
-                            _reminderTime!.hour.toString().padLeft(2, '0'),
-                            _reminderTime!.minute.toString().padLeft(2, '0'),
-                          ),
-                        )
-                      : Text(l10n.setReminder),
-                  trailing: const Icon(Icons.access_time),
-                  onTap: _selectReminderTime,
-                ),
-              ],
-              if (widget.onAddRepeat != null) ...[
-                const SizedBox(height: 16),
-                ListTile(
-                  title: Text(l10n.repeatTask),
-                  subtitle: Text(l10n.repeatDescription),
-                  trailing: const Icon(Icons.arrow_forward_ios),
-                  onTap: _showRepeatTodoDialog,
-                ),
-              ],
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: _isLoading
-                          ? null
-                          : () {
-                              Navigator.of(context).pop();
-                            },
-                      child: Text(l10n.cancel),
+                      return null;
+                    },
+                    readOnly: widget.todo != null,
+                    textInputAction: widget.todo == null
+                        ? TextInputAction.next
+                        : TextInputAction.done,
+                    onFieldSubmitted: widget.todo == null
+                        ? (_) {
+                            FocusScope.of(context).nextFocus();
+                          }
+                        : null,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _descriptionController,
+                    decoration: InputDecoration(
+                      labelText: l10n.todoDescription,
+                      hintText: l10n.todoDescription.toLowerCase(),
+                    ),
+                    maxLines: 3,
+                    readOnly: widget.todo != null,
+                    textInputAction: widget.todo == null
+                        ? TextInputAction.next
+                        : TextInputAction.done,
+                    onFieldSubmitted: widget.todo == null
+                        ? (_) {
+                            FocusScope.of(context).nextFocus();
+                          }
+                        : null,
+                  ),
+                  const SizedBox(height: 16),
+                  SwitchListTile(
+                    title: Text(l10n.enableReminder),
+                    subtitle: _reminderTime != null
+                        ? Text(
+                            l10n.timeFormat(
+                              _reminderTime!.hour.toString().padLeft(2, '0'),
+                              _reminderTime!.minute.toString().padLeft(2, '0'),
+                            ),
+                          )
+                        : Text(l10n.noReminderSet),
+                    value: _reminderEnabled,
+                    onChanged: (value) {
+                      setState(() {
+                        _reminderEnabled = value;
+                        if (!value) {
+                          _reminderTime = null;
+                        }
+                      });
+                    },
+                    secondary: Icon(
+                      Icons.alarm_outlined,
+                      color: _reminderEnabled
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.grey,
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _handleSubmit,
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
+                  if (_reminderEnabled) ...[
+                    const SizedBox(height: 16),
+                    ListTile(
+                      title: Text(l10n.reminderTime),
+                      subtitle: _reminderTime != null
+                          ? Text(
+                              l10n.timeFormat(
+                                _reminderTime!.hour.toString().padLeft(2, '0'),
+                                _reminderTime!.minute.toString().padLeft(
+                                  2,
+                                  '0',
+                                ),
                               ),
                             )
-                          : Text(
-                              widget.todo != null ? l10n.save : l10n.addTodo,
-                            ),
+                          : Text(l10n.setReminder),
+                      trailing: const Icon(Icons.access_time),
+                      onTap: _selectReminderTime,
                     ),
+                  ],
+                  if (widget.onAddRepeat != null) ...[
+                    const SizedBox(height: 16),
+                    ListTile(
+                      title: Text(l10n.repeatTask),
+                      subtitle: Text(l10n.repeatDescription),
+                      trailing: const Icon(Icons.arrow_forward_ios),
+                      onTap: _showRepeatTodoDialog,
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: _isLoading
+                              ? null
+                              : () {
+                                  Navigator.of(context).pop();
+                                },
+                          child: Text(l10n.cancel),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _handleSubmit,
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  widget.todo != null
+                                      ? l10n.save
+                                      : l10n.addTodo,
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
-        ),
-      ),
       ),
     );
   }
@@ -268,8 +273,7 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
       setState(() {
         _reminderTime = selectedDateTime;
       });
-
-      }
+    }
   }
 
   void _showRepeatTodoDialog() {

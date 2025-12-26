@@ -3,6 +3,7 @@ import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:easy_todo/models/todo_model.dart';
 import 'package:easy_todo/theme/app_theme.dart';
+import 'package:easy_todo/widgets/web_desktop_content.dart';
 
 class DayDetailScreen extends StatelessWidget {
   final DateTime date;
@@ -21,12 +22,15 @@ class DayDetailScreen extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          _buildStatsSummary(l10n),
-          const Divider(height: 1),
-          Expanded(child: _buildTodosList(l10n)),
-        ],
+      body: WebDesktopContent(
+        padding: EdgeInsets.zero,
+        child: Column(
+          children: [
+            _buildStatsSummary(l10n),
+            const Divider(height: 1),
+            Expanded(child: _buildTodosList(l10n)),
+          ],
+        ),
       ),
     );
   }

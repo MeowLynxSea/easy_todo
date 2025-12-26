@@ -74,7 +74,11 @@ class AppSettingsProvider extends ChangeNotifier {
   }
 
   /// 设置指纹锁
-  Future<bool> setFingerprintLock(bool enabled, {String? enableReason, String? disableReason}) async {
+  Future<bool> setFingerprintLock(
+    bool enabled, {
+    String? enableReason,
+    String? disableReason,
+  }) async {
     _isLoading = true;
     notifyListeners();
 
@@ -101,7 +105,9 @@ class AppSettingsProvider extends ChangeNotifier {
         final isAvailable = await _biometricService.isFingerprintAvailable();
         if (isAvailable) {
           final authenticated = await _biometricService
-              .authenticateWithFingerprint(reason: disableReason ?? '请验证身份以禁用指纹锁');
+              .authenticateWithFingerprint(
+                reason: disableReason ?? '请验证身份以禁用指纹锁',
+              );
 
           if (!authenticated) {
             _isLoading = false;

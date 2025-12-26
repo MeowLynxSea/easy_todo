@@ -33,7 +33,8 @@ class OptimizedTodoList extends StatefulWidget {
   State<OptimizedTodoList> createState() => _OptimizedTodoListState();
 }
 
-class _OptimizedTodoListState extends State<OptimizedTodoList> with TickerProviderStateMixin {
+class _OptimizedTodoListState extends State<OptimizedTodoList>
+    with TickerProviderStateMixin {
   late ScrollController _scrollController;
   late AnimationController _animationController;
   static const int _itemsPerPage = 20;
@@ -67,7 +68,9 @@ class _OptimizedTodoListState extends State<OptimizedTodoList> with TickerProvid
     final currentScroll = _scrollController.position.pixels;
     final delta = 200.0; // Load more when 200px from bottom
 
-    if (maxScroll - currentScroll <= delta && !widget.isLoading && widget.hasMore) {
+    if (maxScroll - currentScroll <= delta &&
+        !widget.isLoading &&
+        widget.hasMore) {
       widget.onLoadMore();
     }
   }
@@ -158,9 +161,7 @@ class _OptimizedTodoListState extends State<OptimizedTodoList> with TickerProvid
   Widget _buildLoadingIndicator() {
     return const Padding(
       padding: EdgeInsets.all(16),
-      child: Center(
-        child: CircularProgressIndicator(),
-      ),
+      child: Center(child: CircularProgressIndicator()),
     );
   }
 
@@ -173,14 +174,18 @@ class _OptimizedTodoListState extends State<OptimizedTodoList> with TickerProvid
           Icon(
             Icons.task_alt_outlined,
             size: 64,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 16),
           Text(
             l10n.noTodosYet,
             style: TextStyle(
               fontSize: 18,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.7),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -189,7 +194,9 @@ class _OptimizedTodoListState extends State<OptimizedTodoList> with TickerProvid
             l10n.addTodoHint,
             style: TextStyle(
               fontSize: 14,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ),
         ],

@@ -7,8 +7,7 @@ class PermissionService {
 
   static Future<bool> checkAndRequestBatteryOptimizationPermission(
     BuildContext context,
-  ) async =>
-      true;
+  ) async => true;
 
   static Future<void> showExactAlarmPermissionDialog(
     BuildContext context,
@@ -19,8 +18,7 @@ class PermissionService {
   }
 
   static Future<Map<String, bool>> getPermissionStatus() async => {
-        'notification': true,
-        'batteryOptimization': true,
-      };
+    'notification': true,
+    'batteryOptimization': true,
+  };
 }
-

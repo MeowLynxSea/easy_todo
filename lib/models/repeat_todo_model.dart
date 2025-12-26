@@ -98,7 +98,9 @@ class RepeatTodoModel extends HiveObject {
   }) {
     // 使用与每日任务相同的系统时间
     final now = DateTime.now();
-    debugPrint('Creating RepeatTodoModel at system time: $now (timezone offset: ${now.timeZoneOffset})');
+    debugPrint(
+      'Creating RepeatTodoModel at system time: $now (timezone offset: ${now.timeZoneOffset})',
+    );
 
     return RepeatTodoModel(
       id: now.millisecondsSinceEpoch.toString(),
@@ -153,7 +155,8 @@ class RepeatTodoModel extends HiveObject {
       isActive: isActive ?? this.isActive,
       lastGeneratedDate: lastGeneratedDate ?? this.lastGeneratedDate,
       order: order ?? this.order,
-      dataStatisticsEnabled: dataStatisticsEnabled ?? this.dataStatisticsEnabled,
+      dataStatisticsEnabled:
+          dataStatisticsEnabled ?? this.dataStatisticsEnabled,
       statisticsModes: statisticsModes ?? this.statisticsModes,
       dataUnit: dataUnit ?? this.dataUnit,
       aiCategory: aiCategory ?? this.aiCategory,
@@ -211,11 +214,13 @@ class RepeatTodoModel extends HiveObject {
       dataStatisticsEnabled: json['dataStatisticsEnabled'] ?? false,
       statisticsModes: json['statisticsModes'] != null
           ? (json['statisticsModes'] as List)
-              .map((e) => StatisticsMode.values.firstWhere(
+                .map(
+                  (e) => StatisticsMode.values.firstWhere(
                     (mode) => mode.name == e,
                     orElse: () => StatisticsMode.average,
-                  ))
-              .toList()
+                  ),
+                )
+                .toList()
           : null,
       dataUnit: json['dataUnit'],
       aiCategory: json['aiCategory'],
@@ -235,7 +240,14 @@ class RepeatTodoModel extends HiveObject {
       case RepeatType.daily:
         // 对于每日任务，返回明天的同一时间，但使用日期规范化
         final tomorrow = date.add(const Duration(days: 1));
-        return DateTime(tomorrow.year, tomorrow.month, tomorrow.day, date.hour, date.minute, date.second);
+        return DateTime(
+          tomorrow.year,
+          tomorrow.month,
+          tomorrow.day,
+          date.hour,
+          date.minute,
+          date.second,
+        );
 
       case RepeatType.weekly:
         if (weekDays == null || weekDays!.isEmpty) return null;
@@ -271,7 +283,6 @@ class RepeatTodoModel extends HiveObject {
         } else {
           return date.add(const Duration(days: 1));
         }
-
     }
   }
 
@@ -301,8 +312,16 @@ class RepeatTodoModel extends HiveObject {
 
     // Check if the current date is at or past the next generate date
     // 使用日期比较而不是时间比较，避免时区问题
-    final currentNormalized = DateTime(currentDate.year, currentDate.month, currentDate.day);
-    final nextNormalized = DateTime(nextDate.year, nextDate.month, nextDate.day);
+    final currentNormalized = DateTime(
+      currentDate.year,
+      currentDate.month,
+      currentDate.day,
+    );
+    final nextNormalized = DateTime(
+      nextDate.year,
+      nextDate.month,
+      nextDate.day,
+    );
 
     return currentNormalized.isAtSameMomentAs(nextNormalized) ||
         currentNormalized.isAfter(nextNormalized);

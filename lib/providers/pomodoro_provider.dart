@@ -55,13 +55,18 @@ class PomodoroProvider extends ChangeNotifier {
       final localTimeZoneName = DateTime.now().timeZoneName;
       String? timeZoneId;
 
-      if (localTimeZoneName.contains('CST') || localTimeZoneName.contains('GMT+8') || localTimeZoneName.contains('UTC+8')) {
+      if (localTimeZoneName.contains('CST') ||
+          localTimeZoneName.contains('GMT+8') ||
+          localTimeZoneName.contains('UTC+8')) {
         timeZoneId = 'Asia/Shanghai';
-      } else if (localTimeZoneName.contains('PST') || localTimeZoneName.contains('GMT-8')) {
+      } else if (localTimeZoneName.contains('PST') ||
+          localTimeZoneName.contains('GMT-8')) {
         timeZoneId = 'America/Los_Angeles';
-      } else if (localTimeZoneName.contains('EST') || localTimeZoneName.contains('GMT-5')) {
+      } else if (localTimeZoneName.contains('EST') ||
+          localTimeZoneName.contains('GMT-5')) {
         timeZoneId = 'America/New_York';
-      } else if (localTimeZoneName.contains('JST') || localTimeZoneName.contains('GMT+9')) {
+      } else if (localTimeZoneName.contains('JST') ||
+          localTimeZoneName.contains('GMT+9')) {
         timeZoneId = 'Asia/Tokyo';
       } else if (localTimeZoneName.contains('GMT')) {
         final offset = DateTime.now().timeZoneOffset.inHours;
@@ -132,8 +137,11 @@ class PomodoroProvider extends ChangeNotifier {
       if (pomodoroSettings != null) {
         _workDuration = pomodoroSettings['workDuration'] ?? _workDuration;
         _breakDuration = pomodoroSettings['breakDuration'] ?? _breakDuration;
-        _longBreakDuration = pomodoroSettings['longBreakDuration'] ?? _longBreakDuration;
-        _sessionsUntilLongBreak = pomodoroSettings['sessionsUntilLongBreak'] ?? _sessionsUntilLongBreak;
+        _longBreakDuration =
+            pomodoroSettings['longBreakDuration'] ?? _longBreakDuration;
+        _sessionsUntilLongBreak =
+            pomodoroSettings['sessionsUntilLongBreak'] ??
+            _sessionsUntilLongBreak;
       }
     } catch (e) {
       debugPrint('Error loading pomodoro settings: $e');
@@ -150,7 +158,6 @@ class PomodoroProvider extends ChangeNotifier {
       _completedSessionsCount = _pomodoroSessions
           .where((session) => session.isCompleted && !session.isBreak)
           .length;
-
     } catch (e) {
       debugPrint('Error loading pomodoro sessions: $e');
     }
@@ -188,30 +195,41 @@ class PomodoroProvider extends ChangeNotifier {
   int _getBreakDuration() {
     if (_currentCycleSessionsCount > 0 &&
         _currentCycleSessionsCount % _sessionsUntilLongBreak == 0) {
-      debugPrint('Long break triggered after $_currentCycleSessionsCount sessions in current cycle');
+      debugPrint(
+        'Long break triggered after $_currentCycleSessionsCount sessions in current cycle',
+      );
       return _longBreakDuration;
     }
-    debugPrint('Short break after $_currentCycleSessionsCount sessions in current cycle');
+    debugPrint(
+      'Short break after $_currentCycleSessionsCount sessions in current cycle',
+    );
     return _breakDuration;
   }
 
   // Prepare AI notification content in advance (non-blocking)
   void _prepareNotificationContent(String todoId, bool isBreak) {
     if (_aiProvider == null || _currentSession == null) {
-      debugPrint('PomodoroProvider: Cannot prepare notification - AI Provider: ${_aiProvider != null}, Current Session: ${_currentSession != null}');
+      debugPrint(
+        'PomodoroProvider: Cannot prepare notification - AI Provider: ${_aiProvider != null}, Current Session: ${_currentSession != null}',
+      );
       return;
     }
     // Run in background without blocking the UI
     unawaited(_prepareNotificationContentAsync(todoId, isBreak));
   }
 
-  Future<void> _prepareNotificationContentAsync(String todoId, bool isBreak) async {
+  Future<void> _prepareNotificationContentAsync(
+    String todoId,
+    bool isBreak,
+  ) async {
     try {
       // Get todo title for better AI context
       String? todoTitle;
       if (_todoProvider != null) {
         try {
-          final todo = _todoProvider!.allTodos.firstWhere((t) => t.id == todoId);
+          final todo = _todoProvider!.allTodos.firstWhere(
+            (t) => t.id == todoId,
+          );
           todoTitle = todo.title;
         } catch (e) {
           debugPrint('PomodoroProvider: Todo not found for id $todoId: $e');
@@ -229,11 +247,15 @@ class PomodoroProvider extends ChangeNotifier {
       if (preparedContent != null && preparedContent.isNotEmpty) {
         _preparedNotificationContent = preparedContent;
       } else {
-        debugPrint('PomodoroProvider: AI Provider returned empty or null content');
+        debugPrint(
+          'PomodoroProvider: AI Provider returned empty or null content',
+        );
         _preparedNotificationContent = null;
       }
     } catch (e) {
-      debugPrint('PomodoroProvider: Error preparing pomodoro notification content: $e');
+      debugPrint(
+        'PomodoroProvider: Error preparing pomodoro notification content: $e',
+      );
       // If preparation fails, we'll fall back to default notifications
     }
   }
@@ -477,15 +499,21 @@ class PomodoroProvider extends ChangeNotifier {
 
     return _pomodoroSessions.where((session) {
       return session.startTime.isAtSameMomentAs(today) ||
-             (session.startTime.isAfter(today) && session.startTime.isBefore(tomorrow));
+          (session.startTime.isAfter(today) &&
+              session.startTime.isBefore(tomorrow));
     }).toList();
   }
 
   List<PomodoroModel> getWeekSessions() {
     final now = _getLocalNow();
-    final weekStart = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+    final weekStart = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(Duration(days: now.weekday - 1));
     return _pomodoroSessions.where((session) {
-      return session.startTime.isAtSameMomentAs(weekStart) || session.startTime.isAfter(weekStart);
+      return session.startTime.isAtSameMomentAs(weekStart) ||
+          session.startTime.isAfter(weekStart);
     }).toList();
   }
 
@@ -493,11 +521,16 @@ class PomodoroProvider extends ChangeNotifier {
     final now = _getLocalNow();
     final monthStart = DateTime(now.year, now.month, 1);
     return _pomodoroSessions.where((session) {
-      return session.startTime.isAtSameMomentAs(monthStart) || session.startTime.isAfter(monthStart);
+      return session.startTime.isAtSameMomentAs(monthStart) ||
+          session.startTime.isAfter(monthStart);
     }).toList();
   }
 
-  int getTotalTimeSpent({String? todoId, DateTime? startDate, DateTime? endDate}) {
+  int getTotalTimeSpent({
+    String? todoId,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) {
     List<PomodoroModel> sessions;
 
     if (todoId != null) {
@@ -509,10 +542,18 @@ class PomodoroProvider extends ChangeNotifier {
 
       // Apply date filtering if provided
       if (startDate != null) {
-        sessions = sessions.where((s) => s.startTime.isAtSameMomentAs(startDate) || s.startTime.isAfter(startDate)).toList();
+        sessions = sessions
+            .where(
+              (s) =>
+                  s.startTime.isAtSameMomentAs(startDate) ||
+                  s.startTime.isAfter(startDate),
+            )
+            .toList();
       }
       if (endDate != null) {
-        sessions = sessions.where((s) => s.startTime.isBefore(endDate)).toList();
+        sessions = sessions
+            .where((s) => s.startTime.isBefore(endDate))
+            .toList();
       }
     }
 
@@ -526,7 +567,9 @@ class PomodoroProvider extends ChangeNotifier {
     final sessions = todoId != null
         ? getSessionsForTodo(todoId)
         : _pomodoroSessions
-              .where((s) => s.isCompleted && s.actualDuration != null && !s.isBreak)
+              .where(
+                (s) => s.isCompleted && s.actualDuration != null && !s.isBreak,
+              )
               .toList();
 
     if (sessions.isEmpty) return 0.0;
@@ -537,7 +580,6 @@ class PomodoroProvider extends ChangeNotifier {
     return totalTime / sessions.length;
   }
 
-  
   // 清除所有pomodoro会话数据（用于调试或重置）
   Future<void> clearAllSessions() async {
     try {
@@ -565,7 +607,6 @@ class PomodoroProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  
   @override
   void dispose() {
     _timer?.cancel();

@@ -28,8 +28,7 @@ class BackgroundService {
       // Only reschedule if needed to avoid unnecessary operations
       if (_notificationService.settings?.notificationsEnabled == true) {
         await _notificationService.rescheduleAllReminders();
-      } else {
-      }
+      } else {}
     } catch (e) {
       debugPrint('Error rescheduling notifications: $e');
     }

@@ -117,13 +117,7 @@ class StatisticsDataModel extends HiveObject {
   }
 }
 
-enum StatisticsMode {
-  average,
-  growth,
-  extremum,
-  trend,
-  sum,
-}
+enum StatisticsMode { average, growth, extremum, trend, sum }
 
 extension StatisticsModeExtension on StatisticsMode {
   String get displayName {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 import '../l10n/generated/app_localizations.dart';
+import '../widgets/web_desktop_content.dart';
 
 class ThemeSettingsScreen extends StatefulWidget {
   const ThemeSettingsScreen({super.key});
@@ -17,49 +18,49 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
       'primary': Color(0xFF6366F1),
       'primaryVariant': Color(0xFF4F46E5),
       'secondary': Color(0xFF10B981),
-      'nameKey': 'themeColorMysteriousPurple'
+      'nameKey': 'themeColorMysteriousPurple',
     },
     {
       'primary': Color(0xFF3B82F6),
       'primaryVariant': Color(0xFF2563EB),
       'secondary': Color(0xFF8B5CF6),
-      'nameKey': 'themeColorSkyBlue'
+      'nameKey': 'themeColorSkyBlue',
     },
     {
       'primary': Color(0xFF10B981),
       'primaryVariant': Color(0xFF059669),
       'secondary': Color(0xFF3B82F6),
-      'nameKey': 'themeColorGemGreen'
+      'nameKey': 'themeColorGemGreen',
     },
     {
       'primary': Color(0xFFF59E0B),
       'primaryVariant': Color(0xFFD97706),
       'secondary': Color(0xFFEF4444),
-      'nameKey': 'themeColorLemonYellow'
+      'nameKey': 'themeColorLemonYellow',
     },
     {
       'primary': Color(0xFFEF4444),
       'primaryVariant': Color(0xFFDC2626),
       'secondary': Color(0xFFF59E0B),
-      'nameKey': 'themeColorFlameRed'
+      'nameKey': 'themeColorFlameRed',
     },
     {
       'primary': Color(0xFF8B5CF6),
       'primaryVariant': Color(0xFF7C3AED),
       'secondary': Color(0xFFEC4899),
-      'nameKey': 'themeColorElegantPurple'
+      'nameKey': 'themeColorElegantPurple',
     },
     {
       'primary': Color(0xFFEC4899),
       'primaryVariant': Color(0xFFDB2777),
       'secondary': Color(0xFF8B5CF6),
-      'nameKey': 'themeColorCherryPink'
+      'nameKey': 'themeColorCherryPink',
     },
     {
       'primary': Color(0xFF14B8A6),
       'primaryVariant': Color(0xFF0D9488),
       'secondary': Color(0xFF6366F1),
-      'nameKey': 'themeColorForestCyan'
+      'nameKey': 'themeColorForestCyan',
     },
   ];
 
@@ -86,7 +87,10 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
     return hslColor.withLightness(hslColor.lightness * 0.8).toColor();
   }
 
-  Future<void> _showColorPicker(Color initialColor, Function(Color) onColorSelected) async {
+  Future<void> _showColorPicker(
+    Color initialColor,
+    Function(Color) onColorSelected,
+  ) async {
     Color selectedColor = initialColor;
 
     await showDialog(
@@ -117,7 +121,12 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
                   max: 360,
                   onChanged: (value) {
                     setState(() {
-                      selectedColor = HSLColor.fromAHSL(1, value, 0.7, 0.5).toColor();
+                      selectedColor = HSLColor.fromAHSL(
+                        1,
+                        value,
+                        0.7,
+                        0.5,
+                      ).toColor();
                     });
                   },
                 ),
@@ -129,7 +138,12 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
                   max: 1,
                   onChanged: (value) {
                     setState(() {
-                      selectedColor = HSLColor.fromAHSL(1, _getHue(selectedColor), value, _getLightness(selectedColor)).toColor();
+                      selectedColor = HSLColor.fromAHSL(
+                        1,
+                        _getHue(selectedColor),
+                        value,
+                        _getLightness(selectedColor),
+                      ).toColor();
                     });
                   },
                 ),
@@ -141,7 +155,12 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
                   max: 1,
                   onChanged: (value) {
                     setState(() {
-                      selectedColor = HSLColor.fromAHSL(1, _getHue(selectedColor), _getSaturation(selectedColor), value).toColor();
+                      selectedColor = HSLColor.fromAHSL(
+                        1,
+                        _getHue(selectedColor),
+                        _getSaturation(selectedColor),
+                        value,
+                      ).toColor();
                     });
                   },
                 ),
@@ -207,10 +226,7 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          l10n.themeMode,
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
+        Text(l10n.themeMode, style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 8),
         RadioListTile<ThemeMode>(
           title: Row(
@@ -258,10 +274,7 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          l10n.themeColors,
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
+        Text(l10n.themeColors, style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 8),
         GridView.builder(
           shrinkWrap: true,
@@ -274,9 +287,11 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
           itemCount: themeColors.length,
           itemBuilder: (context, index) {
             final themeColor = themeColors[index];
-            final isSelected = themeProvider.customThemeColors == null &&
-                              themeProvider.themeColors['primary'] == themeColor['primary'] &&
-                              themeProvider.themeColors['secondary'] == themeColor['secondary'];
+            final isSelected =
+                themeProvider.customThemeColors == null &&
+                themeProvider.themeColors['primary'] == themeColor['primary'] &&
+                themeProvider.themeColors['secondary'] ==
+                    themeColor['secondary'];
 
             return GestureDetector(
               onTap: () {
@@ -291,7 +306,9 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
 
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('${l10n.themeColorApplied}: ${_getLocalizedThemeName(l10n, themeColor['nameKey'])}'),
+                    content: Text(
+                      '${l10n.themeColorApplied}: ${_getLocalizedThemeName(l10n, themeColor['nameKey'])}',
+                    ),
                     duration: const Duration(seconds: 2),
                   ),
                 );
@@ -341,10 +358,7 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          l10n.customTheme,
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
+        Text(l10n.customTheme, style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 8),
         Card(
           child: Padding(
@@ -359,14 +373,17 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: customPrimaryColor ?? themeProvider.themeColors['primary'],
+                      color:
+                          customPrimaryColor ??
+                          themeProvider.themeColors['primary'],
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(color: Colors.grey.shade300),
                     ),
                   ),
                   onTap: () {
                     _showColorPicker(
-                      customPrimaryColor ?? themeProvider.themeColors['primary']!,
+                      customPrimaryColor ??
+                          themeProvider.themeColors['primary']!,
                       (color) => setState(() => customPrimaryColor = color),
                     );
                   },
@@ -380,14 +397,17 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: customSecondaryColor ?? themeProvider.themeColors['secondary'],
+                      color:
+                          customSecondaryColor ??
+                          themeProvider.themeColors['secondary'],
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(color: Colors.grey.shade300),
                     ),
                   ),
                   onTap: () {
                     _showColorPicker(
-                      customSecondaryColor ?? themeProvider.themeColors['secondary']!,
+                      customSecondaryColor ??
+                          themeProvider.themeColors['secondary']!,
                       (color) => setState(() => customSecondaryColor = color),
                     );
                   },
@@ -399,12 +419,15 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () {
-                          if (customPrimaryColor != null || customSecondaryColor != null) {
+                          if (customPrimaryColor != null ||
+                              customSecondaryColor != null) {
                             // Apply custom theme
                             final customColors = <String, Color>{};
                             if (customPrimaryColor != null) {
                               customColors['primary'] = customPrimaryColor!;
-                              customColors['primaryVariant'] = _getVariantColor(customPrimaryColor!);
+                              customColors['primaryVariant'] = _getVariantColor(
+                                customPrimaryColor!,
+                              );
                             }
                             if (customSecondaryColor != null) {
                               customColors['secondary'] = customSecondaryColor!;
@@ -451,20 +474,21 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.themeSettings),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildThemeModeSection(themeProvider),
-            const SizedBox(height: 32),
-            _buildThemeColorsSection(themeProvider),
-            const SizedBox(height: 32),
-            _buildCustomThemeSection(themeProvider),
-          ],
+      appBar: AppBar(title: Text(l10n.themeSettings)),
+      body: WebDesktopContent(
+        padding: EdgeInsets.zero,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildThemeModeSection(themeProvider),
+              const SizedBox(height: 32),
+              _buildThemeColorsSection(themeProvider),
+              const SizedBox(height: 32),
+              _buildCustomThemeSection(themeProvider),
+            ],
+          ),
         ),
       ),
     );

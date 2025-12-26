@@ -8,6 +8,7 @@ import 'package:easy_todo/services/file_service.dart';
 import 'package:easy_todo/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_todo/providers/todo_provider.dart';
+import 'package:easy_todo/widgets/web_desktop_content.dart';
 
 class BackupRestoreScreen extends StatefulWidget {
   const BackupRestoreScreen({super.key});
@@ -57,22 +58,28 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.backupRestore), centerTitle: true),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const WebDesktopContent(
+              padding: EdgeInsets.zero,
+              child: Center(child: CircularProgressIndicator()),
+            )
           : RefreshIndicator(
               onRefresh: _loadBackupInfo,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildBackupSummaryCard(l10n),
-                    const SizedBox(height: 20),
-                    _buildQuickActionsCard(l10n),
-                    const SizedBox(height: 20),
-                    _buildBackupFilesCard(l10n),
-                    const SizedBox(height: 20),
-                    _buildBackupInfoCard(l10n),
-                  ],
+              child: WebDesktopContent(
+                padding: EdgeInsets.zero,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildBackupSummaryCard(l10n),
+                      const SizedBox(height: 20),
+                      _buildQuickActionsCard(l10n),
+                      const SizedBox(height: 20),
+                      _buildBackupFilesCard(l10n),
+                      const SizedBox(height: 20),
+                      _buildBackupInfoCard(l10n),
+                    ],
+                  ),
                 ),
               ),
             ),

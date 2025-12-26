@@ -68,7 +68,8 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
     final todoProvider = Provider.of<TodoProvider>(context, listen: false);
     final repeatTodo = todoProvider.repeatTodos.firstWhere(
       (rt) => rt.id == widget.todo.repeatTodoId,
-      orElse: () => RepeatTodoModel.create(title: '', repeatType: RepeatType.daily),
+      orElse: () =>
+          RepeatTodoModel.create(title: '', repeatType: RepeatType.daily),
     );
 
     if (mounted) {
@@ -80,11 +81,10 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
 
   bool get _needsDataInput {
     return widget.todo.isGeneratedFromRepeat &&
-           _repeatTodo?.dataStatisticsEnabled == true &&
-           !widget.todo.isCompleted;
+        _repeatTodo?.dataStatisticsEnabled == true &&
+        !widget.todo.isCompleted;
   }
 
-  
   Future<void> _handleSubmitData() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -208,7 +208,6 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
     return confirmed ?? false;
   }
 
-  
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -247,7 +246,9 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
             border: Border.all(
               color: Theme.of(context).brightness == Brightness.dark
                   ? Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)
-                  : Theme.of(context).colorScheme.outline.withValues(alpha: 0.15),
+                  : Theme.of(
+                      context,
+                    ).colorScheme.outline.withValues(alpha: 0.15),
               width: 1,
             ),
           ),
@@ -288,9 +289,7 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
                                   : TextDecoration.none,
                               color: widget.todo.isCompleted
                                   ? Colors.grey
-                                  : Theme.of(
-                                      context,
-                                    ).colorScheme.onSurface,
+                                  : Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                         ),
@@ -314,7 +313,10 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              l10n.progressFormat(widget.currentIndex, widget.totalCount),
+                              l10n.progressFormat(
+                                widget.currentIndex,
+                                widget.totalCount,
+                              ),
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
@@ -341,26 +343,37 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
                             suffixIcon: _isLoading
                                 ? const Padding(
                                     padding: EdgeInsets.all(12.0),
                                     child: SizedBox(
                                       width: 16,
                                       height: 16,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
                                     ),
                                   )
                                 : null,
                           ),
-                          keyboardType: TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
-                              return AppLocalizations.of(context)!.dataValueRequired;
+                              return AppLocalizations.of(
+                                context,
+                              )!.dataValueRequired;
                             }
                             final number = double.tryParse(value.trim());
                             if (number == null) {
-                              return AppLocalizations.of(context)!.invalidNumberFormat;
+                              return AppLocalizations.of(
+                                context,
+                              )!.invalidNumberFormat;
                             }
                             return null;
                           },
@@ -372,7 +385,7 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
 
                     // Description, data value, and AI info
                     if (widget.todo.description != null &&
-                        widget.todo.description!.isNotEmpty ||
+                            widget.todo.description!.isNotEmpty ||
                         widget.todo.dataValue != null ||
                         _shouldShowAITags(context))
                       Padding(
@@ -393,7 +406,9 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
                                     fontSize: 14,
                                     color: widget.todo.isCompleted
                                         ? Colors.grey
-                                        : Theme.of(context).colorScheme.onSurface
+                                        : Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
                                               .withValues(alpha: 0.7),
                                     decoration: widget.todo.isCompleted
                                         ? TextDecoration.lineThrough
@@ -412,7 +427,9 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
                                     size: 14,
                                     color: widget.todo.isCompleted
                                         ? Colors.grey
-                                        : Theme.of(context).colorScheme.secondary,
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.secondary,
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
@@ -421,7 +438,9 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
                                       fontSize: 12,
                                       color: widget.todo.isCompleted
                                           ? Colors.grey
-                                          : Theme.of(context).colorScheme.secondary,
+                                          : Theme.of(
+                                              context,
+                                            ).colorScheme.secondary,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -483,97 +502,105 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
 
               // Action buttons for all tasks
               Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Theme.of(
+                          context,
+                        ).colorScheme.surface.withValues(alpha: 0.7)
+                      : Theme.of(context).colorScheme.surface,
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
                   ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(
-                            context,
-                          ).colorScheme.surface.withValues(alpha: 0.7)
-                        : Theme.of(context).colorScheme.surface,
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(16),
-                      bottomRight: Radius.circular(16),
+                  border: Border(
+                    top: BorderSide(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Theme.of(
+                              context,
+                            ).colorScheme.outline.withValues(alpha: 0.2)
+                          : Theme.of(
+                              context,
+                            ).colorScheme.outline.withValues(alpha: 0.1),
+                      width: 1,
                     ),
-                    border: Border(
-                      top: BorderSide(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Theme.of(
-                                context,
-                              ).colorScheme.outline.withValues(alpha: 0.2)
-                            : Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      // Pomodoro button (only for incomplete tasks)
-                      if (!widget.todo.isCompleted && widget.onStartPomodoro != null)
-                        _buildActionButton(
-                          icon: Icons.timer,
-                          color: AppTheme.primaryColor,
-                          onPressed: widget.onStartPomodoro!,
-                          tooltip: l10n.pomodoroTimer,
-                        ),
-
-                      // Reminder button
-                      if (widget.onEditReminder != null)
-                        _buildActionButton(
-                          icon: widget.todo.reminderEnabled
-                              ? Icons.alarm_off
-                              : Icons.alarm,
-                          color: widget.todo.reminderEnabled
-                              ? Colors.orange
-                              : AppTheme.primaryColor,
-                          onPressed: widget.onEditReminder!,
-                          tooltip: widget.todo.reminderEnabled
-                              ? l10n.cancelReminder
-                              : l10n.setReminder,
-                        ),
-
-                      // Submit/Withdraw button
-                      _buildActionButton(
-                        icon: widget.todo.isCompleted ? Icons.undo : Icons.check,
-                        color: widget.todo.isCompleted ? Colors.orange : Colors.green,
-                        onPressed: widget.todo.isCompleted
-                            ? _handleWithdraw
-                            : _needsDataInput ? _handleSubmitData : _handleSubmitWithoutData,
-                        tooltip: widget.todo.isCompleted ? l10n.taskWithdrawn : l10n.taskCompleted,
-                      ),
-
-                      // Delete button
-                      widget.todo.isGeneratedFromRepeat
-                          ? _buildActionButton(
-                              icon: Icons.delete,
-                              color: Colors.grey,
-                              onPressed: () {},
-                              tooltip: l10n.cannotDeleteRepeatTodo,
-                            )
-                          : _buildActionButton(
-                              icon: Icons.delete,
-                              color: Colors.red,
-                              onPressed: () {
-                                _showDeleteConfirmation(context).then((
-                                  confirmed,
-                                ) {
-                                  if (confirmed) {
-                                    // Mark as being deleted to prevent further AI processing
-                                    _isBeingDeleted = true;
-                                    widget.onDelete();
-                                  }
-                                });
-                              },
-                              tooltip: l10n.delete,
-                            ),
-                    ],
                   ),
                 ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Pomodoro button (only for incomplete tasks)
+                    if (!widget.todo.isCompleted &&
+                        widget.onStartPomodoro != null)
+                      _buildActionButton(
+                        icon: Icons.timer,
+                        color: AppTheme.primaryColor,
+                        onPressed: widget.onStartPomodoro!,
+                        tooltip: l10n.pomodoroTimer,
+                      ),
 
-              ],
+                    // Reminder button
+                    if (widget.onEditReminder != null)
+                      _buildActionButton(
+                        icon: widget.todo.reminderEnabled
+                            ? Icons.alarm_off
+                            : Icons.alarm,
+                        color: widget.todo.reminderEnabled
+                            ? Colors.orange
+                            : AppTheme.primaryColor,
+                        onPressed: widget.onEditReminder!,
+                        tooltip: widget.todo.reminderEnabled
+                            ? l10n.cancelReminder
+                            : l10n.setReminder,
+                      ),
+
+                    // Submit/Withdraw button
+                    _buildActionButton(
+                      icon: widget.todo.isCompleted ? Icons.undo : Icons.check,
+                      color: widget.todo.isCompleted
+                          ? Colors.orange
+                          : Colors.green,
+                      onPressed: widget.todo.isCompleted
+                          ? _handleWithdraw
+                          : _needsDataInput
+                          ? _handleSubmitData
+                          : _handleSubmitWithoutData,
+                      tooltip: widget.todo.isCompleted
+                          ? l10n.taskWithdrawn
+                          : l10n.taskCompleted,
+                    ),
+
+                    // Delete button
+                    widget.todo.isGeneratedFromRepeat
+                        ? _buildActionButton(
+                            icon: Icons.delete,
+                            color: Colors.grey,
+                            onPressed: () {},
+                            tooltip: l10n.cannotDeleteRepeatTodo,
+                          )
+                        : _buildActionButton(
+                            icon: Icons.delete,
+                            color: Colors.red,
+                            onPressed: () {
+                              _showDeleteConfirmation(context).then((
+                                confirmed,
+                              ) {
+                                if (confirmed) {
+                                  // Mark as being deleted to prevent further AI processing
+                                  _isBeingDeleted = true;
+                                  widget.onDelete();
+                                }
+                              });
+                            },
+                            tooltip: l10n.delete,
+                          ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -598,15 +625,19 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
     }
 
     // ALWAYS get the latest todo from provider to ensure we have the most up-to-date AI data
-    final latestTodo = todoProvider.todos.firstWhere((t) => t.id == widget.todo.id);
+    final latestTodo = todoProvider.todos.firstWhere(
+      (t) => t.id == widget.todo.id,
+    );
 
     bool shouldShowCategory = settings.enableAutoCategorization;
     bool shouldShowPriority = settings.enablePrioritySorting;
 
     // If AI features are enabled but data is missing, trigger background generation
     if (settings.enableAIFeatures && !latestTodo.isCompleted) {
-      bool needsCategoryGeneration = settings.enableAutoCategorization && latestTodo.aiCategory == null;
-      bool needsPriorityGeneration = settings.enablePrioritySorting && latestTodo.aiPriority == 0;
+      bool needsCategoryGeneration =
+          settings.enableAutoCategorization && latestTodo.aiCategory == null;
+      bool needsPriorityGeneration =
+          settings.enablePrioritySorting && latestTodo.aiPriority == 0;
 
       if (needsCategoryGeneration || needsPriorityGeneration) {
         // Only trigger if todo was created more than 2 seconds ago to avoid spam during creation
@@ -620,8 +651,12 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
     }
 
     // Return whether to show tags based on available data or loading state
-    bool shouldShowCategoryWithData = shouldShowCategory && (latestTodo.aiCategory != null || widget.showCategoryLoading);
-    bool shouldShowPriorityWithData = shouldShowPriority && (latestTodo.aiPriority > 0 || widget.showPriorityLoading);
+    bool shouldShowCategoryWithData =
+        shouldShowCategory &&
+        (latestTodo.aiCategory != null || widget.showCategoryLoading);
+    bool shouldShowPriorityWithData =
+        shouldShowPriority &&
+        (latestTodo.aiPriority > 0 || widget.showPriorityLoading);
 
     return shouldShowCategoryWithData || shouldShowPriorityWithData;
   }
@@ -635,29 +670,43 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
     final todoProvider = Provider.of<TodoProvider>(context, listen: false);
 
     // ALWAYS get the latest todo from provider to ensure we have the most up-to-date AI data
-    final latestTodo = todoProvider.todos.firstWhere((t) => t.id == todo.id, orElse: () => todo);
+    final latestTodo = todoProvider.todos.firstWhere(
+      (t) => t.id == todo.id,
+      orElse: () => todo,
+    );
 
     bool shouldShowCategory = settings.enableAutoCategorization;
     bool shouldShowPriority = settings.enablePrioritySorting;
 
     // Check if this is a repeat-generated todo and its template is being processed
-    bool isRepeatTodoProcessing = todo.isGeneratedFromRepeat &&
+    bool isRepeatTodoProcessing =
+        todo.isGeneratedFromRepeat &&
         todo.repeatTodoId != null &&
         todoProvider.isRepeatTodoProcessingAI(todo.repeatTodoId!);
 
     // Check if we need to show loading states
-    bool needsCategoryLoading = (shouldShowCategory && latestTodo.aiCategory == null && !latestTodo.isCompleted) ||
-                               (isRepeatTodoProcessing && shouldShowCategory);
-    bool needsPriorityLoading = (shouldShowPriority && latestTodo.aiPriority == 0 && !latestTodo.isCompleted) ||
-                               (isRepeatTodoProcessing && shouldShowPriority);
+    bool needsCategoryLoading =
+        (shouldShowCategory &&
+            latestTodo.aiCategory == null &&
+            !latestTodo.isCompleted) ||
+        (isRepeatTodoProcessing && shouldShowCategory);
+    bool needsPriorityLoading =
+        (shouldShowPriority &&
+            latestTodo.aiPriority == 0 &&
+            !latestTodo.isCompleted) ||
+        (isRepeatTodoProcessing && shouldShowPriority);
 
     // Check what we should actually display
-    bool shouldShowCategoryWithData = shouldShowCategory && latestTodo.aiCategory != null;
-    bool shouldShowPriorityWithData = shouldShowPriority && latestTodo.aiPriority > 0;
+    bool shouldShowCategoryWithData =
+        shouldShowCategory && latestTodo.aiCategory != null;
+    bool shouldShowPriorityWithData =
+        shouldShowPriority && latestTodo.aiPriority > 0;
 
     // If nothing to show (no data and no loading needed), return empty
-    if (!shouldShowCategoryWithData && !shouldShowPriorityWithData &&
-        !needsCategoryLoading && !needsPriorityLoading) {
+    if (!shouldShowCategoryWithData &&
+        !shouldShowPriorityWithData &&
+        !needsCategoryLoading &&
+        !needsPriorityLoading) {
       return const SizedBox();
     }
 
@@ -702,7 +751,9 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
         if (isRepeatTodoProcessing && todo.repeatTodoId != null) ...[
           RepeatTodoAIStatus(
             repeatTodoId: todo.repeatTodoId!,
-            isProcessing: todoProvider.isRepeatTodoProcessingAI(todo.repeatTodoId!),
+            isProcessing: todoProvider.isRepeatTodoProcessingAI(
+              todo.repeatTodoId!,
+            ),
             isLoading: todoProvider.isRepeatTodoAILoading(todo.repeatTodoId!),
             status: todoProvider.getRepeatTodoAIStatus(todo.repeatTodoId!),
           ),
@@ -714,42 +765,47 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
           runSpacing: 4,
           children: [
             // Category tag or loading
-        if (shouldShowCategory)
-          if (shouldShowCategoryWithData && latestTodo.aiCategory != null)
-            _buildAIChip(
-              label: getLocalizedCategory(latestTodo.aiCategory),
-              color: latestTodo.isCompleted ? Colors.grey : Theme.of(context).colorScheme.primary,
-              icon: Icons.category_outlined,
-            )
-          else if (needsCategoryLoading)
-            _buildLoadingChip(
-              label: l10n.autoCategorization,
-              color: latestTodo.isCompleted ? Colors.grey : Theme.of(context).colorScheme.primary,
-            ),
+            if (shouldShowCategory)
+              if (shouldShowCategoryWithData && latestTodo.aiCategory != null)
+                _buildAIChip(
+                  label: getLocalizedCategory(latestTodo.aiCategory),
+                  color: latestTodo.isCompleted
+                      ? Colors.grey
+                      : Theme.of(context).colorScheme.primary,
+                  icon: Icons.category_outlined,
+                )
+              else if (needsCategoryLoading)
+                _buildLoadingChip(
+                  label: l10n.autoCategorization,
+                  color: latestTodo.isCompleted
+                      ? Colors.grey
+                      : Theme.of(context).colorScheme.primary,
+                ),
 
-        // Priority tag or loading
-        if (shouldShowPriority)
-          if (shouldShowPriorityWithData && latestTodo.aiPriority > 0)
-            _buildAIChip(
-              label: '${latestTodo.aiPriority}',
-              color: latestTodo.isCompleted ? Colors.grey : _getPriorityTagColor(latestTodo.aiPriority),
-              icon: Icons.star_outline,
-            )
-          else if (needsPriorityLoading)
-            _buildLoadingChip(
-              label: l10n.prioritySorting,
-              color: latestTodo.isCompleted ? Colors.grey : Theme.of(context).colorScheme.primary,
-            ),
+            // Priority tag or loading
+            if (shouldShowPriority)
+              if (shouldShowPriorityWithData && latestTodo.aiPriority > 0)
+                _buildAIChip(
+                  label: '${latestTodo.aiPriority}',
+                  color: latestTodo.isCompleted
+                      ? Colors.grey
+                      : _getPriorityTagColor(latestTodo.aiPriority),
+                  icon: Icons.star_outline,
+                )
+              else if (needsPriorityLoading)
+                _buildLoadingChip(
+                  label: l10n.prioritySorting,
+                  color: latestTodo.isCompleted
+                      ? Colors.grey
+                      : Theme.of(context).colorScheme.primary,
+                ),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildLoadingChip({
-    required String label,
-    required Color color,
-  }) {
+  Widget _buildLoadingChip({required String label, required Color color}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
@@ -765,7 +821,9 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
             height: 8,
             child: CircularProgressIndicator(
               strokeWidth: 1.5,
-              valueColor: AlwaysStoppedAnimation<Color>(color.withValues(alpha: 0.7)),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                color.withValues(alpha: 0.7),
+              ),
             ),
           ),
           const SizedBox(width: 4),
@@ -797,11 +855,7 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 10,
-            color: color,
-          ),
+          Icon(icon, size: 10, color: color),
           const SizedBox(width: 2),
           Text(
             label,

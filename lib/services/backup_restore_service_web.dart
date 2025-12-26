@@ -167,7 +167,8 @@ class BackupRestoreService {
       final generatedTodos = todos
           .where(
             (todo) =>
-                todo.repeatTodoId == repeatTodo.id && todo.isGeneratedFromRepeat,
+                todo.repeatTodoId == repeatTodo.id &&
+                todo.isGeneratedFromRepeat,
           )
           .toList();
 
@@ -272,8 +273,9 @@ class BackupRestoreService {
         },
         'repeatTodos': {
           'total': repeatTodos.length,
-          'dataStatisticsEnabled':
-              repeatTodos.where((rt) => rt.dataStatisticsEnabled).length,
+          'dataStatisticsEnabled': repeatTodos
+              .where((rt) => rt.dataStatisticsEnabled)
+              .length,
         },
         'statisticsData': {'total': statisticsData.length},
         'storage': {
@@ -376,4 +378,3 @@ class BackupRestoreService {
     }
   }
 }
-

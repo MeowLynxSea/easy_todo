@@ -3,6 +3,7 @@ import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_todo/providers/app_settings_provider.dart';
 import 'package:easy_todo/theme/app_theme.dart';
+import 'package:easy_todo/widgets/web_desktop_content.dart';
 
 class ViewSettingsScreen extends StatefulWidget {
   const ViewSettingsScreen({super.key});
@@ -19,49 +20,52 @@ class _ViewSettingsScreenState extends State<ViewSettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.viewSettings), centerTitle: true),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.todoViewSettings,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+      body: WebDesktopContent(
+        padding: EdgeInsets.zero,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.todoViewSettings,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildViewModeSetting(appSettingsProvider, l10n),
-                ],
+                    const SizedBox(height: 16),
+                    _buildViewModeSetting(appSettingsProvider, l10n),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.historyViewSettings,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.historyViewSettings,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildHistoryViewModeSetting(appSettingsProvider, l10n),
-                ],
+                    const SizedBox(height: 16),
+                    _buildHistoryViewModeSetting(appSettingsProvider, l10n),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

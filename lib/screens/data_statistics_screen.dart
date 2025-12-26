@@ -9,14 +9,12 @@ import 'package:easy_todo/providers/todo_provider.dart';
 import 'package:easy_todo/models/repeat_todo_model.dart';
 import 'package:easy_todo/models/statistics_data_model.dart';
 import 'package:easy_todo/theme/app_theme.dart';
+import 'package:easy_todo/widgets/web_desktop_content.dart';
 
 class DataStatisticsScreen extends StatefulWidget {
   final String? navigationSource;
 
-  const DataStatisticsScreen({
-    super.key,
-    this.navigationSource,
-  });
+  const DataStatisticsScreen({super.key, this.navigationSource});
 
   @override
   State<DataStatisticsScreen> createState() => _DataStatisticsScreenState();
@@ -37,13 +35,18 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
       final localTimeZoneName = DateTime.now().timeZoneName;
       String? timeZoneId;
 
-      if (localTimeZoneName.contains('CST') || localTimeZoneName.contains('GMT+8') || localTimeZoneName.contains('UTC+8')) {
+      if (localTimeZoneName.contains('CST') ||
+          localTimeZoneName.contains('GMT+8') ||
+          localTimeZoneName.contains('UTC+8')) {
         timeZoneId = 'Asia/Shanghai';
-      } else if (localTimeZoneName.contains('PST') || localTimeZoneName.contains('GMT-8')) {
+      } else if (localTimeZoneName.contains('PST') ||
+          localTimeZoneName.contains('GMT-8')) {
         timeZoneId = 'America/Los_Angeles';
-      } else if (localTimeZoneName.contains('EST') || localTimeZoneName.contains('GMT-5')) {
+      } else if (localTimeZoneName.contains('EST') ||
+          localTimeZoneName.contains('GMT-5')) {
         timeZoneId = 'America/New_York';
-      } else if (localTimeZoneName.contains('JST') || localTimeZoneName.contains('GMT+9')) {
+      } else if (localTimeZoneName.contains('JST') ||
+          localTimeZoneName.contains('GMT+9')) {
         timeZoneId = 'Asia/Tokyo';
       } else if (localTimeZoneName.contains('GMT')) {
         final offset = DateTime.now().timeZoneOffset.inHours;
@@ -75,7 +78,8 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     _tabController = TabController(length: 4, vsync: this);
 
     // Set default to "All Data" for weekly and monthly views
-    if (widget.navigationSource == 'thisWeek' || widget.navigationSource == 'thisMonth') {
+    if (widget.navigationSource == 'thisWeek' ||
+        widget.navigationSource == 'thisMonth') {
       _selectedRepeatTodo = null; // null represents "All Data"
     }
   }
@@ -114,27 +118,30 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
                   )
                 : null,
           ),
-          body: Column(
-            children: [
-              // Repeat task selector and time period selector (only for direct access to statistics page)
-              if (widget.navigationSource == null)
-                _buildSelectors(repeatTodosWithStats, l10n),
+          body: WebDesktopContent(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                // Repeat task selector and time period selector (only for direct access to statistics page)
+                if (widget.navigationSource == null)
+                  _buildSelectors(repeatTodosWithStats, l10n),
 
-              // Main content
-              Expanded(
-                child: widget.navigationSource == null
-                    ? TabBarView(
-                        controller: _tabController,
-                        children: [
-                          _buildTodayView(todoProvider, l10n),
-                          _buildWeeklyView(todoProvider, l10n),
-                          _buildMonthlyView(todoProvider, l10n),
-                          _buildOverviewView(todoProvider, l10n),
-                        ],
-                      )
-                    : _buildFilteredView(todoProvider, l10n),
-              ),
-            ],
+                // Main content
+                Expanded(
+                  child: widget.navigationSource == null
+                      ? TabBarView(
+                          controller: _tabController,
+                          children: [
+                            _buildTodayView(todoProvider, l10n),
+                            _buildWeeklyView(todoProvider, l10n),
+                            _buildMonthlyView(todoProvider, l10n),
+                            _buildOverviewView(todoProvider, l10n),
+                          ],
+                        )
+                      : _buildFilteredView(todoProvider, l10n),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -154,22 +161,23 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     }
   }
 
-  Widget _buildSelectors(List<RepeatTodoModel> repeatTodosWithStats, AppLocalizations l10n) {
+  Widget _buildSelectors(
+    List<RepeatTodoModel> repeatTodosWithStats,
+    AppLocalizations l10n,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         border: Border(
-          bottom: BorderSide(
-            color: Theme.of(context).dividerColor,
-            width: 1,
-          ),
+          bottom: BorderSide(color: Theme.of(context).dividerColor, width: 1),
         ),
       ),
       child: Column(
         children: [
           // Repeat task selector
-          if (repeatTodosWithStats.isNotEmpty && widget.navigationSource == null)
+          if (repeatTodosWithStats.isNotEmpty &&
+              widget.navigationSource == null)
             DropdownButtonFormField<RepeatTodoModel>(
               value: _selectedRepeatTodo ?? repeatTodosWithStats.first,
               decoration: InputDecoration(
@@ -213,11 +221,17 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     );
   }
 
-  Widget _buildDataSelector(List<RepeatTodoModel> repeatTodosWithStats, AppLocalizations l10n, {required bool isWeekly}) {
+  Widget _buildDataSelector(
+    List<RepeatTodoModel> repeatTodosWithStats,
+    AppLocalizations l10n, {
+    required bool isWeekly,
+  }) {
     // Add "All Data" option at the beginning
     final allOptions = [
       {'id': 'all', 'title': l10n.allData},
-      ...repeatTodosWithStats.map((todo) => {'id': todo.id, 'title': todo.title}),
+      ...repeatTodosWithStats.map(
+        (todo) => {'id': todo.id, 'title': todo.title},
+      ),
     ];
 
     // Find current selection or default to 'all'
@@ -228,10 +242,7 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).dividerColor,
-          width: 1,
-        ),
+        border: Border.all(color: Theme.of(context).dividerColor, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,7 +274,9 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
                 if (value == 'all') {
                   _selectedRepeatTodo = null; // null represents all data
                 } else {
-                  _selectedRepeatTodo = repeatTodosWithStats.firstWhere((todo) => todo.id == value);
+                  _selectedRepeatTodo = repeatTodosWithStats.firstWhere(
+                    (todo) => todo.id == value,
+                  );
                 }
               });
             },
@@ -331,67 +344,74 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
           _buildDataSelector(repeatTodosWithStats, l10n, isWeekly: true),
           const SizedBox(height: 16),
           Builder(
-              builder: (context) {
-                List<StatisticsDataModel> weekData;
-                String chartTitle;
+            builder: (context) {
+              List<StatisticsDataModel> weekData;
+              String chartTitle;
 
-                if (_selectedRepeatTodo == null) {
-                  // Get all data for all repeat todos
-                  weekData = _getAllWeekData(todoProvider);
-                  chartTitle = l10n.allData;
-                } else {
-                  weekData = _getWeekData(todoProvider, _selectedRepeatTodo!.id);
-                  chartTitle = _selectedRepeatTodo!.title;
+              if (_selectedRepeatTodo == null) {
+                // Get all data for all repeat todos
+                weekData = _getAllWeekData(todoProvider);
+                chartTitle = l10n.allData;
+              } else {
+                weekData = _getWeekData(todoProvider, _selectedRepeatTodo!.id);
+                chartTitle = _selectedRepeatTodo!.title;
+              }
+
+              if (weekData.isEmpty) {
+                return SizedBox(
+                  height: MediaQuery.of(context).size.height - 300,
+                  child: _buildNoDataView(l10n.noDataForThisWeek),
+                );
+              } else {
+                // Group data by repeat todo for legend
+                final groupedData = <String, List<StatisticsDataModel>>{};
+                for (final data in weekData) {
+                  groupedData.putIfAbsent(data.repeatTodoId, () => []);
+                  groupedData[data.repeatTodoId]!.add(data);
                 }
 
-                if (weekData.isEmpty) {
-                  return SizedBox(
-                    height: MediaQuery.of(context).size.height - 300,
-                    child: _buildNoDataView(l10n.noDataForThisWeek),
-                  );
-                } else {
-                  // Group data by repeat todo for legend
-                  final groupedData = <String, List<StatisticsDataModel>>{};
-                  for (final data in weekData) {
-                    groupedData.putIfAbsent(data.repeatTodoId, () => []);
-                    groupedData[data.repeatTodoId]!.add(data);
-                  }
-
-                  return Column(
-                    children: [
-                      if (_selectedRepeatTodo == null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: Text(
-                            chartTitle,
-                            style: Theme.of(context).textTheme.titleMedium,
+                return Column(
+                  children: [
+                    if (_selectedRepeatTodo == null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Text(
+                          chartTitle,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                    _buildWeeklyChart(weekData, l10n),
+                    const SizedBox(height: 16),
+                    // Add legend when all data is selected
+                    if (_selectedRepeatTodo == null && groupedData.length > 1)
+                      _buildChartLegend(groupedData, todoProvider, l10n),
+                    if (_selectedRepeatTodo == null)
+                      _buildAllWeeklySummary(todoProvider, weekData, l10n)
+                    else
+                      Column(
+                        children: [
+                          _buildWeeklySummary(
+                            weekData,
+                            l10n,
+                            _selectedRepeatTodo?.statisticsModes,
                           ),
-                        ),
-                      _buildWeeklyChart(weekData, l10n),
-                      const SizedBox(height: 16),
-                      // Add legend when all data is selected
-                      if (_selectedRepeatTodo == null && groupedData.length > 1)
-                        _buildChartLegend(groupedData, todoProvider, l10n),
-                      if (_selectedRepeatTodo == null)
-                        _buildAllWeeklySummary(todoProvider, weekData, l10n)
-                      else
-                        Column(
-                          children: [
-                            _buildWeeklySummary(weekData, l10n, _selectedRepeatTodo?.statisticsModes),
-                            if (_selectedRepeatTodo?.statisticsModes?.contains(StatisticsMode.trend) ?? true)
-                              Column(
-                                children: [
-                                  const SizedBox(height: 16),
-                                  _buildOverallTrendAnalysis(weekData, l10n),
-                                ],
-                              ),
-                          ],
-                        ),
-                    ],
-                  );
-                }
-              },
-            ),
+                          if (_selectedRepeatTodo?.statisticsModes?.contains(
+                                StatisticsMode.trend,
+                              ) ??
+                              true)
+                            Column(
+                              children: [
+                                const SizedBox(height: 16),
+                                _buildOverallTrendAnalysis(weekData, l10n),
+                              ],
+                            ),
+                        ],
+                      ),
+                  ],
+                );
+              }
+            },
+          ),
         ],
       ),
     );
@@ -415,67 +435,77 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
           _buildDataSelector(repeatTodosWithStats, l10n, isWeekly: false),
           const SizedBox(height: 16),
           Builder(
-              builder: (context) {
-                List<StatisticsDataModel> monthData;
-                String chartTitle;
+            builder: (context) {
+              List<StatisticsDataModel> monthData;
+              String chartTitle;
 
-                if (_selectedRepeatTodo == null) {
-                  // Get all data for all repeat todos
-                  monthData = _getAllMonthData(todoProvider);
-                  chartTitle = l10n.allData;
-                } else {
-                  monthData = _getMonthData(todoProvider, _selectedRepeatTodo!.id);
-                  chartTitle = _selectedRepeatTodo!.title;
+              if (_selectedRepeatTodo == null) {
+                // Get all data for all repeat todos
+                monthData = _getAllMonthData(todoProvider);
+                chartTitle = l10n.allData;
+              } else {
+                monthData = _getMonthData(
+                  todoProvider,
+                  _selectedRepeatTodo!.id,
+                );
+                chartTitle = _selectedRepeatTodo!.title;
+              }
+
+              if (monthData.isEmpty) {
+                return SizedBox(
+                  height: MediaQuery.of(context).size.height - 300,
+                  child: _buildNoDataView(l10n.noDataForThisMonth),
+                );
+              } else {
+                // Group data by repeat todo for legend
+                final groupedData = <String, List<StatisticsDataModel>>{};
+                for (final data in monthData) {
+                  groupedData.putIfAbsent(data.repeatTodoId, () => []);
+                  groupedData[data.repeatTodoId]!.add(data);
                 }
 
-                if (monthData.isEmpty) {
-                  return SizedBox(
-                    height: MediaQuery.of(context).size.height - 300,
-                    child: _buildNoDataView(l10n.noDataForThisMonth),
-                  );
-                } else {
-                  // Group data by repeat todo for legend
-                  final groupedData = <String, List<StatisticsDataModel>>{};
-                  for (final data in monthData) {
-                    groupedData.putIfAbsent(data.repeatTodoId, () => []);
-                    groupedData[data.repeatTodoId]!.add(data);
-                  }
-
-                  return Column(
-                    children: [
-                      if (_selectedRepeatTodo == null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: Text(
-                            chartTitle,
-                            style: Theme.of(context).textTheme.titleMedium,
+                return Column(
+                  children: [
+                    if (_selectedRepeatTodo == null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Text(
+                          chartTitle,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                    _buildMonthlyChart(monthData, l10n),
+                    const SizedBox(height: 16),
+                    // Add legend when all data is selected
+                    if (_selectedRepeatTodo == null && groupedData.length > 1)
+                      _buildChartLegend(groupedData, todoProvider, l10n),
+                    if (_selectedRepeatTodo == null)
+                      _buildAllMonthlySummary(todoProvider, monthData, l10n)
+                    else
+                      Column(
+                        children: [
+                          _buildMonthlySummary(
+                            monthData,
+                            l10n,
+                            _selectedRepeatTodo?.statisticsModes,
                           ),
-                        ),
-                      _buildMonthlyChart(monthData, l10n),
-                      const SizedBox(height: 16),
-                      // Add legend when all data is selected
-                      if (_selectedRepeatTodo == null && groupedData.length > 1)
-                        _buildChartLegend(groupedData, todoProvider, l10n),
-                      if (_selectedRepeatTodo == null)
-                        _buildAllMonthlySummary(todoProvider, monthData, l10n)
-                      else
-                        Column(
-                          children: [
-                            _buildMonthlySummary(monthData, l10n, _selectedRepeatTodo?.statisticsModes),
-                            if (_selectedRepeatTodo?.statisticsModes?.contains(StatisticsMode.trend) ?? true)
-                              Column(
-                                children: [
-                                  const SizedBox(height: 16),
-                                  _buildOverallTrendAnalysis(monthData, l10n),
-                                ],
-                              ),
-                          ],
-                        ),
-                    ],
-                  );
-                }
-              },
-            ),
+                          if (_selectedRepeatTodo?.statisticsModes?.contains(
+                                StatisticsMode.trend,
+                              ) ??
+                              true)
+                            Column(
+                              children: [
+                                const SizedBox(height: 16),
+                                _buildOverallTrendAnalysis(monthData, l10n),
+                              ],
+                            ),
+                        ],
+                      ),
+                  ],
+                );
+              }
+            },
+          ),
         ],
       ),
     );
@@ -522,7 +552,10 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
             if (_selectedRepeatTodo == null)
               _buildChartLegendForOverview(filteredData, todoProvider, l10n),
             _buildOverviewStats(filteredData, l10n),
-            if (_selectedRepeatTodo?.statisticsModes?.contains(StatisticsMode.trend) ?? true)
+            if (_selectedRepeatTodo?.statisticsModes?.contains(
+                  StatisticsMode.trend,
+                ) ??
+                true)
               Column(
                 children: [
                   const SizedBox(height: 16),
@@ -535,7 +568,11 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     );
   }
 
-  Widget _buildTodayDataCard(String title, List<StatisticsDataModel> todayData, AppLocalizations l10n) {
+  Widget _buildTodayDataCard(
+    String title,
+    List<StatisticsDataModel> todayData,
+    AppLocalizations l10n,
+  ) {
     final total = todayData.fold<double>(0, (sum, data) => sum + data.value);
     final average = todayData.isNotEmpty ? total / todayData.length : 0;
     final unit = todayData.isNotEmpty ? todayData.first.unit : '';
@@ -594,7 +631,10 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     );
   }
 
-  Widget _buildWeeklyChart(List<StatisticsDataModel> weekData, AppLocalizations l10n) {
+  Widget _buildWeeklyChart(
+    List<StatisticsDataModel> weekData,
+    AppLocalizations l10n,
+  ) {
     // Group data by repeat todo for separate lines
     final groupedData = <String, List<StatisticsDataModel>>{};
     for (final data in weekData) {
@@ -616,7 +656,8 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     int colorIndex = 0;
     for (final entry in groupedData.entries) {
       // Sort data by todo creation time for proper weekly display
-      final sortedData = entry.value..sort((a, b) => a.todoCreatedAt.compareTo(b.todoCreatedAt));
+      final sortedData = entry.value
+        ..sort((a, b) => a.todoCreatedAt.compareTo(b.todoCreatedAt));
 
       // Create spots for each day of the week (Monday to Sunday)
       final weeklySpots = <FlSpot>[];
@@ -629,7 +670,8 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
 
       // Group data by day of week (0 = Monday, 6 = Sunday)
       for (final data in sortedData) {
-        final dayOfWeek = data.todoCreatedAt.weekday - 1; // Convert to 0-6 (Monday-Sunday)
+        final dayOfWeek =
+            data.todoCreatedAt.weekday - 1; // Convert to 0-6 (Monday-Sunday)
         if (dayOfWeek >= 0 && dayOfWeek < 7) {
           dayDataMap[dayOfWeek]!.add(data);
         }
@@ -640,7 +682,9 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
         final dayData = dayDataMap[day]!;
         if (dayData.isNotEmpty) {
           // Use the average value if multiple entries exist for the same day
-          final averageValue = dayData.fold<double>(0, (sum, data) => sum + data.value) / dayData.length;
+          final averageValue =
+              dayData.fold<double>(0, (sum, data) => sum + data.value) /
+              dayData.length;
           weeklySpots.add(FlSpot(day.toDouble(), averageValue));
         } else {
           weeklySpots.add(FlSpot(day.toDouble(), 0));
@@ -670,7 +714,15 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
               sideTitles: SideTitles(
                 showTitles: true,
                 getTitlesWidget: (value, meta) {
-                  final days = [l10n.mon, l10n.tue, l10n.wed, l10n.thu, l10n.fri, l10n.sat, l10n.sun];
+                  final days = [
+                    l10n.mon,
+                    l10n.tue,
+                    l10n.wed,
+                    l10n.thu,
+                    l10n.fri,
+                    l10n.sat,
+                    l10n.sun,
+                  ];
                   if (value.toInt() >= 0 && value.toInt() < days.length) {
                     return Text(
                       days[value.toInt()],
@@ -697,12 +749,8 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
                 reservedSize: 40,
               ),
             ),
-            topTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
+            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
           ),
           borderData: FlBorderData(show: false),
           lineBarsData: lineBarsData,
@@ -711,7 +759,10 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     );
   }
 
-  Widget _buildMonthlyChart(List<StatisticsDataModel> monthData, AppLocalizations l10n) {
+  Widget _buildMonthlyChart(
+    List<StatisticsDataModel> monthData,
+    AppLocalizations l10n,
+  ) {
     // Group data by repeat todo for separate lines
     final groupedData = <String, List<StatisticsDataModel>>{};
     for (final data in monthData) {
@@ -739,7 +790,8 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     int colorIndex = 0;
     for (final entry in groupedData.entries) {
       // Sort data by creation time for proper monthly display
-      final sortedData = entry.value..sort((a, b) => a.todoCreatedAt.compareTo(b.todoCreatedAt));
+      final sortedData = entry.value
+        ..sort((a, b) => a.todoCreatedAt.compareTo(b.todoCreatedAt));
 
       // Create spots for each day of the month (1st to end of month)
       final monthlySpots = <FlSpot>[];
@@ -747,15 +799,20 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
       // Initialize all days of the month
       for (int day = 1; day <= daysInMonth; day++) {
         final targetDate = DateTime(currentYear, currentMonth, day);
-        final dayData = sortedData.where((data) =>
-          data.todoCreatedAt.year == targetDate.year &&
-          data.todoCreatedAt.month == targetDate.month &&
-          data.todoCreatedAt.day == targetDate.day
-        ).toList();
+        final dayData = sortedData
+            .where(
+              (data) =>
+                  data.todoCreatedAt.year == targetDate.year &&
+                  data.todoCreatedAt.month == targetDate.month &&
+                  data.todoCreatedAt.day == targetDate.day,
+            )
+            .toList();
 
         if (dayData.isNotEmpty) {
           // Use the average value if multiple entries exist for the same day
-          final averageValue = dayData.fold<double>(0, (sum, data) => sum + data.value) / dayData.length;
+          final averageValue =
+              dayData.fold<double>(0, (sum, data) => sum + data.value) /
+              dayData.length;
           monthlySpots.add(FlSpot(day.toDouble(), averageValue));
         } else {
           monthlySpots.add(FlSpot(day.toDouble(), 0));
@@ -826,7 +883,10 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     );
   }
 
-  Widget _buildOverviewChart(List<StatisticsDataModel> allData, AppLocalizations l10n) {
+  Widget _buildOverviewChart(
+    List<StatisticsDataModel> allData,
+    AppLocalizations l10n,
+  ) {
     // Group data by repeat todo for separate lines
     final groupedData = <String, List<StatisticsDataModel>>{};
     for (final data in allData) {
@@ -855,8 +915,16 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
       if (allData.isNotEmpty) {
         final sortedData = List<StatisticsDataModel>.from(allData)
           ..sort((a, b) => a.todoCreatedAt.compareTo(b.todoCreatedAt));
-        startDate = DateTime(sortedData.first.createdAt.year, sortedData.first.createdAt.month, sortedData.first.createdAt.day);
-        endDate = DateTime(sortedData.last.createdAt.year, sortedData.last.createdAt.month, sortedData.last.createdAt.day);
+        startDate = DateTime(
+          sortedData.first.createdAt.year,
+          sortedData.first.createdAt.month,
+          sortedData.first.createdAt.day,
+        );
+        endDate = DateTime(
+          sortedData.last.createdAt.year,
+          sortedData.last.createdAt.month,
+          sortedData.last.createdAt.day,
+        );
       } else {
         // Fallback to earliest data available
         endDate = _getLocalNow();
@@ -867,22 +935,28 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
 
     int colorIndex = 0;
     for (final entry in groupedData.entries) {
-      final sortedData = entry.value..sort((a, b) => a.todoCreatedAt.compareTo(b.todoCreatedAt));
+      final sortedData = entry.value
+        ..sort((a, b) => a.todoCreatedAt.compareTo(b.todoCreatedAt));
 
       // Create spots for each day in the date range
       final overviewSpots = <FlSpot>[];
 
       for (int dayOffset = 0; dayOffset < totalDays; dayOffset++) {
         final targetDate = startDate.add(Duration(days: dayOffset));
-        final dayData = sortedData.where((data) =>
-          data.todoCreatedAt.year == targetDate.year &&
-          data.todoCreatedAt.month == targetDate.month &&
-          data.todoCreatedAt.day == targetDate.day
-        ).toList();
+        final dayData = sortedData
+            .where(
+              (data) =>
+                  data.todoCreatedAt.year == targetDate.year &&
+                  data.todoCreatedAt.month == targetDate.month &&
+                  data.todoCreatedAt.day == targetDate.day,
+            )
+            .toList();
 
         if (dayData.isNotEmpty) {
           // Use the average value if multiple entries exist for the same day
-          final averageValue = dayData.fold<double>(0, (sum, data) => sum + data.value) / dayData.length;
+          final averageValue =
+              dayData.fold<double>(0, (sum, data) => sum + data.value) /
+              dayData.length;
           overviewSpots.add(FlSpot(dayOffset.toDouble(), averageValue));
         } else {
           overviewSpots.add(FlSpot(dayOffset.toDouble(), 0));
@@ -914,7 +988,9 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
                 getTitlesWidget: (value, meta) {
                   final dayOffset = value.toInt();
                   if (dayOffset >= 0 && dayOffset < totalDays) {
-                    final currentDate = startDate.add(Duration(days: dayOffset));
+                    final currentDate = startDate.add(
+                      Duration(days: dayOffset),
+                    );
                     // Show date labels strategically to avoid crowding
                     if (dayOffset == 0 ||
                         dayOffset == totalDays - 1 ||
@@ -969,13 +1045,7 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
             color: color,
           ),
         ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-        ),
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
       ],
     );
   }
@@ -985,18 +1055,11 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.analytics_outlined,
-            size: 64,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.analytics_outlined, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
             message,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[600],
-            ),
+            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             textAlign: TextAlign.center,
           ),
         ],
@@ -1005,56 +1068,89 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
   }
 
   // Data retrieval methods
-  List<StatisticsDataModel> _getTodayData(TodoProvider provider, String repeatTodoId) {
+  List<StatisticsDataModel> _getTodayData(
+    TodoProvider provider,
+    String repeatTodoId,
+  ) {
     final now = _getLocalNow();
     final today = DateTime(now.year, now.month, now.day);
     final tomorrow = today.add(const Duration(days: 1));
 
     return provider.statisticsData
-        .where((data) =>
-            data.repeatTodoId == repeatTodoId &&
-            data.todoCreatedAt.isAfter(today) &&
-            data.todoCreatedAt.isBefore(tomorrow))
+        .where(
+          (data) =>
+              data.repeatTodoId == repeatTodoId &&
+              data.todoCreatedAt.isAfter(today) &&
+              data.todoCreatedAt.isBefore(tomorrow),
+        )
         .toList();
   }
 
-  List<StatisticsDataModel> _getWeekData(TodoProvider provider, String repeatTodoId) {
+  List<StatisticsDataModel> _getWeekData(
+    TodoProvider provider,
+    String repeatTodoId,
+  ) {
     final now = _getLocalNow();
-    final weekStart = DateTime(now.year, now.month, now.day - now.weekday + 1); // 本周周一
+    final weekStart = DateTime(
+      now.year,
+      now.month,
+      now.day - now.weekday + 1,
+    ); // 本周周一
     final weekEnd = now; // 到今天为止
 
     return provider.statisticsData
-        .where((data) =>
-            data.repeatTodoId == repeatTodoId &&
-            data.todoCreatedAt.isAfter(weekStart.subtract(const Duration(days: 1))) &&
-            data.todoCreatedAt.isBefore(weekEnd.add(const Duration(days: 1))))
+        .where(
+          (data) =>
+              data.repeatTodoId == repeatTodoId &&
+              data.todoCreatedAt.isAfter(
+                weekStart.subtract(const Duration(days: 1)),
+              ) &&
+              data.todoCreatedAt.isBefore(weekEnd.add(const Duration(days: 1))),
+        )
         .toList()
       ..sort((a, b) => a.todoCreatedAt.compareTo(b.todoCreatedAt));
   }
 
   List<StatisticsDataModel> _getAllWeekData(TodoProvider provider) {
     final now = _getLocalNow();
-    final weekStart = DateTime(now.year, now.month, now.day - now.weekday + 1); // 本周周一
+    final weekStart = DateTime(
+      now.year,
+      now.month,
+      now.day - now.weekday + 1,
+    ); // 本周周一
     final weekEnd = now; // 到今天为止
 
     return provider.statisticsData
-        .where((data) =>
-            data.todoCreatedAt.isAfter(weekStart.subtract(const Duration(days: 1))) &&
-            data.todoCreatedAt.isBefore(weekEnd.add(const Duration(days: 1))))
+        .where(
+          (data) =>
+              data.todoCreatedAt.isAfter(
+                weekStart.subtract(const Duration(days: 1)),
+              ) &&
+              data.todoCreatedAt.isBefore(weekEnd.add(const Duration(days: 1))),
+        )
         .toList()
       ..sort((a, b) => a.todoCreatedAt.compareTo(b.todoCreatedAt));
   }
 
-  List<StatisticsDataModel> _getMonthData(TodoProvider provider, String repeatTodoId) {
+  List<StatisticsDataModel> _getMonthData(
+    TodoProvider provider,
+    String repeatTodoId,
+  ) {
     final now = _getLocalNow();
     final monthStart = DateTime(now.year, now.month, 1);
     final monthEnd = now; // 到今天为止
 
     return provider.statisticsData
-        .where((data) =>
-            data.repeatTodoId == repeatTodoId &&
-            data.todoCreatedAt.isAfter(monthStart.subtract(const Duration(days: 1))) &&
-            data.todoCreatedAt.isBefore(monthEnd.add(const Duration(days: 1))))
+        .where(
+          (data) =>
+              data.repeatTodoId == repeatTodoId &&
+              data.todoCreatedAt.isAfter(
+                monthStart.subtract(const Duration(days: 1)),
+              ) &&
+              data.todoCreatedAt.isBefore(
+                monthEnd.add(const Duration(days: 1)),
+              ),
+        )
         .toList()
       ..sort((a, b) => a.todoCreatedAt.compareTo(b.todoCreatedAt));
   }
@@ -1065,36 +1161,57 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     final monthEnd = now; // 到今天为止
 
     return provider.statisticsData
-        .where((data) =>
-            data.todoCreatedAt.isAfter(monthStart.subtract(const Duration(days: 1))) &&
-            data.todoCreatedAt.isBefore(monthEnd.add(const Duration(days: 1))))
+        .where(
+          (data) =>
+              data.todoCreatedAt.isAfter(
+                monthStart.subtract(const Duration(days: 1)),
+              ) &&
+              data.todoCreatedAt.isBefore(
+                monthEnd.add(const Duration(days: 1)),
+              ),
+        )
         .toList()
       ..sort((a, b) => a.todoCreatedAt.compareTo(b.todoCreatedAt));
   }
 
-  
-  Widget _buildWeeklySummary(List<StatisticsDataModel> weekData, AppLocalizations l10n, List<StatisticsMode>? selectedModes) {
+  Widget _buildWeeklySummary(
+    List<StatisticsDataModel> weekData,
+    AppLocalizations l10n,
+    List<StatisticsMode>? selectedModes,
+  ) {
     if (weekData.isEmpty) return const SizedBox.shrink();
 
     // Use default modes if none selected
-    final modes = selectedModes ?? [StatisticsMode.sum, StatisticsMode.average, StatisticsMode.growth, StatisticsMode.trend];
+    final modes =
+        selectedModes ??
+        [
+          StatisticsMode.sum,
+          StatisticsMode.average,
+          StatisticsMode.growth,
+          StatisticsMode.trend,
+        ];
 
     final total = weekData.fold<double>(0, (sum, item) => sum + item.value);
     final average = total / weekData.length;
 
     // Calculate min/max for extremum mode
     final values = weekData.map((d) => d.value).toList();
-    final min = values.isNotEmpty ? values.reduce((a, b) => a < b ? a : b) : 0.0;
-    final max = values.isNotEmpty ? values.reduce((a, b) => a > b ? a : b) : 0.0;
+    final min = values.isNotEmpty
+        ? values.reduce((a, b) => a < b ? a : b)
+        : 0.0;
+    final max = values.isNotEmpty
+        ? values.reduce((a, b) => a > b ? a : b)
+        : 0.0;
 
     // Build stat items based on selected modes
-    final mainStatItems = <Widget>[];  // 平均值、极值、总计
+    final mainStatItems = <Widget>[]; // 平均值、极值、总计
 
     // Calculate growth and trend if needed
     double? growthValue;
     String? trendAnalysis;
 
-    if (modes.contains(StatisticsMode.growth) || modes.contains(StatisticsMode.trend)) {
+    if (modes.contains(StatisticsMode.growth) ||
+        modes.contains(StatisticsMode.trend)) {
       final sortedData = List<StatisticsDataModel>.from(weekData)
         ..sort((a, b) => a.todoCreatedAt.compareTo(b.todoCreatedAt));
 
@@ -1109,14 +1226,12 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
       }
     }
 
-    final trendItem = modes.contains(StatisticsMode.trend) && trendAnalysis != null
-        ? _buildStatItem(
-            l10n.trend,
-            trendAnalysis,
-            Colors.purple,
-          )
+    final trendItem =
+        modes.contains(StatisticsMode.trend) && trendAnalysis != null
+        ? _buildStatItem(l10n.trend, trendAnalysis, Colors.purple)
         : null;
-    final growthItem = modes.contains(StatisticsMode.growth) && growthValue != null
+    final growthItem =
+        modes.contains(StatisticsMode.growth) && growthValue != null
         ? _buildStatItem(
             l10n.growth,
             growthValue.toStringAsFixed(2),
@@ -1126,27 +1241,33 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
 
     // Build main statistics items (平均、极值、总计)
     if (modes.contains(StatisticsMode.sum)) {
-      mainStatItems.add(_buildStatItem(
-        l10n.total,
-        total.toStringAsFixed(2),
-        AppTheme.primaryColor,
-      ));
+      mainStatItems.add(
+        _buildStatItem(
+          l10n.total,
+          total.toStringAsFixed(2),
+          AppTheme.primaryColor,
+        ),
+      );
     }
 
     if (modes.contains(StatisticsMode.average)) {
-      mainStatItems.add(_buildStatItem(
-        l10n.average,
-        average.toStringAsFixed(2),
-        AppTheme.secondaryColor,
-      ));
+      mainStatItems.add(
+        _buildStatItem(
+          l10n.average,
+          average.toStringAsFixed(2),
+          AppTheme.secondaryColor,
+        ),
+      );
     }
 
     if (modes.contains(StatisticsMode.extremum)) {
-      mainStatItems.add(_buildStatItem(
-        '${l10n.min}/${l10n.max}',
-        '${min.toStringAsFixed(2)}/${max.toStringAsFixed(2)}',
-        Colors.orange,
-      ));
+      mainStatItems.add(
+        _buildStatItem(
+          '${l10n.min}/${l10n.max}',
+          '${min.toStringAsFixed(2)}/${max.toStringAsFixed(2)}',
+          Colors.orange,
+        ),
+      );
     }
 
     return Card(
@@ -1158,7 +1279,9 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
             // Main statistics row (平均、极值、总计) - 平分宽度
             if (mainStatItems.isNotEmpty)
               Row(
-                children: mainStatItems.map((item) => Expanded(child: item)).toList(),
+                children: mainStatItems
+                    .map((item) => Expanded(child: item))
+                    .toList(),
               ),
 
             // Growth and Trend row (增长和趋势在同一行)
@@ -1166,12 +1289,10 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
               const SizedBox(height: 8),
               Row(
                 children: [
-                  if (growthItem != null)
-                    Expanded(child: growthItem),
+                  if (growthItem != null) Expanded(child: growthItem),
                   if (growthItem != null && trendItem != null)
                     const SizedBox(width: 8),
-                  if (trendItem != null)
-                    Expanded(child: trendItem),
+                  if (trendItem != null) Expanded(child: trendItem),
                 ],
               ),
             ],
@@ -1181,28 +1302,44 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     );
   }
 
-  Widget _buildMonthlySummary(List<StatisticsDataModel> monthData, AppLocalizations l10n, List<StatisticsMode>? selectedModes) {
+  Widget _buildMonthlySummary(
+    List<StatisticsDataModel> monthData,
+    AppLocalizations l10n,
+    List<StatisticsMode>? selectedModes,
+  ) {
     if (monthData.isEmpty) return const SizedBox.shrink();
 
     // Use default modes if none selected
-    final modes = selectedModes ?? [StatisticsMode.sum, StatisticsMode.average, StatisticsMode.growth, StatisticsMode.trend];
+    final modes =
+        selectedModes ??
+        [
+          StatisticsMode.sum,
+          StatisticsMode.average,
+          StatisticsMode.growth,
+          StatisticsMode.trend,
+        ];
 
     final total = monthData.fold<double>(0, (sum, item) => sum + item.value);
     final average = total / monthData.length;
 
     // Calculate min/max for extremum mode
     final values = monthData.map((d) => d.value).toList();
-    final min = values.isNotEmpty ? values.reduce((a, b) => a < b ? a : b) : 0.0;
-    final max = values.isNotEmpty ? values.reduce((a, b) => a > b ? a : b) : 0.0;
+    final min = values.isNotEmpty
+        ? values.reduce((a, b) => a < b ? a : b)
+        : 0.0;
+    final max = values.isNotEmpty
+        ? values.reduce((a, b) => a > b ? a : b)
+        : 0.0;
 
     // Build stat items based on selected modes
-    final mainStatItems = <Widget>[];  // 平均值、极值、总计
+    final mainStatItems = <Widget>[]; // 平均值、极值、总计
 
     // Calculate growth and trend if needed
     double? growthValue;
     String? trendAnalysis;
 
-    if (modes.contains(StatisticsMode.growth) || modes.contains(StatisticsMode.trend)) {
+    if (modes.contains(StatisticsMode.growth) ||
+        modes.contains(StatisticsMode.trend)) {
       final sortedData = List<StatisticsDataModel>.from(monthData)
         ..sort((a, b) => a.todoCreatedAt.compareTo(b.todoCreatedAt));
 
@@ -1217,14 +1354,12 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
       }
     }
 
-    final trendItem = modes.contains(StatisticsMode.trend) && trendAnalysis != null
-        ? _buildStatItem(
-            l10n.trend,
-            trendAnalysis,
-            Colors.purple,
-          )
+    final trendItem =
+        modes.contains(StatisticsMode.trend) && trendAnalysis != null
+        ? _buildStatItem(l10n.trend, trendAnalysis, Colors.purple)
         : null;
-    final growthItem = modes.contains(StatisticsMode.growth) && growthValue != null
+    final growthItem =
+        modes.contains(StatisticsMode.growth) && growthValue != null
         ? _buildStatItem(
             l10n.growth,
             growthValue.toStringAsFixed(2),
@@ -1234,27 +1369,33 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
 
     // Build main statistics items (平均、极值、总计)
     if (modes.contains(StatisticsMode.sum)) {
-      mainStatItems.add(_buildStatItem(
-        l10n.total,
-        total.toStringAsFixed(2),
-        AppTheme.primaryColor,
-      ));
+      mainStatItems.add(
+        _buildStatItem(
+          l10n.total,
+          total.toStringAsFixed(2),
+          AppTheme.primaryColor,
+        ),
+      );
     }
 
     if (modes.contains(StatisticsMode.average)) {
-      mainStatItems.add(_buildStatItem(
-        l10n.average,
-        average.toStringAsFixed(2),
-        AppTheme.secondaryColor,
-      ));
+      mainStatItems.add(
+        _buildStatItem(
+          l10n.average,
+          average.toStringAsFixed(2),
+          AppTheme.secondaryColor,
+        ),
+      );
     }
 
     if (modes.contains(StatisticsMode.extremum)) {
-      mainStatItems.add(_buildStatItem(
-        '${l10n.min}/${l10n.max}',
-        '${min.toStringAsFixed(2)}/${max.toStringAsFixed(2)}',
-        Colors.orange,
-      ));
+      mainStatItems.add(
+        _buildStatItem(
+          '${l10n.min}/${l10n.max}',
+          '${min.toStringAsFixed(2)}/${max.toStringAsFixed(2)}',
+          Colors.orange,
+        ),
+      );
     }
 
     return Card(
@@ -1266,7 +1407,9 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
             // Main statistics row (平均、极值、总计) - 平分宽度
             if (mainStatItems.isNotEmpty)
               Row(
-                children: mainStatItems.map((item) => Expanded(child: item)).toList(),
+                children: mainStatItems
+                    .map((item) => Expanded(child: item))
+                    .toList(),
               ),
 
             // Growth and Trend row (增长和趋势在同一行)
@@ -1274,12 +1417,10 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
               const SizedBox(height: 8),
               Row(
                 children: [
-                  if (growthItem != null)
-                    Expanded(child: growthItem),
+                  if (growthItem != null) Expanded(child: growthItem),
                   if (growthItem != null && trendItem != null)
                     const SizedBox(width: 8),
-                  if (trendItem != null)
-                    Expanded(child: trendItem),
+                  if (trendItem != null) Expanded(child: trendItem),
                 ],
               ),
             ],
@@ -1289,7 +1430,11 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     );
   }
 
-  Widget _buildAllWeeklySummary(TodoProvider provider, List<StatisticsDataModel> allWeekData, AppLocalizations l10n) {
+  Widget _buildAllWeeklySummary(
+    TodoProvider provider,
+    List<StatisticsDataModel> allWeekData,
+    AppLocalizations l10n,
+  ) {
     if (allWeekData.isEmpty) return const SizedBox.shrink();
 
     // Group data by repeat todo for individual summaries
@@ -1313,29 +1458,43 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
             ...groupedData.entries.map((entry) {
               final repeatTodo = provider.repeatTodos.firstWhere(
                 (rt) => rt.id == entry.key,
-                orElse: () => RepeatTodoModel.create(title: l10n.unknown, repeatType: RepeatType.daily),
+                orElse: () => RepeatTodoModel.create(
+                  title: l10n.unknown,
+                  repeatType: RepeatType.daily,
+                ),
               );
               final taskData = entry.value;
-              final taskTotal = taskData.fold<double>(0, (sum, item) => sum + item.value);
-              final taskAverage = taskData.isNotEmpty ? taskTotal / taskData.length : 0;
+              final taskTotal = taskData.fold<double>(
+                0,
+                (sum, item) => sum + item.value,
+              );
+              final taskAverage = taskData.isNotEmpty
+                  ? taskTotal / taskData.length
+                  : 0;
               final taskUnit = repeatTodo.dataUnit ?? '';
-              
+
               // Get the selected modes for this task
               final selectedModes = repeatTodo.statisticsModes;
 
               // Calculate min/max for extremum mode
               final values = taskData.map((d) => d.value).toList();
-              final min = values.isNotEmpty ? values.reduce((a, b) => a < b ? a : b) : 0.0;
-              final max = values.isNotEmpty ? values.reduce((a, b) => a > b ? a : b) : 0.0;
+              final min = values.isNotEmpty
+                  ? values.reduce((a, b) => a < b ? a : b)
+                  : 0.0;
+              final max = values.isNotEmpty
+                  ? values.reduce((a, b) => a > b ? a : b)
+                  : 0.0;
 
               // Build stat items based on selected modes
-              final mainStatItems = <Widget>[];  // 平均值、极值、总计
+              final mainStatItems = <Widget>[]; // 平均值、极值、总计
 
               // Calculate growth and trend if needed
               double? growthValue;
               String? trendAnalysis;
 
-              if (selectedModes != null && (selectedModes.contains(StatisticsMode.growth) || selectedModes.contains(StatisticsMode.trend))) {
+              if (selectedModes != null &&
+                  (selectedModes.contains(StatisticsMode.growth) ||
+                      selectedModes.contains(StatisticsMode.trend))) {
                 final sortedData = List<StatisticsDataModel>.from(taskData)
                   ..sort((a, b) => a.todoCreatedAt.compareTo(b.todoCreatedAt));
 
@@ -1350,14 +1509,16 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
                 }
               }
 
-              final trendItem = (selectedModes != null && selectedModes.contains(StatisticsMode.trend)) && trendAnalysis != null
-                  ? _buildMiniStatItem(
-                      l10n.trend,
-                      trendAnalysis,
-                      Colors.purple,
-                    )
+              final trendItem =
+                  (selectedModes != null &&
+                          selectedModes.contains(StatisticsMode.trend)) &&
+                      trendAnalysis != null
+                  ? _buildMiniStatItem(l10n.trend, trendAnalysis, Colors.purple)
                   : null;
-              final growthItem = (selectedModes != null && selectedModes.contains(StatisticsMode.growth)) && growthValue != null
+              final growthItem =
+                  (selectedModes != null &&
+                          selectedModes.contains(StatisticsMode.growth)) &&
+                      growthValue != null
                   ? _buildMiniStatItem(
                       l10n.growth,
                       growthValue.toStringAsFixed(2),
@@ -1366,28 +1527,37 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
                   : null;
 
               // Build main statistics items (平均、极值、总计)
-              if (selectedModes != null && selectedModes.contains(StatisticsMode.sum)) {
-                mainStatItems.add(_buildMiniStatItem(
-                  l10n.total,
-                  '${taskTotal.toStringAsFixed(2)}${taskUnit.isNotEmpty ? ' $taskUnit' : ''}',
-                  AppTheme.primaryColor,
-                ));
+              if (selectedModes != null &&
+                  selectedModes.contains(StatisticsMode.sum)) {
+                mainStatItems.add(
+                  _buildMiniStatItem(
+                    l10n.total,
+                    '${taskTotal.toStringAsFixed(2)}${taskUnit.isNotEmpty ? ' $taskUnit' : ''}',
+                    AppTheme.primaryColor,
+                  ),
+                );
               }
 
-              if (selectedModes != null && selectedModes.contains(StatisticsMode.average)) {
-                mainStatItems.add(_buildMiniStatItem(
-                  l10n.average,
-                  '${taskAverage.toStringAsFixed(2)}${taskUnit.isNotEmpty ? ' $taskUnit' : ''}',
-                  AppTheme.secondaryColor,
-                ));
+              if (selectedModes != null &&
+                  selectedModes.contains(StatisticsMode.average)) {
+                mainStatItems.add(
+                  _buildMiniStatItem(
+                    l10n.average,
+                    '${taskAverage.toStringAsFixed(2)}${taskUnit.isNotEmpty ? ' $taskUnit' : ''}',
+                    AppTheme.secondaryColor,
+                  ),
+                );
               }
 
-              if (selectedModes != null && selectedModes.contains(StatisticsMode.extremum)) {
-                mainStatItems.add(_buildMiniStatItem(
-                  '${l10n.min}/${l10n.max}',
-                  '${min.toStringAsFixed(2)}/${max.toStringAsFixed(2)}${taskUnit.isNotEmpty ? ' $taskUnit' : ''}',
-                  Colors.orange,
-                ));
+              if (selectedModes != null &&
+                  selectedModes.contains(StatisticsMode.extremum)) {
+                mainStatItems.add(
+                  _buildMiniStatItem(
+                    '${l10n.min}/${l10n.max}',
+                    '${min.toStringAsFixed(2)}/${max.toStringAsFixed(2)}${taskUnit.isNotEmpty ? ' $taskUnit' : ''}',
+                    Colors.orange,
+                  ),
+                );
               }
 
               return Container(
@@ -1412,7 +1582,9 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
                     // Main statistics row (平均、极值、总计) - 平分宽度
                     if (mainStatItems.isNotEmpty)
                       Row(
-                        children: mainStatItems.map((item) => Expanded(child: item)).toList(),
+                        children: mainStatItems
+                            .map((item) => Expanded(child: item))
+                            .toList(),
                       ),
 
                     // Growth and Trend row (增长和趋势在同一行)
@@ -1420,12 +1592,10 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          if (growthItem != null)
-                            Expanded(child: growthItem),
+                          if (growthItem != null) Expanded(child: growthItem),
                           if (growthItem != null && trendItem != null)
                             const SizedBox(width: 8),
-                          if (trendItem != null)
-                            Expanded(child: trendItem),
+                          if (trendItem != null) Expanded(child: trendItem),
                         ],
                       ),
                     ],
@@ -1439,7 +1609,11 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     );
   }
 
-  Widget _buildAllMonthlySummary(TodoProvider provider, List<StatisticsDataModel> allMonthData, AppLocalizations l10n) {
+  Widget _buildAllMonthlySummary(
+    TodoProvider provider,
+    List<StatisticsDataModel> allMonthData,
+    AppLocalizations l10n,
+  ) {
     if (allMonthData.isEmpty) return const SizedBox.shrink();
 
     // Group data by repeat todo for individual summaries
@@ -1463,29 +1637,43 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
             ...groupedData.entries.map((entry) {
               final repeatTodo = provider.repeatTodos.firstWhere(
                 (rt) => rt.id == entry.key,
-                orElse: () => RepeatTodoModel.create(title: l10n.unknown, repeatType: RepeatType.daily),
+                orElse: () => RepeatTodoModel.create(
+                  title: l10n.unknown,
+                  repeatType: RepeatType.daily,
+                ),
               );
               final taskData = entry.value;
-              final taskTotal = taskData.fold<double>(0, (sum, item) => sum + item.value);
-              final taskAverage = taskData.isNotEmpty ? taskTotal / taskData.length : 0;
+              final taskTotal = taskData.fold<double>(
+                0,
+                (sum, item) => sum + item.value,
+              );
+              final taskAverage = taskData.isNotEmpty
+                  ? taskTotal / taskData.length
+                  : 0;
               final taskUnit = repeatTodo.dataUnit ?? '';
-              
+
               // Get the selected modes for this task
               final selectedModes = repeatTodo.statisticsModes;
 
               // Calculate min/max for extremum mode
               final values = taskData.map((d) => d.value).toList();
-              final min = values.isNotEmpty ? values.reduce((a, b) => a < b ? a : b) : 0.0;
-              final max = values.isNotEmpty ? values.reduce((a, b) => a > b ? a : b) : 0.0;
+              final min = values.isNotEmpty
+                  ? values.reduce((a, b) => a < b ? a : b)
+                  : 0.0;
+              final max = values.isNotEmpty
+                  ? values.reduce((a, b) => a > b ? a : b)
+                  : 0.0;
 
               // Build stat items based on selected modes
-              final mainStatItems = <Widget>[];  // 平均值、极值、总计
+              final mainStatItems = <Widget>[]; // 平均值、极值、总计
 
               // Calculate growth and trend if needed
               double? growthValue;
               String? trendAnalysis;
 
-              if (selectedModes != null && (selectedModes.contains(StatisticsMode.growth) || selectedModes.contains(StatisticsMode.trend))) {
+              if (selectedModes != null &&
+                  (selectedModes.contains(StatisticsMode.growth) ||
+                      selectedModes.contains(StatisticsMode.trend))) {
                 final sortedData = List<StatisticsDataModel>.from(taskData)
                   ..sort((a, b) => a.todoCreatedAt.compareTo(b.todoCreatedAt));
 
@@ -1500,14 +1688,16 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
                 }
               }
 
-              final trendItem = (selectedModes != null && selectedModes.contains(StatisticsMode.trend)) && trendAnalysis != null
-                  ? _buildMiniStatItem(
-                      l10n.trend,
-                      trendAnalysis,
-                      Colors.purple,
-                    )
+              final trendItem =
+                  (selectedModes != null &&
+                          selectedModes.contains(StatisticsMode.trend)) &&
+                      trendAnalysis != null
+                  ? _buildMiniStatItem(l10n.trend, trendAnalysis, Colors.purple)
                   : null;
-              final growthItem = (selectedModes != null && selectedModes.contains(StatisticsMode.growth)) && growthValue != null
+              final growthItem =
+                  (selectedModes != null &&
+                          selectedModes.contains(StatisticsMode.growth)) &&
+                      growthValue != null
                   ? _buildMiniStatItem(
                       l10n.growth,
                       growthValue.toStringAsFixed(2),
@@ -1516,28 +1706,37 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
                   : null;
 
               // Build main statistics items (平均、极值、总计)
-              if (selectedModes != null && selectedModes.contains(StatisticsMode.sum)) {
-                mainStatItems.add(_buildMiniStatItem(
-                  l10n.total,
-                  '${taskTotal.toStringAsFixed(2)}${taskUnit.isNotEmpty ? ' $taskUnit' : ''}',
-                  AppTheme.primaryColor,
-                ));
+              if (selectedModes != null &&
+                  selectedModes.contains(StatisticsMode.sum)) {
+                mainStatItems.add(
+                  _buildMiniStatItem(
+                    l10n.total,
+                    '${taskTotal.toStringAsFixed(2)}${taskUnit.isNotEmpty ? ' $taskUnit' : ''}',
+                    AppTheme.primaryColor,
+                  ),
+                );
               }
 
-              if (selectedModes != null && selectedModes.contains(StatisticsMode.average)) {
-                mainStatItems.add(_buildMiniStatItem(
-                  l10n.average,
-                  '${taskAverage.toStringAsFixed(2)}${taskUnit.isNotEmpty ? ' $taskUnit' : ''}',
-                  AppTheme.secondaryColor,
-                ));
+              if (selectedModes != null &&
+                  selectedModes.contains(StatisticsMode.average)) {
+                mainStatItems.add(
+                  _buildMiniStatItem(
+                    l10n.average,
+                    '${taskAverage.toStringAsFixed(2)}${taskUnit.isNotEmpty ? ' $taskUnit' : ''}',
+                    AppTheme.secondaryColor,
+                  ),
+                );
               }
 
-              if (selectedModes != null && selectedModes.contains(StatisticsMode.extremum)) {
-                mainStatItems.add(_buildMiniStatItem(
-                  '${l10n.min}/${l10n.max}',
-                  '${min.toStringAsFixed(2)}/${max.toStringAsFixed(2)}${taskUnit.isNotEmpty ? ' $taskUnit' : ''}',
-                  Colors.orange,
-                ));
+              if (selectedModes != null &&
+                  selectedModes.contains(StatisticsMode.extremum)) {
+                mainStatItems.add(
+                  _buildMiniStatItem(
+                    '${l10n.min}/${l10n.max}',
+                    '${min.toStringAsFixed(2)}/${max.toStringAsFixed(2)}${taskUnit.isNotEmpty ? ' $taskUnit' : ''}',
+                    Colors.orange,
+                  ),
+                );
               }
 
               return Container(
@@ -1562,7 +1761,9 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
                     // Main statistics row (平均、极值、总计) - 平分宽度
                     if (mainStatItems.isNotEmpty)
                       Row(
-                        children: mainStatItems.map((item) => Expanded(child: item)).toList(),
+                        children: mainStatItems
+                            .map((item) => Expanded(child: item))
+                            .toList(),
                       ),
 
                     // Growth and Trend row (增长和趋势在同一行)
@@ -1570,12 +1771,10 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          if (growthItem != null)
-                            Expanded(child: growthItem),
+                          if (growthItem != null) Expanded(child: growthItem),
                           if (growthItem != null && trendItem != null)
                             const SizedBox(width: 8),
-                          if (trendItem != null)
-                            Expanded(child: trendItem),
+                          if (trendItem != null) Expanded(child: trendItem),
                         ],
                       ),
                     ],
@@ -1589,7 +1788,10 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     );
   }
 
-  Widget _buildOverviewStats(List<StatisticsDataModel> allData, AppLocalizations l10n) {
+  Widget _buildOverviewStats(
+    List<StatisticsDataModel> allData,
+    AppLocalizations l10n,
+  ) {
     if (allData.isEmpty) return const SizedBox.shrink();
 
     // Group data by repeat todo for individual summaries
@@ -1611,13 +1813,25 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
             ),
             const SizedBox(height: 12),
             ...groupedData.entries.map((entry) {
-              final repeatTodo = Provider.of<TodoProvider>(context, listen: false).repeatTodos.firstWhere(
-                (rt) => rt.id == entry.key,
-                orElse: () => RepeatTodoModel.create(title: l10n.unknown, repeatType: RepeatType.daily),
-              );
+              final repeatTodo =
+                  Provider.of<TodoProvider>(
+                    context,
+                    listen: false,
+                  ).repeatTodos.firstWhere(
+                    (rt) => rt.id == entry.key,
+                    orElse: () => RepeatTodoModel.create(
+                      title: l10n.unknown,
+                      repeatType: RepeatType.daily,
+                    ),
+                  );
               final taskData = entry.value;
-              final taskTotal = taskData.fold<double>(0, (sum, item) => sum + item.value);
-              final taskAverage = taskData.isNotEmpty ? taskTotal / taskData.length : 0;
+              final taskTotal = taskData.fold<double>(
+                0,
+                (sum, item) => sum + item.value,
+              );
+              final taskAverage = taskData.isNotEmpty
+                  ? taskTotal / taskData.length
+                  : 0;
               final taskUnit = repeatTodo.dataUnit ?? '';
 
               // Get the selected modes for this task
@@ -1625,17 +1839,23 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
 
               // Calculate min/max for extremum mode
               final values = taskData.map((d) => d.value).toList();
-              final min = values.isNotEmpty ? values.reduce((a, b) => a < b ? a : b) : 0.0;
-              final max = values.isNotEmpty ? values.reduce((a, b) => a > b ? a : b) : 0.0;
+              final min = values.isNotEmpty
+                  ? values.reduce((a, b) => a < b ? a : b)
+                  : 0.0;
+              final max = values.isNotEmpty
+                  ? values.reduce((a, b) => a > b ? a : b)
+                  : 0.0;
 
               // Build stat items based on selected modes
-              final mainStatItems = <Widget>[];  // 平均值、极值、总计
+              final mainStatItems = <Widget>[]; // 平均值、极值、总计
 
               // Calculate growth and trend if needed
               double? growthValue;
               String? trendAnalysis;
 
-              if (selectedModes != null && (selectedModes.contains(StatisticsMode.growth) || selectedModes.contains(StatisticsMode.trend))) {
+              if (selectedModes != null &&
+                  (selectedModes.contains(StatisticsMode.growth) ||
+                      selectedModes.contains(StatisticsMode.trend))) {
                 final sortedData = List<StatisticsDataModel>.from(taskData)
                   ..sort((a, b) => a.todoCreatedAt.compareTo(b.todoCreatedAt));
 
@@ -1650,14 +1870,16 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
                 }
               }
 
-              final trendItem = (selectedModes != null && selectedModes.contains(StatisticsMode.trend)) && trendAnalysis != null
-                  ? _buildMiniStatItem(
-                      l10n.trend,
-                      trendAnalysis,
-                      Colors.purple,
-                    )
+              final trendItem =
+                  (selectedModes != null &&
+                          selectedModes.contains(StatisticsMode.trend)) &&
+                      trendAnalysis != null
+                  ? _buildMiniStatItem(l10n.trend, trendAnalysis, Colors.purple)
                   : null;
-              final growthItem = (selectedModes != null && selectedModes.contains(StatisticsMode.growth)) && growthValue != null
+              final growthItem =
+                  (selectedModes != null &&
+                          selectedModes.contains(StatisticsMode.growth)) &&
+                      growthValue != null
                   ? _buildMiniStatItem(
                       l10n.growth,
                       growthValue.toStringAsFixed(2),
@@ -1666,28 +1888,37 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
                   : null;
 
               // Build main statistics items (平均、极值、总计)
-              if (selectedModes != null && selectedModes.contains(StatisticsMode.sum)) {
-                mainStatItems.add(_buildMiniStatItem(
-                  l10n.total,
-                  '${taskTotal.toStringAsFixed(2)}${taskUnit.isNotEmpty ? ' $taskUnit' : ''}',
-                  AppTheme.primaryColor,
-                ));
+              if (selectedModes != null &&
+                  selectedModes.contains(StatisticsMode.sum)) {
+                mainStatItems.add(
+                  _buildMiniStatItem(
+                    l10n.total,
+                    '${taskTotal.toStringAsFixed(2)}${taskUnit.isNotEmpty ? ' $taskUnit' : ''}',
+                    AppTheme.primaryColor,
+                  ),
+                );
               }
 
-              if (selectedModes != null && selectedModes.contains(StatisticsMode.average)) {
-                mainStatItems.add(_buildMiniStatItem(
-                  l10n.average,
-                  '${taskAverage.toStringAsFixed(2)}${taskUnit.isNotEmpty ? ' $taskUnit' : ''}',
-                  AppTheme.secondaryColor,
-                ));
+              if (selectedModes != null &&
+                  selectedModes.contains(StatisticsMode.average)) {
+                mainStatItems.add(
+                  _buildMiniStatItem(
+                    l10n.average,
+                    '${taskAverage.toStringAsFixed(2)}${taskUnit.isNotEmpty ? ' $taskUnit' : ''}',
+                    AppTheme.secondaryColor,
+                  ),
+                );
               }
 
-              if (selectedModes != null && selectedModes.contains(StatisticsMode.extremum)) {
-                mainStatItems.add(_buildMiniStatItem(
-                  '${l10n.min}/${l10n.max}',
-                  '${min.toStringAsFixed(2)}/${max.toStringAsFixed(2)}${taskUnit.isNotEmpty ? ' $taskUnit' : ''}',
-                  Colors.orange,
-                ));
+              if (selectedModes != null &&
+                  selectedModes.contains(StatisticsMode.extremum)) {
+                mainStatItems.add(
+                  _buildMiniStatItem(
+                    '${l10n.min}/${l10n.max}',
+                    '${min.toStringAsFixed(2)}/${max.toStringAsFixed(2)}${taskUnit.isNotEmpty ? ' $taskUnit' : ''}',
+                    Colors.orange,
+                  ),
+                );
               }
 
               return Container(
@@ -1712,7 +1943,9 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
                     // Main statistics row (平均、极值、总计) - 平分宽度
                     if (mainStatItems.isNotEmpty)
                       Row(
-                        children: mainStatItems.map((item) => Expanded(child: item)).toList(),
+                        children: mainStatItems
+                            .map((item) => Expanded(child: item))
+                            .toList(),
                       ),
 
                     // Growth and Trend row (增长和趋势在同一行)
@@ -1720,12 +1953,10 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          if (growthItem != null)
-                            Expanded(child: growthItem),
+                          if (growthItem != null) Expanded(child: growthItem),
                           if (growthItem != null && trendItem != null)
                             const SizedBox(width: 8),
-                          if (trendItem != null)
-                            Expanded(child: trendItem),
+                          if (trendItem != null) Expanded(child: trendItem),
                         ],
                       ),
                     ],
@@ -1739,7 +1970,10 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     );
   }
 
-  Widget _buildTrendAnalysis(List<StatisticsDataModel> allData, AppLocalizations l10n) {
+  Widget _buildTrendAnalysis(
+    List<StatisticsDataModel> allData,
+    AppLocalizations l10n,
+  ) {
     if (allData.length < 2) return const SizedBox.shrink();
 
     return Consumer<TodoProvider>(
@@ -1835,7 +2069,10 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     }
   }
 
-  Widget _buildOverallTrendAnalysis(List<StatisticsDataModel> allData, AppLocalizations l10n) {
+  Widget _buildOverallTrendAnalysis(
+    List<StatisticsDataModel> allData,
+    AppLocalizations l10n,
+  ) {
     if (allData.length < 2) return const SizedBox.shrink();
 
     // Sort data by todo creation date to ensure correct chronological order for trend analysis
@@ -1879,11 +2116,7 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
                   ),
                 ),
                 Expanded(
-                  child: _buildStatItem(
-                    l10n.trend,
-                    trendAnalysis,
-                    trendColor,
-                  ),
+                  child: _buildStatItem(l10n.trend, trendAnalysis, trendColor),
                 ),
               ],
             ),
@@ -1893,7 +2126,11 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     );
   }
 
-  Widget _buildIndividualTrendAnalysis(Map<String, List<StatisticsDataModel>> groupedData, TodoProvider todoProvider, AppLocalizations l10n) {
+  Widget _buildIndividualTrendAnalysis(
+    Map<String, List<StatisticsDataModel>> groupedData,
+    TodoProvider todoProvider,
+    AppLocalizations l10n,
+  ) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -1908,7 +2145,10 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
             ...groupedData.entries.map((entry) {
               final repeatTodo = todoProvider.repeatTodos.firstWhere(
                 (rt) => rt.id == entry.key,
-                orElse: () => RepeatTodoModel.create(title: l10n.unknown, repeatType: RepeatType.daily),
+                orElse: () => RepeatTodoModel.create(
+                  title: l10n.unknown,
+                  repeatType: RepeatType.daily,
+                ),
               );
 
               return _buildSingleTrendCard(repeatTodo.title, entry.value, l10n);
@@ -1919,7 +2159,11 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     );
   }
 
-  Widget _buildSingleTrendCard(String title, List<StatisticsDataModel> data, AppLocalizations l10n) {
+  Widget _buildSingleTrendCard(
+    String title,
+    List<StatisticsDataModel> data,
+    AppLocalizations l10n,
+  ) {
     if (data.length < 2) {
       return Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -1927,21 +2171,14 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: Theme.of(context).dividerColor,
-            width: 1,
-          ),
+          border: Border.all(color: Theme.of(context).dividerColor, width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.info_outline,
-                  color: Colors.grey,
-                  size: 20,
-                ),
+                Icon(Icons.info_outline, color: Colors.grey, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -2006,21 +2243,14 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Theme.of(context).dividerColor,
-          width: 1,
-        ),
+        border: Border.all(color: Theme.of(context).dividerColor, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                trendIcon,
-                color: trendColor,
-                size: 20,
-              ),
+              Icon(trendIcon, color: trendColor, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -2043,7 +2273,10 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
               Expanded(
                 flex: 2,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: trendColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
@@ -2077,18 +2310,16 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
             color: color,
           ),
         ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            color: Colors.grey[600],
-          ),
-        ),
+        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[600])),
       ],
     );
   }
 
-  Widget _buildChartLegend(Map<String, List<StatisticsDataModel>> groupedData, TodoProvider todoProvider, AppLocalizations l10n) {
+  Widget _buildChartLegend(
+    Map<String, List<StatisticsDataModel>> groupedData,
+    TodoProvider todoProvider,
+    AppLocalizations l10n,
+  ) {
     final colors = [
       AppTheme.primaryColor,
       AppTheme.secondaryColor,
@@ -2103,18 +2334,12 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Theme.of(context).dividerColor,
-          width: 1,
-        ),
+        border: Border.all(color: Theme.of(context).dividerColor, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '数据源',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
+          Text('数据源', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           Wrap(
             spacing: 16,
@@ -2122,7 +2347,10 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
             children: groupedData.entries.map((entry) {
               final repeatTodo = todoProvider.repeatTodos.firstWhere(
                 (rt) => rt.id == entry.key,
-                orElse: () => RepeatTodoModel.create(title: l10n.unknown, repeatType: RepeatType.daily),
+                orElse: () => RepeatTodoModel.create(
+                  title: l10n.unknown,
+                  repeatType: RepeatType.daily,
+                ),
               );
               final colorIndex = groupedData.keys.toList().indexOf(entry.key);
               final color = colors[colorIndex % colors.length];
@@ -2152,7 +2380,11 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     );
   }
 
-  Widget _buildChartLegendForOverview(List<StatisticsDataModel> allData, TodoProvider todoProvider, AppLocalizations l10n) {
+  Widget _buildChartLegendForOverview(
+    List<StatisticsDataModel> allData,
+    TodoProvider todoProvider,
+    AppLocalizations l10n,
+  ) {
     // Group data by repeat todo
     final groupedData = <String, List<StatisticsDataModel>>{};
     for (final data in allData) {
@@ -2192,13 +2424,22 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     return l10n.customDateRange;
   }
 
-  List<StatisticsDataModel> _getFilteredData(TodoProvider provider, String repeatTodoId) {
+  List<StatisticsDataModel> _getFilteredData(
+    TodoProvider provider,
+    String repeatTodoId,
+  ) {
     if (_selectedDateRange != null) {
       return provider.statisticsData
-          .where((data) =>
-              data.repeatTodoId == repeatTodoId &&
-              data.todoCreatedAt.isAfter(_selectedDateRange!.start.subtract(const Duration(days: 1))) &&
-              data.todoCreatedAt.isBefore(_selectedDateRange!.end.add(const Duration(days: 1))))
+          .where(
+            (data) =>
+                data.repeatTodoId == repeatTodoId &&
+                data.todoCreatedAt.isAfter(
+                  _selectedDateRange!.start.subtract(const Duration(days: 1)),
+                ) &&
+                data.todoCreatedAt.isBefore(
+                  _selectedDateRange!.end.add(const Duration(days: 1)),
+                ),
+          )
           .toList();
     }
     return provider.statisticsData
@@ -2209,9 +2450,15 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
   List<StatisticsDataModel> _getAllFilteredData(TodoProvider provider) {
     if (_selectedDateRange != null) {
       return provider.statisticsData
-          .where((data) =>
-              data.todoCreatedAt.isAfter(_selectedDateRange!.start.subtract(const Duration(days: 1))) &&
-              data.todoCreatedAt.isBefore(_selectedDateRange!.end.add(const Duration(days: 1))))
+          .where(
+            (data) =>
+                data.todoCreatedAt.isAfter(
+                  _selectedDateRange!.start.subtract(const Duration(days: 1)),
+                ) &&
+                data.todoCreatedAt.isBefore(
+                  _selectedDateRange!.end.add(const Duration(days: 1)),
+                ),
+          )
           .toList();
     }
     return provider.statisticsData;

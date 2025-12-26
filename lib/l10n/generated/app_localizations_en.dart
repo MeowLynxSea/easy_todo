@@ -301,6 +301,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get todos => 'Todos';
 
   @override
+  String get schedule => 'Schedule';
+
+  @override
   String get clearDataWarning =>
       'This will permanently delete all your todos and statistics. This action cannot be undone.';
 

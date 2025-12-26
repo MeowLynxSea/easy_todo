@@ -299,6 +299,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get todos => 'ToDo';
 
   @override
+  String get schedule => '予定';
+
+  @override
   String get clearDataWarning => 'これにより、すべてのToDoと統計が永久に削除されます。この操作は元に戻せません。';
 
   @override

@@ -684,6 +684,12 @@ abstract class AppLocalizations {
   /// **'Todos'**
   String get todos;
 
+  /// No description provided for @schedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule'**
+  String get schedule;
+
   /// No description provided for @clearDataWarning.
   ///
   /// In en, this message translates to:

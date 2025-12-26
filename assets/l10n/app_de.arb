@@ -89,6 +89,7 @@
   "manageRepeatTasks": "Wiederkehrende Aufgaben verwalten",
   "comingSoon": "Demnächst!",
   "todos": "Aufgaben",
+  "schedule": "Zeitplan",
   "clearDataWarning": "Dies löscht dauerhaft alle Ihre Aufgaben und Statistiken. Diese Aktion kann nicht rückgängig gemacht werden.",
   "dataClearedSuccess": "Alle Daten wurden erfolgreich gelöscht",
   "clearDataFailed": "Löschen der Daten fehlgeschlagen",

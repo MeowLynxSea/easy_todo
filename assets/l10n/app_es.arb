@@ -89,6 +89,7 @@
   "manageRepeatTasks": "Manage Repeat Tasks",
   "comingSoon": "Coming soon!",
   "todos": "Todos",
+  "schedule": "Agenda",
   "clearDataWarning": "This will permanently delete all your todos and statistics. This action cannot be undone.",
   "dataClearedSuccess": "All data has been cleared successfully",
   "clearDataFailed": "Failed to clear data",

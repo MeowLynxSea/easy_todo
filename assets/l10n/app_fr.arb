@@ -89,6 +89,7 @@
   "manageRepeatTasks": "Gérer les tâches répétitives",
   "comingSoon": "À venir !",
   "todos": "Tâches",
+  "schedule": "Agenda",
   "clearDataWarning": "Cela supprimera définitivement toutes vos tâches et statistiques. Cette action ne peut être annulée.",
   "dataClearedSuccess": "Toutes les données ont été effacées avec succès",
   "clearDataFailed": "Échec de l'effacement des données",

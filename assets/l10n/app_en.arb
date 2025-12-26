@@ -96,6 +96,7 @@
   "cancel": "Cancel",
   "comingSoon": "Coming soon!",
   "todos": "Todos",
+  "schedule": "Schedule",
   "clearDataWarning": "This will permanently delete all your todos and statistics. This action cannot be undone.",
   "dataClearedSuccess": "All data has been cleared successfully",
   "clearDataFailed": "Failed to clear data",

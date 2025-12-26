@@ -297,6 +297,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get todos => '待办事项';
 
   @override
+  String get schedule => '日程';
+
+  @override
   String get clearDataWarning => '这将永久删除您的所有待办事项和统计数据。此操作无法撤销。';
 
   @override

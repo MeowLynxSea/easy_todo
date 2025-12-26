@@ -89,6 +89,7 @@
   "manageRepeatTasks": "繰り返しタスクを管理",
   "comingSoon": "近日公開！",
   "todos": "ToDo",
+  "schedule": "予定",
   "clearDataWarning": "これにより、すべてのToDoと統計が永久に削除されます。この操作は元に戻せません。",
   "dataClearedSuccess": "すべてのデータが正常に消去されました",
   "clearDataFailed": "データの消去に失敗しました",

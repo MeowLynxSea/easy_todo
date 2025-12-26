@@ -18,6 +18,7 @@ import 'package:easy_todo/providers/pomodoro_provider.dart';
 import 'package:easy_todo/providers/ai_provider.dart';
 import 'package:easy_todo/screens/todo_list_screen.dart';
 import 'package:easy_todo/screens/history_screen.dart';
+import 'package:easy_todo/screens/schedule_screen.dart';
 import 'package:easy_todo/screens/statistics_screen.dart';
 import 'package:easy_todo/screens/preference_screen.dart';
 import 'package:easy_todo/screens/forced_update_page.dart';
@@ -192,6 +193,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
 
   final List<Widget> _screens = [
     const TodoListScreen(),
+    const ScheduleScreen(),
     const HistoryScreen(),
     const StatisticsScreen(),
     const PreferenceScreen(),
@@ -458,6 +460,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                         label: Text(l10n.todos),
                       ),
                       NavigationRailDestination(
+                        icon: const Icon(Icons.calendar_month_outlined),
+                        selectedIcon: const Icon(Icons.calendar_month),
+                        label: Text(l10n.schedule),
+                      ),
+                      NavigationRailDestination(
                         icon: const Icon(Icons.history_outlined),
                         selectedIcon: const Icon(Icons.history),
                         label: Text(l10n.history),
@@ -508,25 +515,40 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildNavItem(
-                        icon: Icons.task_alt,
-                        label: l10n.todos,
-                        index: 0,
+                      Expanded(
+                        child: _buildNavItem(
+                          icon: Icons.task_alt,
+                          label: l10n.todos,
+                          index: 0,
+                        ),
                       ),
-                      _buildNavItem(
-                        icon: Icons.history,
-                        label: l10n.history,
-                        index: 1,
+                      Expanded(
+                        child: _buildNavItem(
+                          icon: Icons.calendar_month,
+                          label: l10n.schedule,
+                          index: 1,
+                        ),
                       ),
-                      _buildNavItem(
-                        icon: Icons.bar_chart,
-                        label: l10n.stats,
-                        index: 2,
+                      Expanded(
+                        child: _buildNavItem(
+                          icon: Icons.history,
+                          label: l10n.history,
+                          index: 2,
+                        ),
                       ),
-                      _buildNavItem(
-                        icon: Icons.settings_outlined,
-                        label: l10n.preferences,
-                        index: 3,
+                      Expanded(
+                        child: _buildNavItem(
+                          icon: Icons.bar_chart,
+                          label: l10n.stats,
+                          index: 3,
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildNavItem(
+                          icon: Icons.settings_outlined,
+                          label: l10n.preferences,
+                          index: 4,
+                        ),
                       ),
                     ],
                   ),
@@ -547,6 +569,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
             _GoToTabIntent(2),
         SingleActivator(LogicalKeyboardKey.digit4, control: true):
             _GoToTabIntent(3),
+        SingleActivator(LogicalKeyboardKey.digit5, control: true):
+            _GoToTabIntent(4),
         SingleActivator(LogicalKeyboardKey.digit1, meta: true): _GoToTabIntent(
           0,
         ),
@@ -558,6 +582,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
         ),
         SingleActivator(LogicalKeyboardKey.digit4, meta: true): _GoToTabIntent(
           3,
+        ),
+        SingleActivator(LogicalKeyboardKey.digit5, meta: true): _GoToTabIntent(
+          4,
         ),
       },
       child: Actions(
@@ -588,7 +615,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       onTap: () => _onTabTapped(index),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
               ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
@@ -607,6 +634,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

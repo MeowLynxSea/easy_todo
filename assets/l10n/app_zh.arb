@@ -96,6 +96,7 @@
   "cancel": "取消",
   "comingSoon": "即将推出！",
   "todos": "待办事项",
+  "schedule": "日程",
   "clearDataWarning": "这将永久删除您的所有待办事项和统计数据。此操作无法撤销。",
   "dataClearedSuccess": "所有数据已成功清除",
   "clearDataFailed": "清除数据失败",

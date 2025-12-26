@@ -304,6 +304,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get todos => 'Aufgaben';
 
   @override
+  String get schedule => 'Zeitplan';
+
+  @override
   String get clearDataWarning =>
       'Dies löscht dauerhaft alle Ihre Aufgaben und Statistiken. Diese Aktion kann nicht rückgängig gemacht werden.';
 

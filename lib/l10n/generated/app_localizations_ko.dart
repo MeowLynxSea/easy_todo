@@ -299,6 +299,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get todos => '할 일';
 
   @override
+  String get schedule => '일정';
+
+  @override
   String get clearDataWarning =>
       '이렇게 하면 모든 할 일과 통계가 영구적으로 삭제됩니다. 이 작업은 실행 취소할 수 없습니다.';
 

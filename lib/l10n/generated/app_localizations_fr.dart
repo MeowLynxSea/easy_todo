@@ -305,6 +305,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get todos => 'Tâches';
 
   @override
+  String get schedule => 'Agenda';
+
+  @override
   String get clearDataWarning =>
       'Cela supprimera définitivement toutes vos tâches et statistiques. Cette action ne peut être annulée.';
 

@@ -17,6 +17,7 @@ import 'package:easy_todo/screens/storage_screen.dart';
 import 'package:easy_todo/screens/backup_restore_screen.dart';
 import 'package:easy_todo/screens/notification_settings_screen.dart';
 import 'package:easy_todo/screens/view_settings_screen.dart';
+import 'package:easy_todo/screens/schedule_layout_settings_screen.dart';
 import 'package:easy_todo/screens/about_screen.dart';
 import 'package:easy_todo/screens/theme_settings_screen.dart';
 import 'package:easy_todo/screens/pomodoro_settings_screen.dart';
@@ -205,6 +206,21 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => const ViewSettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    const Divider(),
+                    _buildPreferenceItem(
+                      icon: Icons.schedule_outlined,
+                      title: l10n.scheduleLayoutSettings,
+                      subtitle: l10n.scheduleLayoutSettingsSubtitle,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const ScheduleLayoutSettingsScreen(),
                           ),
                         );
                       },

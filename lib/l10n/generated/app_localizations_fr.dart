@@ -1220,6 +1220,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get historyViewSettings => 'Paramètres d\'affichage de l\'historique';
 
   @override
+  String get scheduleLayoutSettings => 'Paramètres de disposition du planning';
+
+  @override
+  String get scheduleLayoutSettingsSubtitle =>
+      'Personnaliser la plage horaire et les jours';
+
+  @override
   String get viewMode => 'Mode d\'affichage';
 
   @override
@@ -1240,6 +1247,18 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get historyViewMode => 'Mode d\'affichage de l\'historique';
+
+  @override
+  String get scheduleTimeRange => 'Plage horaire';
+
+  @override
+  String get scheduleVisibleWeekdays => 'Jours affichés';
+
+  @override
+  String get scheduleLabelTextScale => 'Échelle du texte des étiquettes';
+
+  @override
+  String get scheduleAtLeastOneDay => 'Gardez au moins un jour sélectionné.';
 
   @override
   String get dayDetails => 'Détails du jour';

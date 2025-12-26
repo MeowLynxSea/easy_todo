@@ -1196,6 +1196,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyViewSettings => 'History View Settings';
 
   @override
+  String get scheduleLayoutSettings => 'Schedule Layout Settings';
+
+  @override
+  String get scheduleLayoutSettingsSubtitle =>
+      'Customize time range and weekdays';
+
+  @override
   String get viewMode => 'View Mode';
 
   @override
@@ -1216,6 +1223,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get historyViewMode => 'History View Mode';
+
+  @override
+  String get scheduleTimeRange => 'Time Range';
+
+  @override
+  String get scheduleVisibleWeekdays => 'Days Shown';
+
+  @override
+  String get scheduleLabelTextScale => 'Label Text Scale';
+
+  @override
+  String get scheduleAtLeastOneDay => 'Keep at least one day selected.';
 
   @override
   String get dayDetails => 'Day Details';

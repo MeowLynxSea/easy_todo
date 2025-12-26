@@ -1179,6 +1179,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get historyViewSettings => '기록 보기 설정';
 
   @override
+  String get scheduleLayoutSettings => '일정 레이아웃 설정';
+
+  @override
+  String get scheduleLayoutSettingsSubtitle => '시간 범위와 요일 사용자 지정';
+
+  @override
   String get viewMode => '보기 모드';
 
   @override
@@ -1198,6 +1204,18 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get historyViewMode => '기록 보기 모드';
+
+  @override
+  String get scheduleTimeRange => '시간 범위';
+
+  @override
+  String get scheduleVisibleWeekdays => '표시할 요일';
+
+  @override
+  String get scheduleLabelTextScale => '라벨 텍스트 크기';
+
+  @override
+  String get scheduleAtLeastOneDay => '최소 하루는 선택해 주세요.';
 
   @override
   String get dayDetails => '날짜 세부 정보';

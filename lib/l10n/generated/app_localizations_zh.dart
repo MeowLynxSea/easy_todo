@@ -1174,6 +1174,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get historyViewSettings => '历史视图设置';
 
   @override
+  String get scheduleLayoutSettings => '日程布局设置';
+
+  @override
+  String get scheduleLayoutSettingsSubtitle => '自定义时间范围与显示的星期';
+
+  @override
   String get viewMode => '视图模式';
 
   @override
@@ -1193,6 +1199,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get historyViewMode => '历史视图模式';
+
+  @override
+  String get scheduleTimeRange => '一天内显示的时间范围';
+
+  @override
+  String get scheduleVisibleWeekdays => '本周显示哪些天';
+
+  @override
+  String get scheduleLabelTextScale => '日程标签文字缩放';
+
+  @override
+  String get scheduleAtLeastOneDay => '请至少保留一天显示。';
 
   @override
   String get dayDetails => '日期详情';

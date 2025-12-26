@@ -21,6 +21,11 @@ class AppSettingsProvider extends ChangeNotifier {
   String get viewMode => _settings.viewMode;
   bool get viewOpenInNewPage => _settings.viewOpenInNewPage;
   String get historyViewMode => _settings.historyViewMode;
+  int get scheduleDayStartMinutes => _settings.scheduleDayStartMinutes;
+  int get scheduleDayEndMinutes => _settings.scheduleDayEndMinutes;
+  double get scheduleLabelTextScale => _settings.scheduleLabelTextScale;
+  List<int> get scheduleVisibleWeekdays =>
+      List<int>.unmodifiable(_settings.scheduleVisibleWeekdays);
 
   Future<void> _loadSettings() async {
     _isLoading = true;
@@ -210,4 +215,96 @@ class AppSettingsProvider extends ChangeNotifier {
     await _saveSettings();
     notifyListeners();
   }
+
+  Future<void> setScheduleTimeRange({
+    required int startMinutes,
+    required int endMinutes,
+  }) async {
+    final normalized = _normalizeScheduleTimeRange(
+      startMinutes: startMinutes,
+      endMinutes: endMinutes,
+    );
+
+    _settings = _settings.copyWith(
+      scheduleDayStartMinutes: normalized.startMinutes,
+      scheduleDayEndMinutes: normalized.endMinutes,
+    );
+    await _saveSettings();
+    notifyListeners();
+  }
+
+  Future<void> setScheduleVisibleWeekdays(List<int> weekdays) async {
+    final normalized = _normalizeScheduleWeekdays(weekdays);
+    if (normalized.isEmpty) return;
+
+    _settings = _settings.copyWith(scheduleVisibleWeekdays: normalized);
+    await _saveSettings();
+    notifyListeners();
+  }
+
+  Future<void> resetScheduleLayoutSettings() async {
+    _settings = _settings.copyWith(
+      scheduleDayStartMinutes: 0,
+      scheduleDayEndMinutes: 1440,
+      scheduleVisibleWeekdays: const <int>[1, 2, 3, 4, 5, 6, 7],
+      scheduleLabelTextScale: 1.0,
+    );
+    await _saveSettings();
+    notifyListeners();
+  }
+
+  Future<void> setScheduleLabelTextScale(double scale) async {
+    final normalized = scale.clamp(0.8, 1.4).toDouble();
+    _settings = _settings.copyWith(scheduleLabelTextScale: normalized);
+    await _saveSettings();
+    notifyListeners();
+  }
+
+  _ScheduleTimeRange _normalizeScheduleTimeRange({
+    required int startMinutes,
+    required int endMinutes,
+  }) {
+    final start = startMinutes.clamp(0, 1440);
+    final end = endMinutes.clamp(0, 1440);
+
+    const minSpanMinutes = 15;
+
+    if (end - start < minSpanMinutes) {
+      if (start + minSpanMinutes <= 1440) {
+        return _ScheduleTimeRange(
+          startMinutes: start,
+          endMinutes: start + minSpanMinutes,
+        );
+      }
+      if (end - minSpanMinutes >= 0) {
+        return _ScheduleTimeRange(
+          startMinutes: end - minSpanMinutes,
+          endMinutes: end,
+        );
+      }
+
+      return const _ScheduleTimeRange(startMinutes: 0, endMinutes: 1440);
+    }
+    return _ScheduleTimeRange(startMinutes: start, endMinutes: end);
+  }
+
+  List<int> _normalizeScheduleWeekdays(List<int> weekdays) {
+    final result =
+        weekdays
+            .where((e) => e >= DateTime.monday && e <= DateTime.sunday)
+            .toSet()
+            .toList(growable: false)
+          ..sort();
+    return result;
+  }
+}
+
+class _ScheduleTimeRange {
+  final int startMinutes;
+  final int endMinutes;
+
+  const _ScheduleTimeRange({
+    required this.startMinutes,
+    required this.endMinutes,
+  });
 }

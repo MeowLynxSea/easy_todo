@@ -1215,6 +1215,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get historyViewSettings => 'Verlaufs-Ansichtseinstellungen';
 
   @override
+  String get scheduleLayoutSettings => 'Zeitplan-Layout-Einstellungen';
+
+  @override
+  String get scheduleLayoutSettingsSubtitle =>
+      'Zeitbereich und Wochentage anpassen';
+
+  @override
   String get viewMode => 'Ansichtsmodus';
 
   @override
@@ -1235,6 +1242,18 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get historyViewMode => 'Verlaufs-Ansichtsmodus';
+
+  @override
+  String get scheduleTimeRange => 'Zeitbereich';
+
+  @override
+  String get scheduleVisibleWeekdays => 'Angezeigte Wochentage';
+
+  @override
+  String get scheduleLabelTextScale => 'Textskalierung der Labels';
+
+  @override
+  String get scheduleAtLeastOneDay => 'Bitte mindestens einen Tag auswählen.';
 
   @override
   String get dayDetails => 'Tagesdetails';

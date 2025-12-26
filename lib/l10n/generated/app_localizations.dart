@@ -2344,6 +2344,18 @@ abstract class AppLocalizations {
   /// **'History View Settings'**
   String get historyViewSettings;
 
+  /// No description provided for @scheduleLayoutSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule Layout Settings'**
+  String get scheduleLayoutSettings;
+
+  /// No description provided for @scheduleLayoutSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Customize time range and weekdays'**
+  String get scheduleLayoutSettingsSubtitle;
+
   /// No description provided for @viewMode.
   ///
   /// In en, this message translates to:
@@ -2385,6 +2397,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'History View Mode'**
   String get historyViewMode;
+
+  /// No description provided for @scheduleTimeRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Time Range'**
+  String get scheduleTimeRange;
+
+  /// No description provided for @scheduleVisibleWeekdays.
+  ///
+  /// In en, this message translates to:
+  /// **'Days Shown'**
+  String get scheduleVisibleWeekdays;
+
+  /// No description provided for @scheduleLabelTextScale.
+  ///
+  /// In en, this message translates to:
+  /// **'Label Text Scale'**
+  String get scheduleLabelTextScale;
+
+  /// No description provided for @scheduleAtLeastOneDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep at least one day selected.'**
+  String get scheduleAtLeastOneDay;
 
   /// No description provided for @dayDetails.
   ///

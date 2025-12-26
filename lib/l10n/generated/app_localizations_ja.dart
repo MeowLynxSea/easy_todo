@@ -1178,6 +1178,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get historyViewSettings => '履歴表示設定';
 
   @override
+  String get scheduleLayoutSettings => 'スケジュールレイアウト設定';
+
+  @override
+  String get scheduleLayoutSettingsSubtitle => '時間範囲と曜日をカスタマイズ';
+
+  @override
   String get viewMode => '表示モード';
 
   @override
@@ -1197,6 +1203,18 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get historyViewMode => '履歴表示モード';
+
+  @override
+  String get scheduleTimeRange => '時間範囲';
+
+  @override
+  String get scheduleVisibleWeekdays => '表示する曜日';
+
+  @override
+  String get scheduleLabelTextScale => 'ラベル文字の拡大率';
+
+  @override
+  String get scheduleAtLeastOneDay => '少なくとも1日を選択してください。';
 
   @override
   String get dayDetails => '日の詳細';

@@ -35,13 +35,15 @@ class RepeatTodoModelAdapter extends TypeAdapter<RepeatTodoModel> {
       aiCategory: fields[15] as String?,
       aiPriority: fields[16] == null ? 0 : fields[16] as int,
       aiProcessed: fields[17] == null ? false : fields[17] as bool,
+      startTimeMinutes: fields[18] as int?,
+      endTimeMinutes: fields[19] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, RepeatTodoModel obj) {
     writer
-      ..writeByte(18)
+      ..writeByte(20)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -77,7 +79,11 @@ class RepeatTodoModelAdapter extends TypeAdapter<RepeatTodoModel> {
       ..writeByte(16)
       ..write(obj.aiPriority)
       ..writeByte(17)
-      ..write(obj.aiProcessed);
+      ..write(obj.aiProcessed)
+      ..writeByte(18)
+      ..write(obj.startTimeMinutes)
+      ..writeByte(19)
+      ..write(obj.endTimeMinutes);
   }
 
   @override

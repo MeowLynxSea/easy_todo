@@ -60,6 +60,14 @@ class RepeatTodoModel extends HiveObject {
   @HiveField(17, defaultValue: false)
   bool aiProcessed; // Whether this todo has been processed by AI
 
+  // Optional time range for generated todos (minutes from midnight).
+  // For repeat todos we store time only (no date).
+  @HiveField(18)
+  int? startTimeMinutes;
+
+  @HiveField(19)
+  int? endTimeMinutes;
+
   RepeatTodoModel({
     required this.id,
     required this.title,
@@ -79,6 +87,8 @@ class RepeatTodoModel extends HiveObject {
     this.aiCategory,
     this.aiPriority = 0,
     this.aiProcessed = false,
+    this.startTimeMinutes,
+    this.endTimeMinutes,
   });
 
   factory RepeatTodoModel.create({
@@ -95,6 +105,8 @@ class RepeatTodoModel extends HiveObject {
     String? aiCategory,
     int aiPriority = 0,
     bool aiProcessed = false,
+    int? startTimeMinutes,
+    int? endTimeMinutes,
   }) {
     // 使用与每日任务相同的系统时间
     final now = DateTime.now();
@@ -119,6 +131,8 @@ class RepeatTodoModel extends HiveObject {
       aiCategory: aiCategory,
       aiPriority: aiPriority,
       aiProcessed: aiProcessed,
+      startTimeMinutes: startTimeMinutes,
+      endTimeMinutes: endTimeMinutes,
     );
   }
 
@@ -141,6 +155,8 @@ class RepeatTodoModel extends HiveObject {
     String? aiCategory,
     int? aiPriority,
     bool? aiProcessed,
+    int? startTimeMinutes,
+    int? endTimeMinutes,
   }) {
     return RepeatTodoModel(
       id: id ?? this.id,
@@ -162,6 +178,8 @@ class RepeatTodoModel extends HiveObject {
       aiCategory: aiCategory ?? this.aiCategory,
       aiPriority: aiPriority ?? this.aiPriority,
       aiProcessed: aiProcessed ?? this.aiProcessed,
+      startTimeMinutes: startTimeMinutes ?? this.startTimeMinutes,
+      endTimeMinutes: endTimeMinutes ?? this.endTimeMinutes,
     );
   }
 
@@ -185,6 +203,8 @@ class RepeatTodoModel extends HiveObject {
       'aiCategory': aiCategory,
       'aiPriority': aiPriority,
       'aiProcessed': aiProcessed,
+      'startTimeMinutes': startTimeMinutes,
+      'endTimeMinutes': endTimeMinutes,
     };
   }
 
@@ -226,6 +246,8 @@ class RepeatTodoModel extends HiveObject {
       aiCategory: json['aiCategory'],
       aiPriority: json['aiPriority'] ?? 0,
       aiProcessed: json['aiProcessed'] ?? false,
+      startTimeMinutes: json['startTimeMinutes'],
+      endTimeMinutes: json['endTimeMinutes'],
     );
   }
 

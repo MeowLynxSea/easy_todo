@@ -3,6 +3,7 @@ import 'package:easy_todo/theme/app_theme.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:easy_todo/models/todo_model.dart';
 import 'package:easy_todo/models/repeat_todo_model.dart';
+import 'package:easy_todo/utils/responsive.dart';
 import 'package:easy_todo/widgets/repeat_todo_dialog.dart';
 
 class AddTodoDialog extends StatefulWidget {
@@ -91,12 +92,14 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final desktopWeb = isWebDesktop(context);
 
     return Dialog(
       insetPadding: const EdgeInsets.all(16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
         constraints: BoxConstraints(
+          maxWidth: desktopWeb ? 520 : double.infinity,
           maxHeight: MediaQuery.of(context).size.height * 0.9,
         ),
         child: Padding(

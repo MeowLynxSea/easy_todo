@@ -381,9 +381,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
   }
 
   void _onTabTapped(int index) {
+    if (_currentIndex == index) return;
+
     setState(() {
       _currentIndex = index;
     });
+
+    if (isWebDesktop(context)) {
+      _pageController.jumpToPage(index);
+      return;
+    }
+
     _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 300),

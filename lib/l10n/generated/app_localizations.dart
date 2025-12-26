@@ -858,6 +858,12 @@ abstract class AppLocalizations {
   /// **'Restore failed: {error}'**
   String restoreFailed(Object error);
 
+  /// No description provided for @webBackupHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Web: backups use download/upload.'**
+  String get webBackupHint;
+
   /// No description provided for @restoreWarning.
   ///
   /// In en, this message translates to:

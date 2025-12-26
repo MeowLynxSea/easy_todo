@@ -391,6 +391,9 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get webBackupHint => 'Web: backups use download/upload.';
+
+  @override
   String restoreWarning(Object fileName) {
     return 'This will replace all current data with data from \"$fileName\". This action cannot be undone. Continue?';
   }

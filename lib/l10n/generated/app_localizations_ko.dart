@@ -389,6 +389,9 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
+  String get webBackupHint => 'Web: backups use download/upload.';
+
+  @override
   String restoreWarning(Object fileName) {
     return '이렇게 하면 현재 모든 데이터가 \"$fileName\"의 데이터로 대체됩니다. 이 작업은 실행 취소할 수 없습니다. 계속하시겠습니까?';
   }

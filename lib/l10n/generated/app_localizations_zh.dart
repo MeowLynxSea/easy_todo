@@ -386,6 +386,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get webBackupHint => 'Web端：备份通过下载/上传完成。';
+
+  @override
   String restoreWarning(Object fileName) {
     return '这将用来自\"$fileName\"的数据替换所有当前数据。此操作无法撤销。继续吗？';
   }

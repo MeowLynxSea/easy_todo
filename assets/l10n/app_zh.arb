@@ -131,6 +131,7 @@
   "backupFailed": "备份创建失败",
   "restoreSuccess": "数据恢复成功",
   "restoreFailed": "数据恢复失败",
+  "webBackupHint": "Web端：备份通过下载/上传完成。",
   "restoreWarning": "这将替换所有当前数据。确定要继续吗？",
   
   "totalStorage": "总存储",

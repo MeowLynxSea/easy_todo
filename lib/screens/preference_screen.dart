@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -22,11 +23,7 @@ import 'package:easy_todo/screens/pomodoro_settings_screen.dart';
 import 'package:easy_todo/screens/ai_settings_screen.dart';
 import 'package:easy_todo/providers/ai_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:open_filex/open_filex.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
 
 class PreferenceScreen extends StatefulWidget {
   const PreferenceScreen({super.key});
@@ -43,7 +40,6 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
   UpdateInfo? _updateInfo;
   bool _isDownloading = false;
   double _downloadProgress = 0.0;
-  bool _downloadCompleted = false;
 
   @override
   void initState() {
@@ -170,10 +166,12 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                       );
                     },
                   ),
-                  const Divider(),
-                  _buildFingerprintLockItem(appSettingsProvider, l10n),
-                  const Divider(),
-                  _buildAutoUpdateItem(appSettingsProvider, l10n),
+                  if (!kIsWeb) ...[
+                    const Divider(),
+                    _buildFingerprintLockItem(appSettingsProvider, l10n),
+                    const Divider(),
+                    _buildAutoUpdateItem(appSettingsProvider, l10n),
+                  ],
                 ],
               ),
             ),
@@ -292,8 +290,10 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                       );
                     },
                   ),
-                  const Divider(),
-                  _buildUpdateSection(l10n),
+                  if (!kIsWeb) ...[
+                    const Divider(),
+                    _buildUpdateSection(l10n),
+                  ],
                   const Divider(),
                   _buildPreferenceItem(
                     icon: Icons.help_outline,
@@ -782,21 +782,6 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                       ),
                     ],
                   ),
-                ] else if (_downloadCompleted) ...[
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        // Open the downloaded APK file
-                        _installUpdate();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: Text(l10n.installUpdate),
-                    ),
-                  ),
                 ] else ...[
                   SizedBox(
                     width: double.infinity,
@@ -900,7 +885,6 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
 
       if (success && mounted) {
         setState(() {
-          _downloadCompleted = true;
           _downloadProgress = 1.0;
         });
 
@@ -924,183 +908,6 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
               style: TextStyle(color: Theme.of(context).colorScheme.onError),
             ),
             backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _installUpdate() async {
-    if (_updateInfo?.downloadUrl == null) return;
-
-    final l10n = AppLocalizations.of(context)!;
-
-    try {
-      // For Android 8+, we need to request install unknown apps permission
-      if (Platform.isAndroid) {
-        if (!await _requestInstallPermission(context)) {
-          return;
-        }
-      }
-
-      // Get the download directory
-      Directory? directory;
-      if (Platform.isAndroid) {
-        // Try multiple directories for Android
-        directory = await getApplicationDocumentsDirectory();
-        if (!await File('${directory.path}/easy_todo_update.apk').exists()) {
-          directory = await getExternalStorageDirectory();
-        }
-        if (directory != null &&
-            !await File('${directory.path}/easy_todo_update.apk').exists()) {
-          directory = await getDownloadsDirectory();
-        }
-      } else {
-        directory = await getExternalStorageDirectory();
-      }
-
-      if (directory == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(l10n.cannotAccessStorage),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-        return;
-      }
-
-      final savePath = '${directory.path}/easy_todo_update.apk';
-
-      // Check if the file exists
-      if (await File(savePath).exists()) {
-        // Show installing message
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(l10n.startingInstaller),
-              backgroundColor: Colors.blue,
-            ),
-          );
-        }
-
-        // For Android, try to install using different methods
-        if (Platform.isAndroid) {
-          try {
-            // Method 1: Try using OpenFilex
-            final result = await OpenFilex.open(savePath);
-
-            if (result.type != ResultType.done && mounted) {
-              // Method 2: Try using Android intent directly
-              await _installApkDirectly(savePath);
-            }
-          } catch (e) {
-            // Fallback to direct installation
-            await _installApkDirectly(savePath);
-          }
-        } else {
-          // For other platforms
-          await OpenFilex.open(savePath);
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(l10n.updateFileNotFound),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${l10n.updateCheckFailed}: ${e.toString()}',
-              style: TextStyle(color: Theme.of(context).colorScheme.onError),
-            ),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<bool> _requestInstallPermission(BuildContext context) async {
-    final l10n = AppLocalizations.of(context)!;
-    if (!Platform.isAndroid) return true;
-
-    // Request install unknown apps permission for Android 8+
-    final status = await Permission.requestInstallPackages.request();
-    if (!context.mounted) return false;
-
-    if (status == PermissionStatus.granted) {
-      return true;
-    }
-
-    if (status == PermissionStatus.permanentlyDenied) {
-      bool shouldOpenSettings =
-          await showDialog<bool>(
-            context: context,
-            builder: (dialogContext) => AlertDialog(
-              title: Text(l10n.installPermissionRequired),
-              content: Text(l10n.installPermissionDescription),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: Text(l10n.cancel),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: Text(l10n.openSettings),
-                ),
-              ],
-            ),
-          ) ??
-          false;
-
-      if (shouldOpenSettings) {
-        await openAppSettings();
-      }
-    }
-
-    if (!context.mounted) return false;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(l10n.needInstallPermission),
-        backgroundColor: Colors.red,
-      ),
-    );
-
-    return false;
-  }
-
-  Future<void> _installApkDirectly(String apkPath) async {
-    final l10n = AppLocalizations.of(context)!;
-    if (!Platform.isAndroid) return;
-
-    try {
-      // This is a fallback method using Android intent
-      // Note: This might require additional platform-specific implementation
-      final result = await OpenFilex.open(apkPath);
-
-      if (result.type != ResultType.done && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.installLaunchFailed(result.message)),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.installFailed(e.toString())),
-            backgroundColor: Colors.red,
           ),
         );
       }

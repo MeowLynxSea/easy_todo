@@ -131,6 +131,7 @@
   "backupFailed": "Failed to create backup",
   "restoreSuccess": "Data restored successfully",
   "restoreFailed": "Failed to restore data",
+  "webBackupHint": "Web: backups use download/upload.",
   "restoreWarning": "This will replace all current data. Are you sure?",
   
   "totalStorage": "Total Storage",

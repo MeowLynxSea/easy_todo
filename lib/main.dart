@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
@@ -178,7 +179,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _checkForUpdates();
+    if (!kIsWeb) {
+      _checkForUpdates();
+    }
     _checkRepeatTodos();
     _initializePermissions();
   }

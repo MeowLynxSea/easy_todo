@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:easy_todo/services/notification_service.dart';
 import 'package:easy_todo/models/notification_settings_model.dart';
@@ -41,15 +40,8 @@ class _NotificationSettingsScreenState
 
   Future<void> _checkNotificationPermission() async {
     try {
-      final plugin = FlutterLocalNotificationsPlugin();
-      final permission =
-          await plugin
-              .resolvePlatformSpecificImplementation<
-                AndroidFlutterLocalNotificationsPlugin
-              >()
-              ?.areNotificationsEnabled() ??
-          false;
-      setState(() => _hasPermission = permission);
+      final hasPermission = await _notificationService.hasNotificationPermission();
+      setState(() => _hasPermission = hasPermission);
     } catch (e) {
       debugPrint('Error checking notification permission: $e');
       setState(() => _hasPermission = false);
@@ -58,13 +50,7 @@ class _NotificationSettingsScreenState
 
   Future<void> _requestNotificationPermission() async {
     try {
-      final plugin = FlutterLocalNotificationsPlugin();
-      final androidPlugin = plugin
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >();
-      final granted =
-          await androidPlugin?.requestNotificationsPermission() ?? false;
+      final granted = await _notificationService.requestNotificationPermission();
 
       setState(() => _hasPermission = granted);
 

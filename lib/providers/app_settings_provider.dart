@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:easy_todo/models/app_settings_model.dart';
 import 'package:easy_todo/services/hive_service.dart';
 import 'package:easy_todo/services/biometric_service.dart';
@@ -36,6 +36,18 @@ class AppSettingsProvider extends ChangeNotifier {
         // 如果没有保存的设置，创建默认设置
         _settings = AppSettingsModel.create();
         await settingsBox.put('appSettings', _settings);
+      }
+
+      if (kIsWeb) {
+        final needsDisable =
+            _settings.autoUpdateEnabled || _settings.biometricLockEnabled;
+        if (needsDisable) {
+          _settings = _settings.copyWith(
+            autoUpdateEnabled: false,
+            biometricLockEnabled: false,
+          );
+          await settingsBox.put('appSettings', _settings);
+        }
       }
     } catch (e) {
       debugPrint('Error loading app settings: $e');

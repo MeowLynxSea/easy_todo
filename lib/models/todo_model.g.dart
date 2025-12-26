@@ -34,13 +34,15 @@ class TodoModelAdapter extends TypeAdapter<TodoModel> {
       aiCategory: fields[14] as String?,
       aiPriority: fields[15] == null ? 0 : fields[15] as int,
       aiProcessed: fields[16] == null ? false : fields[16] as bool,
+      startTime: fields[17] as DateTime?,
+      endTime: fields[18] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, TodoModel obj) {
     writer
-      ..writeByte(17)
+      ..writeByte(19)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -74,7 +76,11 @@ class TodoModelAdapter extends TypeAdapter<TodoModel> {
       ..writeByte(15)
       ..write(obj.aiPriority)
       ..writeByte(16)
-      ..write(obj.aiProcessed);
+      ..write(obj.aiProcessed)
+      ..writeByte(17)
+      ..write(obj.startTime)
+      ..writeByte(18)
+      ..write(obj.endTime);
   }
 
   @override

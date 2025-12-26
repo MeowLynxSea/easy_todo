@@ -55,6 +55,12 @@ class TodoModel extends HiveObject {
   @HiveField(16, defaultValue: false)
   bool aiProcessed; // Whether this todo has been processed by AI
 
+  @HiveField(17)
+  DateTime? startTime;
+
+  @HiveField(18)
+  DateTime? endTime;
+
   TodoModel({
     required this.id,
     required this.title,
@@ -73,6 +79,8 @@ class TodoModel extends HiveObject {
     this.aiCategory,
     this.aiPriority = 0,
     this.aiProcessed = false,
+    this.startTime,
+    this.endTime,
   });
 
   factory TodoModel.create({
@@ -88,6 +96,8 @@ class TodoModel extends HiveObject {
     String? aiCategory,
     int aiPriority = 0,
     bool aiProcessed = false,
+    DateTime? startTime,
+    DateTime? endTime,
   }) {
     // 使用系统时间，避免时区混乱
     final now = DateTime.now();
@@ -115,6 +125,8 @@ class TodoModel extends HiveObject {
       aiCategory: aiCategory,
       aiPriority: aiPriority,
       aiProcessed: aiProcessed,
+      startTime: startTime,
+      endTime: endTime,
     );
   }
 
@@ -136,6 +148,8 @@ class TodoModel extends HiveObject {
     String? aiCategory,
     int? aiPriority,
     bool? aiProcessed,
+    DateTime? startTime,
+    DateTime? endTime,
   }) {
     return TodoModel(
       id: id ?? this.id,
@@ -156,6 +170,8 @@ class TodoModel extends HiveObject {
       aiCategory: aiCategory ?? this.aiCategory,
       aiPriority: aiPriority ?? this.aiPriority,
       aiProcessed: aiProcessed ?? this.aiProcessed,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
     );
   }
 
@@ -178,6 +194,8 @@ class TodoModel extends HiveObject {
       'aiCategory': aiCategory,
       'aiPriority': aiPriority,
       'aiProcessed': aiProcessed,
+      'startTime': startTime?.toIso8601String(),
+      'endTime': endTime?.toIso8601String(),
     };
   }
 
@@ -204,6 +222,10 @@ class TodoModel extends HiveObject {
       aiCategory: json['aiCategory'],
       aiPriority: json['aiPriority'] ?? 0,
       aiProcessed: json['aiProcessed'] ?? false,
+      startTime: json['startTime'] != null
+          ? DateTime.parse(json['startTime'])
+          : null,
+      endTime: json['endTime'] != null ? DateTime.parse(json['endTime']) : null,
     );
   }
 

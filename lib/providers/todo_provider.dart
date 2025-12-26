@@ -2086,6 +2086,20 @@ class TodoProvider extends ChangeNotifier {
     int inheritedPriority = repeatTodo.aiPriority;
     bool inheritedProcessed = repeatTodo.aiProcessed;
 
+    final generatedDate = DateTime(now.year, now.month, now.day);
+    DateTime? inheritedStartTime;
+    if (repeatTodo.startTimeMinutes != null) {
+      inheritedStartTime = generatedDate.add(
+        Duration(minutes: repeatTodo.startTimeMinutes!),
+      );
+    }
+    DateTime? inheritedEndTime;
+    if (repeatTodo.endTimeMinutes != null) {
+      inheritedEndTime = generatedDate.add(
+        Duration(minutes: repeatTodo.endTimeMinutes!),
+      );
+    }
+
     // 直接使用当前本地时间创建任务，不进行任何标准化
     final newTodo = TodoModel.create(
       title: repeatTodo.title,
@@ -2097,6 +2111,8 @@ class TodoProvider extends ChangeNotifier {
       aiCategory: inheritedCategory,
       aiPriority: inheritedPriority,
       aiProcessed: inheritedProcessed,
+      startTime: inheritedStartTime,
+      endTime: inheritedEndTime,
     );
 
     // 确保创建的任务使用实际的本地时间（避免标准化为00:00）
@@ -2136,13 +2152,18 @@ class TodoProvider extends ChangeNotifier {
     final categoryChanged = originalTodo.aiCategory != updatedTodo.aiCategory;
     final priorityChanged = originalTodo.aiPriority != updatedTodo.aiPriority;
     final dataUnitChanged = originalTodo.dataUnit != updatedTodo.dataUnit;
+    final startTimeChanged =
+        originalTodo.startTimeMinutes != updatedTodo.startTimeMinutes;
+    final endTimeChanged = originalTodo.endTimeMinutes != updatedTodo.endTimeMinutes;
 
     // 如果没有关键字段变更，则不需要同步
     if (!titleChanged &&
         !descriptionChanged &&
         !categoryChanged &&
         !priorityChanged &&
-        !dataUnitChanged) {
+        !dataUnitChanged &&
+        !startTimeChanged &&
+        !endTimeChanged) {
       return;
     }
 
@@ -2165,6 +2186,12 @@ class TodoProvider extends ChangeNotifier {
     for (final todo in generatedTodos) {
       // 只更新发生变化的字段
       TodoModel updatedGeneratedTodo = todo;
+
+      final todoDate = DateTime(
+        todo.createdAt.year,
+        todo.createdAt.month,
+        todo.createdAt.day,
+      );
 
       if (titleChanged) {
         updatedGeneratedTodo = updatedGeneratedTodo.copyWith(
@@ -2190,6 +2217,20 @@ class TodoProvider extends ChangeNotifier {
         updatedGeneratedTodo = updatedGeneratedTodo.copyWith(
           dataUnit: updatedTodo.dataUnit,
         );
+      }
+      if (startTimeChanged) {
+        final newStartTime = updatedTodo.startTimeMinutes != null
+            ? todoDate.add(Duration(minutes: updatedTodo.startTimeMinutes!))
+            : null;
+        updatedGeneratedTodo = updatedGeneratedTodo.copyWith(
+          startTime: newStartTime,
+        );
+      }
+      if (endTimeChanged) {
+        final newEndTime = updatedTodo.endTimeMinutes != null
+            ? todoDate.add(Duration(minutes: updatedTodo.endTimeMinutes!))
+            : null;
+        updatedGeneratedTodo = updatedGeneratedTodo.copyWith(endTime: newEndTime);
       }
 
       // 更新AI处理状态

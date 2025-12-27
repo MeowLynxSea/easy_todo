@@ -83,6 +83,30 @@ class HiveService {
         await Hive.openBox<RepeatTodoModel>(_repeatTodosBoxName);
         await Hive.openBox<StatisticsDataModel>(_statisticsDataBoxName);
 
+        // Normalize legacy Hive keys to use the model's `id` as the box key.
+        // Older versions might have used auto-increment keys, which breaks sync
+        // since sync recordId expects `box.get(recordId)` to work.
+        try {
+          await _normalizeBoxKeysById<TodoModel>(
+            Hive.box<TodoModel>(_todosBoxName),
+            (t) => t.id,
+          );
+          await _normalizeBoxKeysById<RepeatTodoModel>(
+            Hive.box<RepeatTodoModel>(_repeatTodosBoxName),
+            (t) => t.id,
+          );
+          await _normalizeBoxKeysById<StatisticsDataModel>(
+            Hive.box<StatisticsDataModel>(_statisticsDataBoxName),
+            (t) => t.id,
+          );
+          await _normalizeBoxKeysById<PomodoroModel>(
+            Hive.box<PomodoroModel>(_pomodoroBoxName),
+            (t) => t.id,
+          );
+        } catch (e) {
+          debugPrint('Error normalizing Hive keys: $e');
+        }
+
         await _openOrRecreateBox<SyncState>(_syncStateBoxName);
         await _openOrRecreateBox<SyncMeta>(_syncMetaBoxName);
         await _openOrRecreateBox<SyncOutboxItem>(_syncOutboxBoxName);
@@ -132,6 +156,29 @@ class HiveService {
         debugPrint('Error deleting Hive box $name: $deleteError');
       }
       return Hive.openBox<T>(name);
+    }
+  }
+
+  static Future<void> _normalizeBoxKeysById<T>(
+    Box<T> box,
+    String Function(T value) getId,
+  ) async {
+    final keys = box.keys.toList(growable: false);
+    for (final key in keys) {
+      final value = box.get(key);
+      if (value == null) continue;
+
+      final id = getId(value);
+      if (id.isEmpty) continue;
+      if (key is String && key == id) continue;
+
+      if (box.containsKey(id)) {
+        await box.delete(key);
+        continue;
+      }
+
+      await box.put(id, value);
+      await box.delete(key);
     }
   }
 

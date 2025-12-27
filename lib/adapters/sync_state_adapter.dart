@@ -20,13 +20,15 @@ class SyncStateAdapter extends TypeAdapter<SyncState> {
       serverUrl: (fields[5] as String?) ?? '',
       authToken: (fields[6] as String?) ?? '',
       dekId: fields[7] as String?,
+      didBootstrapLocalRecords: (fields[8] as bool?) ?? false,
+      didBootstrapSettings: (fields[9] as bool?) ?? false,
     );
   }
 
   @override
   void write(BinaryWriter writer, SyncState obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.deviceId)
       ..writeByte(1)
@@ -42,6 +44,10 @@ class SyncStateAdapter extends TypeAdapter<SyncState> {
       ..writeByte(6)
       ..write(obj.authToken)
       ..writeByte(7)
-      ..write(obj.dekId);
+      ..write(obj.dekId)
+      ..writeByte(8)
+      ..write(obj.didBootstrapLocalRecords)
+      ..writeByte(9)
+      ..write(obj.didBootstrapSettings);
   }
 }

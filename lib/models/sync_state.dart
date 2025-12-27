@@ -4,6 +4,18 @@ class SyncState {
   final int lastHlcCounter;
   final int lastServerSeq;
 
+  /// Whether we have already enqueued existing local records once (bootstrap).
+  ///
+  /// Without this, only "new changes" are synced, and existing todos/repeats/etc
+  /// created before enabling sync might never be pushed.
+  final bool didBootstrapLocalRecords;
+
+  /// Whether we have already enqueued singleton settings records once.
+  ///
+  /// Without this, an unchanged local preference might never be uploaded, so a
+  /// new device can't pull it.
+  final bool didBootstrapSettings;
+
   /// Device-local sync configuration/state.
   final bool syncEnabled;
   final String serverUrl;
@@ -19,6 +31,8 @@ class SyncState {
     required this.lastHlcWallMsUtc,
     required this.lastHlcCounter,
     required this.lastServerSeq,
+    required this.didBootstrapLocalRecords,
+    required this.didBootstrapSettings,
     required this.syncEnabled,
     required this.serverUrl,
     required this.authToken,
@@ -30,6 +44,8 @@ class SyncState {
     int? lastHlcWallMsUtc,
     int? lastHlcCounter,
     int? lastServerSeq,
+    bool? didBootstrapLocalRecords,
+    bool? didBootstrapSettings,
     bool? syncEnabled,
     String? serverUrl,
     String? authToken,
@@ -40,6 +56,9 @@ class SyncState {
       lastHlcWallMsUtc: lastHlcWallMsUtc ?? this.lastHlcWallMsUtc,
       lastHlcCounter: lastHlcCounter ?? this.lastHlcCounter,
       lastServerSeq: lastServerSeq ?? this.lastServerSeq,
+      didBootstrapLocalRecords:
+          didBootstrapLocalRecords ?? this.didBootstrapLocalRecords,
+      didBootstrapSettings: didBootstrapSettings ?? this.didBootstrapSettings,
       syncEnabled: syncEnabled ?? this.syncEnabled,
       serverUrl: serverUrl ?? this.serverUrl,
       authToken: authToken ?? this.authToken,
@@ -53,6 +72,8 @@ class SyncState {
       lastHlcWallMsUtc: 0,
       lastHlcCounter: 0,
       lastServerSeq: 0,
+      didBootstrapLocalRecords: false,
+      didBootstrapSettings: false,
       syncEnabled: false,
       serverUrl: '',
       authToken: '',

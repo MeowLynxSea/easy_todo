@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:timezone/data/latest.dart' as tz;
 import 'package:provider/provider.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:easy_todo/models/repeat_todo_model.dart';
@@ -70,9 +69,6 @@ class _RepeatTasksScreenState extends State<RepeatTasksScreen> {
       });
 
       final todoProvider = Provider.of<TodoProvider>(context, listen: false);
-
-      // First, clean up any existing tasks for repeat templates
-      await _cleanupExistingRepeatTasks(todoProvider);
 
       // 重新加载以确保数据一致性
       await todoProvider.loadTodos();
@@ -148,47 +144,6 @@ class _RepeatTasksScreenState extends State<RepeatTasksScreen> {
     }
   }
 
-  Future<void> _cleanupExistingRepeatTasks(TodoProvider todoProvider) async {
-    // 确保时区已初始化
-    try {
-      tz.initializeTimeZones();
-    } catch (e) {
-      // 时区初始化失败时继续使用默认时区
-    }
-
-    // 使用本地时间而不是时区时间，避免时区混乱
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    // Get all active repeat todos
-    final activeRepeatTodos = todoProvider.repeatTodos
-        .where((rt) => rt.isActive)
-        .toList();
-
-    for (final repeatTodo in activeRepeatTodos) {
-      // Find all todos generated from this repeat template that were created TODAY
-      // 删除所有今天生成的任务，无论其完成状态如何
-      final generatedTodos = todoProvider.allTodos
-          .where(
-            (todo) =>
-                todo.repeatTodoId == repeatTodo.id &&
-                todo.isGeneratedFromRepeat &&
-                _isSameDay(todo.createdAt, today),
-          )
-          .toList();
-
-      // Delete all today's generated tasks (both completed and uncompleted)
-      for (final todo in generatedTodos) {
-        await todoProvider.deleteTodo(todo.id);
-      }
-    }
-  }
-
-  // Helper method to check if two dates are the same day
-  bool _isSameDay(DateTime date1, DateTime date2) {
-    return isSameLocalDay(date1, date2);
-  }
-
   Future<BackfillStartBasis?> _showBackfillStartConflictDialog({
     required RepeatTodoModel repeatTodo,
     required DateTime startDate,
@@ -231,6 +186,10 @@ class _RepeatTasksScreenState extends State<RepeatTasksScreen> {
         );
       },
     );
+  }
+
+  bool _isSameDay(DateTime date1, DateTime date2) {
+    return isSameLocalDay(date1, date2);
   }
 
   @override

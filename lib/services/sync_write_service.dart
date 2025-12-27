@@ -21,6 +21,7 @@ class SyncRecordIds {
 
 class SyncWriteService {
   static const String stateKey = 'state';
+  static String metaKeyOf(String type, String recordId) => '$type:$recordId';
 
   final HiveService _hiveService;
 
@@ -47,20 +48,20 @@ class SyncWriteService {
   }
 
   Future<SyncMeta?> getMeta(String type, String recordId) async {
-    return _metaBox.get(_metaKey(type, recordId));
+    return _metaBox.get(metaKeyOf(type, recordId));
   }
 
   SyncMeta? getMetaSync(String type, String recordId) {
-    return _metaBox.get(_metaKey(type, recordId));
+    return _metaBox.get(metaKeyOf(type, recordId));
   }
 
   Future<bool> isTombstoned(String type, String recordId) async {
-    final meta = _metaBox.get(_metaKey(type, recordId));
+    final meta = _metaBox.get(metaKeyOf(type, recordId));
     return meta?.deletedAtMsUtc != null;
   }
 
   bool isTombstonedSync(String type, String recordId) {
-    final meta = _metaBox.get(_metaKey(type, recordId));
+    final meta = _metaBox.get(metaKeyOf(type, recordId));
     return meta?.deletedAtMsUtc != null;
   }
 
@@ -82,7 +83,7 @@ class SyncWriteService {
 
     await writeBusinessData();
 
-    final metaKey = _metaKey(type, recordId);
+    final metaKey = metaKeyOf(type, recordId);
     final updatedMeta = SyncMeta(
       type: type,
       recordId: recordId,
@@ -127,7 +128,7 @@ class SyncWriteService {
     final nowMsUtc = DateTime.now().toUtc().millisecondsSinceEpoch;
     final hlc = clock.tick(nowMsUtc);
 
-    final metaKey = _metaKey(type, recordId);
+    final metaKey = metaKeyOf(type, recordId);
     final existing = _metaBox.get(metaKey);
     final updatedMeta =
         existing?.copyWith(
@@ -172,7 +173,7 @@ class SyncWriteService {
     required String recordId,
     required int schemaVersion,
   }) async {
-    final metaKey = _metaKey(type, recordId);
+    final metaKey = metaKeyOf(type, recordId);
     if (_metaBox.containsKey(metaKey)) return;
 
     final state = await ensureState();
@@ -205,6 +206,4 @@ class SyncWriteService {
       ),
     );
   }
-
-  static String _metaKey(String type, String recordId) => '$type:$recordId';
 }

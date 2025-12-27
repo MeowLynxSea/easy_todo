@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:timezone/data/latest.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
 import 'package:table_calendar/table_calendar.dart';
 import 'package:easy_todo/models/todo_model.dart';
 import 'package:easy_todo/theme/app_theme.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:easy_todo/providers/language_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:easy_todo/services/timezone_service.dart';
 
 class CalendarWidget extends StatefulWidget {
   final List<TodoModel> todos;
@@ -28,62 +27,17 @@ class _CalendarWidgetState extends State<CalendarWidget> {
   late CalendarFormat _calendarFormat;
   late DateTime _focusedDay;
   late DateTime _selectedDay;
+  late final TimezoneService _timezoneService;
 
   // 获取本地当前日期的辅助方法
   DateTime _getLocalNow() {
-    try {
-      tz.initializeTimeZones();
-
-      // 使用更完整的时区检测逻辑
-      final localTimeZoneName = DateTime.now().timeZoneName;
-      String? timeZoneId;
-
-      if (localTimeZoneName.contains('CST') ||
-          localTimeZoneName.contains('GMT+8') ||
-          localTimeZoneName.contains('UTC+8')) {
-        timeZoneId = 'Asia/Shanghai';
-      } else if (localTimeZoneName.contains('PST') ||
-          localTimeZoneName.contains('GMT-8')) {
-        timeZoneId = 'America/Los_Angeles';
-      } else if (localTimeZoneName.contains('EST') ||
-          localTimeZoneName.contains('GMT-5')) {
-        timeZoneId = 'America/New_York';
-      } else if (localTimeZoneName.contains('JST') ||
-          localTimeZoneName.contains('GMT+9')) {
-        timeZoneId = 'Asia/Tokyo';
-      } else if (localTimeZoneName.contains('GMT')) {
-        final offset = DateTime.now().timeZoneOffset.inHours;
-        if (offset == 8) {
-          timeZoneId = 'Asia/Shanghai';
-        } else if (offset == 9) {
-          timeZoneId = 'Asia/Tokyo';
-        } else if (offset == -5) {
-          timeZoneId = 'America/New_York';
-        } else if (offset == -8) {
-          timeZoneId = 'America/Los_Angeles';
-        }
-      }
-
-      if (timeZoneId != null) {
-        try {
-          final location = tz.getLocation(timeZoneId);
-          tz.setLocalLocation(location);
-        } catch (e) {
-          debugPrint('CalendarWidget: Failed to set timezone: $e');
-        }
-      }
-
-      return tz.TZDateTime.now(tz.local);
-    } catch (e) {
-      debugPrint('CalendarWidget: Timezone initialization failed: $e');
-      // 时区初始化失败时回退到系统时间，但尽量保证时区正确
-      return DateTime.now();
-    }
+    return _timezoneService.getCurrentTime();
   }
 
   @override
   void initState() {
     super.initState();
+    _timezoneService = TimezoneService();
     final now = _getLocalNow();
     _calendarFormat = CalendarFormat.month;
     _focusedDay = now;
@@ -99,9 +53,9 @@ class _CalendarWidgetState extends State<CalendarWidget> {
   }
 
   Map<DateTime, List<TodoModel>> _getEventsForDay() {
-    Map<DateTime, List<TodoModel>> events = {};
+    final events = <DateTime, List<TodoModel>>{};
 
-    for (var todo in widget.todos) {
+    for (final todo in widget.todos) {
       final date = DateTime(
         todo.createdAt.year,
         todo.createdAt.month,
@@ -116,9 +70,10 @@ class _CalendarWidgetState extends State<CalendarWidget> {
     return events;
   }
 
-  Map<DateTime, dynamic> _getEventMarkers(AppLocalizations l10n) {
-    final events = _getEventsForDay();
-    Map<DateTime, dynamic> markers = {};
+  Map<DateTime, dynamic> _getEventMarkers(
+    Map<DateTime, List<TodoModel>> events,
+  ) {
+    final markers = <DateTime, dynamic>{};
 
     events.forEach((date, todos) {
       final completedCount = todos.where((todo) => todo.isCompleted).length;
@@ -134,7 +89,8 @@ class _CalendarWidgetState extends State<CalendarWidget> {
     final l10n = AppLocalizations.of(context)!;
     final languageProvider = Provider.of<LanguageProvider>(context);
     final events = _getEventsForDay();
-    final markers = _getEventMarkers(l10n);
+    final markers = _getEventMarkers(events);
+    final localNow = _getLocalNow();
 
     return Column(
       children: [
@@ -272,6 +228,7 @@ class _CalendarWidgetState extends State<CalendarWidget> {
                 final markerData =
                     markers[DateTime(day.year, day.month, day.day)];
                 final hasTodos = markerData != null;
+                final isToday = isSameDay(day, localNow);
 
                 return Container(
                   margin: const EdgeInsets.all(4),
@@ -291,12 +248,12 @@ class _CalendarWidgetState extends State<CalendarWidget> {
                     child: Text(
                       '${day.day}',
                       style: TextStyle(
-                        color: isSameDay(day, _getLocalNow())
+                        color: isToday
                             ? AppTheme.primaryColor
                             : Theme.of(context).brightness == Brightness.dark
                             ? Colors.white
                             : Colors.black,
-                        fontWeight: isSameDay(day, _getLocalNow())
+                        fontWeight: isToday
                             ? FontWeight.bold
                             : FontWeight.normal,
                       ),
@@ -334,7 +291,7 @@ class _CalendarWidgetState extends State<CalendarWidget> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    _buildDayStats(_selectedDay, l10n),
+                    _buildDayStats(_selectedDay, l10n, events),
                   ],
                 ),
               ),
@@ -345,8 +302,11 @@ class _CalendarWidgetState extends State<CalendarWidget> {
     );
   }
 
-  Widget _buildDayStats(DateTime day, AppLocalizations l10n) {
-    final events = _getEventsForDay();
+  Widget _buildDayStats(
+    DateTime day,
+    AppLocalizations l10n,
+    Map<DateTime, List<TodoModel>> events,
+  ) {
     final dayEvents = events[DateTime(day.year, day.month, day.day)] ?? [];
 
     if (dayEvents.isEmpty) {

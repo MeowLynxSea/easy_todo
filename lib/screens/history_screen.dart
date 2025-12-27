@@ -27,20 +27,13 @@ class _HistoryScreenState extends State<HistoryScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    _searchController.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     super.dispose();
-  }
-
-  void _onSearchChanged() {
-    final provider = Provider.of<TodoProvider>(context, listen: false);
-    provider.setSearchQuery(_searchController.text);
   }
 
   @override
@@ -65,15 +58,70 @@ class _HistoryScreenState extends State<HistoryScreen>
             padding: EdgeInsets.zero,
             child: Column(
               children: [
-                _buildSearchBar(l10n),
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _searchController,
+                  builder: (context, value, _) {
+                    return _buildSearchBar(l10n, queryText: value.text);
+                  },
+                ),
                 Expanded(
                   child: TabBarView(
                     controller: _tabController,
                     children: [
-                      _buildTodosList(provider.getTodayTodos(), l10n),
-                      _buildTodosList(provider.getWeekTodos(), l10n),
-                      _buildTodosList(provider.getMonthTodos(), l10n),
-                      _buildAllTodosTab(provider, appSettingsProvider, l10n),
+                      Builder(
+                        builder: (context) {
+                          final todos = provider.getTodayTodos();
+                          return ValueListenableBuilder<TextEditingValue>(
+                            valueListenable: _searchController,
+                            builder: (context, value, _) {
+                              return _buildTodosList(
+                                todos,
+                                l10n,
+                                queryText: value.text,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      Builder(
+                        builder: (context) {
+                          final todos = provider.getWeekTodos();
+                          return ValueListenableBuilder<TextEditingValue>(
+                            valueListenable: _searchController,
+                            builder: (context, value, _) {
+                              return _buildTodosList(
+                                todos,
+                                l10n,
+                                queryText: value.text,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      Builder(
+                        builder: (context) {
+                          final todos = provider.getMonthTodos();
+                          return ValueListenableBuilder<TextEditingValue>(
+                            valueListenable: _searchController,
+                            builder: (context, value, _) {
+                              return _buildTodosList(
+                                todos,
+                                l10n,
+                                queryText: value.text,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      Builder(
+                        builder: (context) {
+                          return _buildAllTodosTab(
+                            provider,
+                            appSettingsProvider,
+                            l10n,
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -85,7 +133,7 @@ class _HistoryScreenState extends State<HistoryScreen>
     );
   }
 
-  Widget _buildSearchBar(AppLocalizations? l10n) {
+  Widget _buildSearchBar(AppLocalizations? l10n, {required String queryText}) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: TextField(
@@ -93,7 +141,7 @@ class _HistoryScreenState extends State<HistoryScreen>
         decoration: InputDecoration(
           labelText: l10n?.searchTodos ?? 'Search todos',
           prefixIcon: const Icon(Icons.search),
-          suffixIcon: _searchController.text.isNotEmpty
+          suffixIcon: queryText.isNotEmpty
               ? IconButton(
                   icon: const Icon(Icons.clear),
                   onPressed: () {
@@ -106,7 +154,11 @@ class _HistoryScreenState extends State<HistoryScreen>
     );
   }
 
-  Widget _buildTodosList(List<TodoModel> todos, AppLocalizations? l10n) {
+  Widget _buildTodosList(
+    List<TodoModel> todos,
+    AppLocalizations? l10n, {
+    required String queryText,
+  }) {
     if (todos.isEmpty) {
       return Center(
         child: Column(
@@ -129,7 +181,7 @@ class _HistoryScreenState extends State<HistoryScreen>
 
     final filteredTodos = todos
         .where((todo) {
-          final query = _searchController.text.toLowerCase();
+          final query = queryText.toLowerCase();
           return query.isEmpty ||
               todo.title.toLowerCase().contains(query) ||
               (todo.description?.toLowerCase().contains(query) ?? false);
@@ -428,7 +480,13 @@ class _HistoryScreenState extends State<HistoryScreen>
     if (appSettingsProvider.historyViewMode == 'calendar') {
       return _buildCalendarView(provider, l10n);
     } else {
-      return _buildTodosList(provider.getAllTodos(), l10n);
+      final todos = provider.getAllTodos();
+      return ValueListenableBuilder<TextEditingValue>(
+        valueListenable: _searchController,
+        builder: (context, value, _) {
+          return _buildTodosList(todos, l10n, queryText: value.text);
+        },
+      );
     }
   }
 

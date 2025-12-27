@@ -2515,11 +2515,7 @@ class TodoProvider extends ChangeNotifier {
       // 只更新发生变化的字段
       TodoModel updatedGeneratedTodo = todo;
 
-      final todoDate = DateTime(
-        todo.createdAt.year,
-        todo.createdAt.month,
-        todo.createdAt.day,
-      );
+      final todoDate = localDay(todo.createdAt);
 
       if (titleChanged) {
         updatedGeneratedTodo = updatedGeneratedTodo.copyWith(

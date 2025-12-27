@@ -11,6 +11,7 @@ import 'package:easy_todo/models/repeat_todo_model.dart';
 import 'package:easy_todo/widgets/web_desktop_content.dart';
 import 'package:easy_todo/utils/responsive.dart';
 import 'package:easy_todo/services/timezone_service.dart';
+import 'package:easy_todo/utils/date_utils.dart';
 
 // 数据统计按钮的内容组件
 class _DataStatsButtonContent extends StatelessWidget {
@@ -700,9 +701,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     final completedDataEntryTasks = todoProvider.statisticsData
         .where(
           (data) =>
-              data.todoCreatedAt.year == today.year &&
-              data.todoCreatedAt.month == today.month &&
-              data.todoCreatedAt.day == today.day,
+              isSameLocalDay(data.todoCreatedAt, todayDate),
         )
         .map((data) => data.repeatTodoId)
         .toSet()
@@ -1004,10 +1003,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       final day = monday.add(Duration(days: index));
       final dayTodos = provider.allTodos
           .where(
-            (todo) =>
-                todo.createdAt.year == day.year &&
-                todo.createdAt.month == day.month &&
-                todo.createdAt.day == day.day,
+            (todo) => isSameLocalDay(todo.createdAt, day),
           )
           .toList();
 
@@ -1062,7 +1058,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
 
     final dayStats = <String, int>{};
     for (final todo in completedTodos) {
-      final dayKey = '${todo.createdAt.day}/${todo.createdAt.month}';
+      final localCreatedAt = todo.createdAt.toLocal();
+      final dayKey = '${localCreatedAt.day}/${localCreatedAt.month}';
       dayStats[dayKey] = (dayStats[dayKey] ?? 0) + 1;
     }
 

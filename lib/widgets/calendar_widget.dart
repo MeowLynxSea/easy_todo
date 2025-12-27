@@ -6,6 +6,7 @@ import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:easy_todo/providers/language_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_todo/services/timezone_service.dart';
+import 'package:easy_todo/utils/date_utils.dart';
 
 class CalendarWidget extends StatefulWidget {
   final List<TodoModel> todos;
@@ -56,11 +57,7 @@ class _CalendarWidgetState extends State<CalendarWidget> {
     final events = <DateTime, List<TodoModel>>{};
 
     for (final todo in widget.todos) {
-      final date = DateTime(
-        todo.createdAt.year,
-        todo.createdAt.month,
-        todo.createdAt.day,
-      );
+      final date = localDay(todo.createdAt);
       if (!events.containsKey(date)) {
         events[date] = [];
       }
@@ -103,7 +100,7 @@ class _CalendarWidgetState extends State<CalendarWidget> {
             calendarFormat: _calendarFormat,
             locale: languageProvider.locale.languageCode,
             eventLoader: (day) {
-              final date = DateTime(day.year, day.month, day.day);
+              final date = localDay(day);
               return events[date] ?? [];
             },
             calendarStyle: CalendarStyle(
@@ -225,8 +222,7 @@ class _CalendarWidgetState extends State<CalendarWidget> {
                 );
               },
               defaultBuilder: (context, day, focusedDay) {
-                final markerData =
-                    markers[DateTime(day.year, day.month, day.day)];
+                final markerData = markers[localDay(day)];
                 final hasTodos = markerData != null;
                 final isToday = isSameDay(day, localNow);
 
@@ -307,7 +303,7 @@ class _CalendarWidgetState extends State<CalendarWidget> {
     AppLocalizations l10n,
     Map<DateTime, List<TodoModel>> events,
   ) {
-    final dayEvents = events[DateTime(day.year, day.month, day.day)] ?? [];
+    final dayEvents = events[localDay(day)] ?? [];
 
     if (dayEvents.isEmpty) {
       return Row(

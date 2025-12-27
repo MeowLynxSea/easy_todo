@@ -1,5 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:easy_todo/models/statistics_data_model.dart';
+import 'package:easy_todo/utils/date_utils.dart';
 
 class StatisticsDataService {
   static Map<String, dynamic> calculateAverageStatistics(
@@ -265,11 +266,7 @@ class StatisticsDataService {
     // Find best and worst days
     final dailyTotals = <DateTime, double>{};
     for (final item in filteredData) {
-      final day = DateTime(
-        item.todoCreatedAt.year,
-        item.todoCreatedAt.month,
-        item.todoCreatedAt.day,
-      );
+      final day = localDay(item.todoCreatedAt);
       dailyTotals[day] = (dailyTotals[day] ?? 0) + item.value;
     }
 

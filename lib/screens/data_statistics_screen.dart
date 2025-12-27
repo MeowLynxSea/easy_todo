@@ -10,6 +10,7 @@ import 'package:easy_todo/models/statistics_data_model.dart';
 import 'package:easy_todo/services/timezone_service.dart';
 import 'package:easy_todo/theme/app_theme.dart';
 import 'package:easy_todo/widgets/web_desktop_content.dart';
+import 'package:easy_todo/utils/date_utils.dart';
 
 class DataStatisticsScreen extends StatefulWidget {
   final String? navigationSource;
@@ -579,15 +580,10 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     List<RepeatTodoModel> repeatTodosWithStats,
   ) async {
     final now = _getLocalNow();
-    final today = DateTime(now.year, now.month, now.day);
-    final tomorrow = today.add(const Duration(days: 1));
+    final today = localDay(now);
 
     final todayData = provider.statisticsData
-        .where(
-          (d) =>
-              d.todoCreatedAt.isAfter(today) &&
-              d.todoCreatedAt.isBefore(tomorrow),
-        )
+        .where((d) => isSameLocalDay(d.todoCreatedAt, today))
         .toList();
 
     final byRepeatTodoId = <String, List<StatisticsDataModel>>{};
@@ -667,7 +663,8 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
   DateTimeRange _calculateFullDateRange(TodoProvider provider) {
     if (provider.statisticsData.isEmpty) {
       final now = _getLocalNow();
-      return DateTimeRange(start: now, end: now);
+      final day = localDay(now);
+      return DateTimeRange(start: day, end: day);
     }
 
     final earliestDate = provider.statisticsData
@@ -678,8 +675,8 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
         .reduce((a, b) => a.isAfter(b) ? a : b);
 
     return DateTimeRange(
-      start: DateTime(earliestDate.year, earliestDate.month, earliestDate.day),
-      end: DateTime(latestDate.year, latestDate.month, latestDate.day),
+      start: localDay(earliestDate),
+      end: localDay(latestDate),
     );
   }
 
@@ -917,9 +914,7 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
         final dayData = sortedData
             .where(
               (data) =>
-                  data.todoCreatedAt.year == targetDate.year &&
-                  data.todoCreatedAt.month == targetDate.month &&
-                  data.todoCreatedAt.day == targetDate.day,
+                  isSameLocalDay(data.todoCreatedAt, targetDate),
             )
             .toList();
 
@@ -1023,26 +1018,18 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     // Get date range for overview - use the actual data range
     DateTime startDate, endDate;
     if (_selectedDateRange != null) {
-      startDate = _selectedDateRange!.start;
-      endDate = _selectedDateRange!.end;
+      startDate = localDay(_selectedDateRange!.start);
+      endDate = localDay(_selectedDateRange!.end);
     } else {
       // If no date range selected, use the actual data range
       if (allData.isNotEmpty) {
         final sortedData = List<StatisticsDataModel>.from(allData)
           ..sort((a, b) => a.todoCreatedAt.compareTo(b.todoCreatedAt));
-        startDate = DateTime(
-          sortedData.first.createdAt.year,
-          sortedData.first.createdAt.month,
-          sortedData.first.createdAt.day,
-        );
-        endDate = DateTime(
-          sortedData.last.createdAt.year,
-          sortedData.last.createdAt.month,
-          sortedData.last.createdAt.day,
-        );
+        startDate = localDay(sortedData.first.todoCreatedAt);
+        endDate = localDay(sortedData.last.todoCreatedAt);
       } else {
         // Fallback to earliest data available
-        endDate = _getLocalNow();
+        endDate = localDay(_getLocalNow());
         startDate = endDate;
       }
     }
@@ -1061,9 +1048,7 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
         final dayData = sortedData
             .where(
               (data) =>
-                  data.todoCreatedAt.year == targetDate.year &&
-                  data.todoCreatedAt.month == targetDate.month &&
-                  data.todoCreatedAt.day == targetDate.day,
+                  isSameLocalDay(data.todoCreatedAt, targetDate),
             )
             .toList();
 

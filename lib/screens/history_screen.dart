@@ -7,6 +7,7 @@ import 'package:easy_todo/models/todo_model.dart';
 import 'package:easy_todo/theme/app_theme.dart';
 import 'package:easy_todo/widgets/calendar_widget.dart';
 import 'package:easy_todo/providers/app_settings_provider.dart';
+import 'package:easy_todo/utils/date_utils.dart';
 import 'package:easy_todo/screens/day_detail_screen.dart';
 import 'package:easy_todo/widgets/web_desktop_content.dart';
 
@@ -507,9 +508,7 @@ class _HistoryScreenState extends State<HistoryScreen>
 
   void _navigateToDayDetail(DateTime date, List<TodoModel> allTodos) {
     final dayTodos = allTodos.where((todo) {
-      return todo.createdAt.year == date.year &&
-          todo.createdAt.month == date.month &&
-          todo.createdAt.day == date.day;
+      return isSameLocalDay(todo.createdAt, date);
     }).toList();
 
     Navigator.push(

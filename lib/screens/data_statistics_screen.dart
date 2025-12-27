@@ -1,13 +1,13 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:timezone/data/latest.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter/scheduler.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:easy_todo/providers/todo_provider.dart';
 import 'package:easy_todo/models/repeat_todo_model.dart';
 import 'package:easy_todo/models/statistics_data_model.dart';
+import 'package:easy_todo/services/timezone_service.dart';
 import 'package:easy_todo/theme/app_theme.dart';
 import 'package:easy_todo/widgets/web_desktop_content.dart';
 
@@ -23,58 +23,19 @@ class DataStatisticsScreen extends StatefulWidget {
 class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late final TimezoneService _timezoneService;
   RepeatTodoModel? _selectedRepeatTodo;
   DateTimeRange? _selectedDateRange;
 
   // 获取本地时间的辅助方法
   DateTime _getLocalNow() {
-    try {
-      tz.initializeTimeZones();
-
-      // 获取设备的本地时区
-      final localTimeZoneName = DateTime.now().timeZoneName;
-      String? timeZoneId;
-
-      if (localTimeZoneName.contains('CST') ||
-          localTimeZoneName.contains('GMT+8') ||
-          localTimeZoneName.contains('UTC+8')) {
-        timeZoneId = 'Asia/Shanghai';
-      } else if (localTimeZoneName.contains('PST') ||
-          localTimeZoneName.contains('GMT-8')) {
-        timeZoneId = 'America/Los_Angeles';
-      } else if (localTimeZoneName.contains('EST') ||
-          localTimeZoneName.contains('GMT-5')) {
-        timeZoneId = 'America/New_York';
-      } else if (localTimeZoneName.contains('JST') ||
-          localTimeZoneName.contains('GMT+9')) {
-        timeZoneId = 'Asia/Tokyo';
-      } else if (localTimeZoneName.contains('GMT')) {
-        final offset = DateTime.now().timeZoneOffset.inHours;
-        if (offset == 8) {
-          timeZoneId = 'Asia/Shanghai';
-        } else if (offset == 9) {
-          timeZoneId = 'Asia/Tokyo';
-        } else if (offset == -5) {
-          timeZoneId = 'America/New_York';
-        } else if (offset == -8) {
-          timeZoneId = 'America/Los_Angeles';
-        }
-      }
-
-      if (timeZoneId != null) {
-        final location = tz.getLocation(timeZoneId);
-        tz.setLocalLocation(location);
-      }
-
-      return tz.TZDateTime.now(tz.local);
-    } catch (e) {
-      return DateTime.now();
-    }
+    return _timezoneService.getCurrentTime();
   }
 
   @override
   void initState() {
     super.initState();
+    _timezoneService = TimezoneService();
     _tabController = TabController(length: 4, vsync: this);
 
     // Set default to "All Data" for weekly and monthly views
@@ -132,10 +93,22 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
                       ? TabBarView(
                           controller: _tabController,
                           children: [
-                            _buildTodayView(todoProvider, l10n),
-                            _buildWeeklyView(todoProvider, l10n),
-                            _buildMonthlyView(todoProvider, l10n),
-                            _buildOverviewView(todoProvider, l10n),
+                            Builder(
+                              builder: (_) =>
+                                  _buildTodayView(todoProvider, l10n),
+                            ),
+                            Builder(
+                              builder: (_) =>
+                                  _buildWeeklyView(todoProvider, l10n),
+                            ),
+                            Builder(
+                              builder: (_) =>
+                                  _buildMonthlyView(todoProvider, l10n),
+                            ),
+                            Builder(
+                              builder: (_) =>
+                                  _buildOverviewView(todoProvider, l10n),
+                            ),
                           ],
                         )
                       : _buildFilteredView(todoProvider, l10n),
@@ -295,33 +268,33 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
       return _buildNoDataView(l10n.noDataForToday);
     }
 
-    // Get all today data for all repeat todos
-    final allTodayData = <String, List<StatisticsDataModel>>{};
-    for (final repeatTodo in repeatTodosWithStats) {
-      final todayData = _getTodayData(todoProvider, repeatTodo.id);
-      if (todayData.isNotEmpty) {
-        allTodayData[repeatTodo.title] = todayData;
-      }
-    }
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (allTodayData.isEmpty)
-            SizedBox(
+      child: _DeferredFutureBuilder<_TodayDataResult>(
+        cacheKey:
+            'today:${todoProvider.statisticsData.length}:${repeatTodosWithStats.length}',
+        placeholder: () => _buildTodayLoadingPlaceholder(),
+        loader: () => _loadTodayData(todoProvider, repeatTodosWithStats),
+        builder: (context, result) {
+          if (result.dataByTitle.isEmpty) {
+            return SizedBox(
               height: MediaQuery.of(context).size.height - 200,
               child: _buildNoDataView(l10n.noDataForToday),
-            )
-          else
-            ...allTodayData.entries.map((entry) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _buildTodayDataCard(entry.key, entry.value, l10n),
-              );
-            }),
-        ],
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ...result.dataByTitle.entries.map((entry) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: _buildTodayDataCard(entry.key, entry.value, l10n),
+                );
+              }),
+            ],
+          );
+        },
       ),
     );
   }
@@ -343,73 +316,63 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
           // Data selector for weekly view
           _buildDataSelector(repeatTodosWithStats, l10n, isWeekly: true),
           const SizedBox(height: 16),
-          Builder(
-            builder: (context) {
-              List<StatisticsDataModel> weekData;
-              String chartTitle;
-
-              if (_selectedRepeatTodo == null) {
-                // Get all data for all repeat todos
-                weekData = _getAllWeekData(todoProvider);
-                chartTitle = l10n.allData;
-              } else {
-                weekData = _getWeekData(todoProvider, _selectedRepeatTodo!.id);
-                chartTitle = _selectedRepeatTodo!.title;
-              }
-
-              if (weekData.isEmpty) {
+          _DeferredFutureBuilder<_PeriodDataResult>(
+            cacheKey:
+                'week:${_selectedRepeatTodo?.id ?? 'all'}:${todoProvider.statisticsData.length}',
+            placeholder: () =>
+                _buildChartLoadingPlaceholder(chartHeight: 220, items: 2),
+            loader: () => _loadWeekData(todoProvider, l10n),
+            builder: (context, result) {
+              if (result.data.isEmpty) {
                 return SizedBox(
                   height: MediaQuery.of(context).size.height - 300,
                   child: _buildNoDataView(l10n.noDataForThisWeek),
                 );
-              } else {
-                // Group data by repeat todo for legend
-                final groupedData = <String, List<StatisticsDataModel>>{};
-                for (final data in weekData) {
-                  groupedData.putIfAbsent(data.repeatTodoId, () => []);
-                  groupedData[data.repeatTodoId]!.add(data);
-                }
-
-                return Column(
-                  children: [
-                    if (_selectedRepeatTodo == null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Text(
-                          chartTitle,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ),
-                    _buildWeeklyChart(weekData, l10n),
-                    const SizedBox(height: 16),
-                    // Add legend when all data is selected
-                    if (_selectedRepeatTodo == null && groupedData.length > 1)
-                      _buildChartLegend(groupedData, todoProvider, l10n),
-                    if (_selectedRepeatTodo == null)
-                      _buildAllWeeklySummary(todoProvider, weekData, l10n)
-                    else
-                      Column(
-                        children: [
-                          _buildWeeklySummary(
-                            weekData,
-                            l10n,
-                            _selectedRepeatTodo?.statisticsModes,
-                          ),
-                          if (_selectedRepeatTodo?.statisticsModes?.contains(
-                                StatisticsMode.trend,
-                              ) ??
-                              true)
-                            Column(
-                              children: [
-                                const SizedBox(height: 16),
-                                _buildOverallTrendAnalysis(weekData, l10n),
-                              ],
-                            ),
-                        ],
-                      ),
-                  ],
-                );
               }
+
+              return Column(
+                children: [
+                  if (result.isAllData)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Text(
+                        result.chartTitle,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                  _buildWeeklyChart(result.data, l10n),
+                  const SizedBox(height: 16),
+                  if (result.isAllData &&
+                      result.groupedByRepeatTodoId.length > 1)
+                    _buildChartLegend(
+                      result.groupedByRepeatTodoId,
+                      todoProvider,
+                      l10n,
+                    ),
+                  if (result.isAllData)
+                    _buildAllWeeklySummary(todoProvider, result.data, l10n)
+                  else
+                    Column(
+                      children: [
+                        _buildWeeklySummary(
+                          result.data,
+                          l10n,
+                          _selectedRepeatTodo?.statisticsModes,
+                        ),
+                        if (_selectedRepeatTodo?.statisticsModes?.contains(
+                              StatisticsMode.trend,
+                            ) ??
+                            true)
+                          Column(
+                            children: [
+                              const SizedBox(height: 16),
+                              _buildOverallTrendAnalysis(result.data, l10n),
+                            ],
+                          ),
+                      ],
+                    ),
+                ],
+              );
             },
           ),
         ],
@@ -434,76 +397,63 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
           // Data selector for monthly view
           _buildDataSelector(repeatTodosWithStats, l10n, isWeekly: false),
           const SizedBox(height: 16),
-          Builder(
-            builder: (context) {
-              List<StatisticsDataModel> monthData;
-              String chartTitle;
-
-              if (_selectedRepeatTodo == null) {
-                // Get all data for all repeat todos
-                monthData = _getAllMonthData(todoProvider);
-                chartTitle = l10n.allData;
-              } else {
-                monthData = _getMonthData(
-                  todoProvider,
-                  _selectedRepeatTodo!.id,
-                );
-                chartTitle = _selectedRepeatTodo!.title;
-              }
-
-              if (monthData.isEmpty) {
+          _DeferredFutureBuilder<_PeriodDataResult>(
+            cacheKey:
+                'month:${_selectedRepeatTodo?.id ?? 'all'}:${todoProvider.statisticsData.length}',
+            placeholder: () =>
+                _buildChartLoadingPlaceholder(chartHeight: 240, items: 2),
+            loader: () => _loadMonthData(todoProvider, l10n),
+            builder: (context, result) {
+              if (result.data.isEmpty) {
                 return SizedBox(
                   height: MediaQuery.of(context).size.height - 300,
                   child: _buildNoDataView(l10n.noDataForThisMonth),
                 );
-              } else {
-                // Group data by repeat todo for legend
-                final groupedData = <String, List<StatisticsDataModel>>{};
-                for (final data in monthData) {
-                  groupedData.putIfAbsent(data.repeatTodoId, () => []);
-                  groupedData[data.repeatTodoId]!.add(data);
-                }
-
-                return Column(
-                  children: [
-                    if (_selectedRepeatTodo == null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Text(
-                          chartTitle,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ),
-                    _buildMonthlyChart(monthData, l10n),
-                    const SizedBox(height: 16),
-                    // Add legend when all data is selected
-                    if (_selectedRepeatTodo == null && groupedData.length > 1)
-                      _buildChartLegend(groupedData, todoProvider, l10n),
-                    if (_selectedRepeatTodo == null)
-                      _buildAllMonthlySummary(todoProvider, monthData, l10n)
-                    else
-                      Column(
-                        children: [
-                          _buildMonthlySummary(
-                            monthData,
-                            l10n,
-                            _selectedRepeatTodo?.statisticsModes,
-                          ),
-                          if (_selectedRepeatTodo?.statisticsModes?.contains(
-                                StatisticsMode.trend,
-                              ) ??
-                              true)
-                            Column(
-                              children: [
-                                const SizedBox(height: 16),
-                                _buildOverallTrendAnalysis(monthData, l10n),
-                              ],
-                            ),
-                        ],
-                      ),
-                  ],
-                );
               }
+
+              return Column(
+                children: [
+                  if (result.isAllData)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Text(
+                        result.chartTitle,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                  _buildMonthlyChart(result.data, l10n),
+                  const SizedBox(height: 16),
+                  if (result.isAllData &&
+                      result.groupedByRepeatTodoId.length > 1)
+                    _buildChartLegend(
+                      result.groupedByRepeatTodoId,
+                      todoProvider,
+                      l10n,
+                    ),
+                  if (result.isAllData)
+                    _buildAllMonthlySummary(todoProvider, result.data, l10n)
+                  else
+                    Column(
+                      children: [
+                        _buildMonthlySummary(
+                          result.data,
+                          l10n,
+                          _selectedRepeatTodo?.statisticsModes,
+                        ),
+                        if (_selectedRepeatTodo?.statisticsModes?.contains(
+                              StatisticsMode.trend,
+                            ) ??
+                            true)
+                          Column(
+                            children: [
+                              const SizedBox(height: 16),
+                              _buildOverallTrendAnalysis(result.data, l10n),
+                            ],
+                          ),
+                      ],
+                    ),
+                ],
+              );
             },
           ),
         ],
@@ -520,15 +470,6 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
       return _buildNoDataView(l10n.noStatisticsData);
     }
 
-    // Auto-select full date range for overview
-    if (_selectedDateRange == null) {
-      _autoSelectFullDateRange(todoProvider);
-    }
-
-    final filteredData = _selectedRepeatTodo == null
-        ? _getAllFilteredData(todoProvider)
-        : _getFilteredData(todoProvider, _selectedRepeatTodo!.id);
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -537,34 +478,208 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
           // Data selector for overview view
           _buildDataSelector(repeatTodosWithStats, l10n, isWeekly: false),
           const SizedBox(height: 16),
-          // Date range display (read-only for overview)
-          _buildDateRangeDisplay(l10n),
-          const SizedBox(height: 16),
-          if (filteredData.isEmpty)
-            SizedBox(
-              height: MediaQuery.of(context).size.height - 300,
-              child: _buildNoDataView(l10n.noStatisticsData),
-            )
-          else ...[
-            _buildOverviewChart(filteredData, l10n),
-            const SizedBox(height: 16),
-            // Add legend when all data is selected and there are multiple data sources
-            if (_selectedRepeatTodo == null)
-              _buildChartLegendForOverview(filteredData, todoProvider, l10n),
-            _buildOverviewStats(filteredData, l10n),
-            if (_selectedRepeatTodo?.statisticsModes?.contains(
-                  StatisticsMode.trend,
-                ) ??
-                true)
-              Column(
+          _DeferredFutureBuilder<_OverviewDataResult>(
+            cacheKey:
+                'overview:${_selectedRepeatTodo?.id ?? 'all'}:${_selectedDateRange?.start.millisecondsSinceEpoch ?? 'auto'}:${_selectedDateRange?.end.millisecondsSinceEpoch ?? 'auto'}:${todoProvider.statisticsData.length}',
+            placeholder: () =>
+                _buildChartLoadingPlaceholder(chartHeight: 240, items: 3),
+            loader: () => _loadOverviewData(todoProvider),
+            builder: (context, result) {
+              if (_selectedDateRange == null && mounted) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted || _selectedDateRange != null) return;
+                  setState(() {
+                    _selectedDateRange = result.selectedRange;
+                  });
+                });
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Date range display
+                  _buildDateRangeDisplay(l10n),
                   const SizedBox(height: 16),
-                  _buildTrendAnalysis(filteredData, l10n),
+                  if (result.data.isEmpty)
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height - 300,
+                      child: _buildNoDataView(l10n.noStatisticsData),
+                    )
+                  else ...[
+                    _buildOverviewChart(result.data, l10n),
+                    const SizedBox(height: 16),
+                    if (_selectedRepeatTodo == null)
+                      _buildChartLegendForOverview(
+                        result.data,
+                        todoProvider,
+                        l10n,
+                      ),
+                    _buildOverviewStats(result.data, l10n),
+                    if (_selectedRepeatTodo?.statisticsModes?.contains(
+                          StatisticsMode.trend,
+                        ) ??
+                        true)
+                      Column(
+                        children: [
+                          const SizedBox(height: 16),
+                          _buildTrendAnalysis(result.data, l10n),
+                        ],
+                      ),
+                  ],
                 ],
-              ),
-          ],
+              );
+            },
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTodayLoadingPlaceholder() {
+    return Column(
+      children: [
+        _buildSkeletonCard(height: 140),
+        const SizedBox(height: 16),
+        _buildSkeletonCard(height: 140),
+      ],
+    );
+  }
+
+  Widget _buildChartLoadingPlaceholder({
+    required double chartHeight,
+    required int items,
+  }) {
+    return Column(
+      children: [
+        _buildSkeletonCard(height: chartHeight),
+        const SizedBox(height: 16),
+        for (int i = 0; i < items; i++) ...[
+          _buildSkeletonCard(height: 72),
+          if (i != items - 1) const SizedBox(height: 12),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSkeletonCard({required double height}) {
+    final base = Theme.of(
+      context,
+    ).colorScheme.onSurface.withValues(alpha: 0.08);
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: base,
+        borderRadius: BorderRadius.circular(12),
+      ),
+    );
+  }
+
+  Future<_TodayDataResult> _loadTodayData(
+    TodoProvider provider,
+    List<RepeatTodoModel> repeatTodosWithStats,
+  ) async {
+    final now = _getLocalNow();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+
+    final todayData = provider.statisticsData
+        .where(
+          (d) =>
+              d.todoCreatedAt.isAfter(today) &&
+              d.todoCreatedAt.isBefore(tomorrow),
+        )
+        .toList();
+
+    final byRepeatTodoId = <String, List<StatisticsDataModel>>{};
+    for (final data in todayData) {
+      byRepeatTodoId.putIfAbsent(data.repeatTodoId, () => []).add(data);
+    }
+
+    final byTitle = <String, List<StatisticsDataModel>>{};
+    for (final repeatTodo in repeatTodosWithStats) {
+      final data = byRepeatTodoId[repeatTodo.id];
+      if (data == null || data.isEmpty) continue;
+      data.sort((a, b) => a.todoCreatedAt.compareTo(b.todoCreatedAt));
+      byTitle[repeatTodo.title] = data;
+    }
+
+    return _TodayDataResult(byTitle);
+  }
+
+  Future<_PeriodDataResult> _loadWeekData(
+    TodoProvider provider,
+    AppLocalizations l10n,
+  ) async {
+    final isAllData = _selectedRepeatTodo == null;
+    final data = isAllData
+        ? _getAllWeekData(provider)
+        : _getWeekData(provider, _selectedRepeatTodo!.id);
+
+    final grouped = <String, List<StatisticsDataModel>>{};
+    for (final item in data) {
+      grouped.putIfAbsent(item.repeatTodoId, () => []).add(item);
+    }
+
+    return _PeriodDataResult(
+      data: data,
+      chartTitle: isAllData ? l10n.allData : _selectedRepeatTodo!.title,
+      isAllData: isAllData,
+      groupedByRepeatTodoId: grouped,
+    );
+  }
+
+  Future<_PeriodDataResult> _loadMonthData(
+    TodoProvider provider,
+    AppLocalizations l10n,
+  ) async {
+    final isAllData = _selectedRepeatTodo == null;
+    final data = isAllData
+        ? _getAllMonthData(provider)
+        : _getMonthData(provider, _selectedRepeatTodo!.id);
+
+    final grouped = <String, List<StatisticsDataModel>>{};
+    for (final item in data) {
+      grouped.putIfAbsent(item.repeatTodoId, () => []).add(item);
+    }
+
+    return _PeriodDataResult(
+      data: data,
+      chartTitle: isAllData ? l10n.allData : _selectedRepeatTodo!.title,
+      isAllData: isAllData,
+      groupedByRepeatTodoId: grouped,
+    );
+  }
+
+  Future<_OverviewDataResult> _loadOverviewData(TodoProvider provider) async {
+    final selectedRange =
+        _selectedDateRange ?? _calculateFullDateRange(provider);
+    final data = _selectedRepeatTodo == null
+        ? _getAllFilteredDataWithRange(provider, selectedRange)
+        : _getFilteredDataWithRange(
+            provider,
+            _selectedRepeatTodo!.id,
+            selectedRange,
+          );
+
+    return _OverviewDataResult(selectedRange: selectedRange, data: data);
+  }
+
+  DateTimeRange _calculateFullDateRange(TodoProvider provider) {
+    if (provider.statisticsData.isEmpty) {
+      final now = _getLocalNow();
+      return DateTimeRange(start: now, end: now);
+    }
+
+    final earliestDate = provider.statisticsData
+        .map((data) => data.todoCreatedAt)
+        .reduce((a, b) => a.isBefore(b) ? a : b);
+    final latestDate = provider.statisticsData
+        .map((data) => data.todoCreatedAt)
+        .reduce((a, b) => a.isAfter(b) ? a : b);
+
+    return DateTimeRange(
+      start: DateTime(earliestDate.year, earliestDate.month, earliestDate.day),
+      end: DateTime(latestDate.year, latestDate.month, latestDate.day),
     );
   }
 
@@ -1068,23 +1183,6 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
   }
 
   // Data retrieval methods
-  List<StatisticsDataModel> _getTodayData(
-    TodoProvider provider,
-    String repeatTodoId,
-  ) {
-    final now = _getLocalNow();
-    final today = DateTime(now.year, now.month, now.day);
-    final tomorrow = today.add(const Duration(days: 1));
-
-    return provider.statisticsData
-        .where(
-          (data) =>
-              data.repeatTodoId == repeatTodoId &&
-              data.todoCreatedAt.isAfter(today) &&
-              data.todoCreatedAt.isBefore(tomorrow),
-        )
-        .toList();
-  }
 
   List<StatisticsDataModel> _getWeekData(
     TodoProvider provider,
@@ -2424,65 +2522,40 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
     return l10n.customDateRange;
   }
 
-  List<StatisticsDataModel> _getFilteredData(
+  List<StatisticsDataModel> _getFilteredDataWithRange(
     TodoProvider provider,
     String repeatTodoId,
+    DateTimeRange range,
   ) {
-    if (_selectedDateRange != null) {
-      return provider.statisticsData
-          .where(
-            (data) =>
-                data.repeatTodoId == repeatTodoId &&
-                data.todoCreatedAt.isAfter(
-                  _selectedDateRange!.start.subtract(const Duration(days: 1)),
-                ) &&
-                data.todoCreatedAt.isBefore(
-                  _selectedDateRange!.end.add(const Duration(days: 1)),
-                ),
-          )
-          .toList();
-    }
     return provider.statisticsData
-        .where((data) => data.repeatTodoId == repeatTodoId)
+        .where(
+          (data) =>
+              data.repeatTodoId == repeatTodoId &&
+              data.todoCreatedAt.isAfter(
+                range.start.subtract(const Duration(days: 1)),
+              ) &&
+              data.todoCreatedAt.isBefore(
+                range.end.add(const Duration(days: 1)),
+              ),
+        )
         .toList();
   }
 
-  List<StatisticsDataModel> _getAllFilteredData(TodoProvider provider) {
-    if (_selectedDateRange != null) {
-      return provider.statisticsData
-          .where(
-            (data) =>
-                data.todoCreatedAt.isAfter(
-                  _selectedDateRange!.start.subtract(const Duration(days: 1)),
-                ) &&
-                data.todoCreatedAt.isBefore(
-                  _selectedDateRange!.end.add(const Duration(days: 1)),
-                ),
-          )
-          .toList();
-    }
-    return provider.statisticsData;
-  }
-
-  void _autoSelectFullDateRange(TodoProvider provider) {
-    if (provider.statisticsData.isEmpty) {
-      final now = _getLocalNow();
-      _selectedDateRange = DateTimeRange(start: now, end: now);
-      return;
-    }
-
-    // Find the earliest and latest todo creation dates in the data
-    final earliestDate = provider.statisticsData
-        .map((data) => data.todoCreatedAt)
-        .reduce((a, b) => a.isBefore(b) ? a : b);
-    final latestDate = provider.statisticsData
-        .map((data) => data.todoCreatedAt)
-        .reduce((a, b) => a.isAfter(b) ? a : b);
-
-    _selectedDateRange = DateTimeRange(
-      start: DateTime(earliestDate.year, earliestDate.month, earliestDate.day),
-      end: DateTime(latestDate.year, latestDate.month, latestDate.day),
-    );
+  List<StatisticsDataModel> _getAllFilteredDataWithRange(
+    TodoProvider provider,
+    DateTimeRange range,
+  ) {
+    return provider.statisticsData
+        .where(
+          (data) =>
+              data.todoCreatedAt.isAfter(
+                range.start.subtract(const Duration(days: 1)),
+              ) &&
+              data.todoCreatedAt.isBefore(
+                range.end.add(const Duration(days: 1)),
+              ),
+        )
+        .toList();
   }
 
   Widget _buildDateRangeDisplay(AppLocalizations l10n) {
@@ -2504,4 +2577,86 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
       ),
     );
   }
+}
+
+class _DeferredFutureBuilder<T> extends StatefulWidget {
+  final String cacheKey;
+  final Future<T> Function() loader;
+  final Widget Function() placeholder;
+  final Widget Function(BuildContext context, T result) builder;
+
+  const _DeferredFutureBuilder({
+    required this.cacheKey,
+    required this.loader,
+    required this.placeholder,
+    required this.builder,
+  });
+
+  @override
+  State<_DeferredFutureBuilder<T>> createState() =>
+      _DeferredFutureBuilderState<T>();
+}
+
+class _DeferredFutureBuilderState<T> extends State<_DeferredFutureBuilder<T>> {
+  late Future<T> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _createFuture();
+  }
+
+  @override
+  void didUpdateWidget(covariant _DeferredFutureBuilder<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.cacheKey != widget.cacheKey) {
+      _future = _createFuture();
+    }
+  }
+
+  Future<T> _createFuture() async {
+    await SchedulerBinding.instance.endOfFrame;
+    return widget.loader();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<T>(
+      future: _future,
+      builder: (context, snapshot) {
+        final data = snapshot.data;
+        if (snapshot.connectionState != ConnectionState.done || data == null) {
+          return widget.placeholder();
+        }
+        return widget.builder(context, data);
+      },
+    );
+  }
+}
+
+class _TodayDataResult {
+  final Map<String, List<StatisticsDataModel>> dataByTitle;
+
+  const _TodayDataResult(this.dataByTitle);
+}
+
+class _PeriodDataResult {
+  final List<StatisticsDataModel> data;
+  final String chartTitle;
+  final bool isAllData;
+  final Map<String, List<StatisticsDataModel>> groupedByRepeatTodoId;
+
+  const _PeriodDataResult({
+    required this.data,
+    required this.chartTitle,
+    required this.isAllData,
+    required this.groupedByRepeatTodoId,
+  });
+}
+
+class _OverviewDataResult {
+  final DateTimeRange selectedRange;
+  final List<StatisticsDataModel> data;
+
+  const _OverviewDataResult({required this.selectedRange, required this.data});
 }

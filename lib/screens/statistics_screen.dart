@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:timezone/data/latest.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
@@ -12,6 +10,7 @@ import 'package:easy_todo/screens/data_statistics_screen.dart';
 import 'package:easy_todo/models/repeat_todo_model.dart';
 import 'package:easy_todo/widgets/web_desktop_content.dart';
 import 'package:easy_todo/utils/responsive.dart';
+import 'package:easy_todo/services/timezone_service.dart';
 
 // 数据统计按钮的内容组件
 class _DataStatsButtonContent extends StatelessWidget {
@@ -77,7 +76,7 @@ class StatisticsScreen extends StatefulWidget {
 class _StatisticsScreenState extends State<StatisticsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  int _currentTabIndex = 0; // 跟踪当前实际显示的标签页
+  late final TimezoneService _timezoneService;
 
   // Get message color based on completion rate
   Color _getMessageColor(double completionRate) {
@@ -160,100 +159,20 @@ class _StatisticsScreenState extends State<StatisticsScreen>
 
   // 获取本地时间的辅助方法
   DateTime _getLocalNow() {
-    try {
-      tz.initializeTimeZones();
-
-      // 使用更完整的时区检测逻辑
-      final localTimeZoneName = DateTime.now().timeZoneName;
-      String? timeZoneId;
-
-      if (localTimeZoneName.contains('CST') ||
-          localTimeZoneName.contains('GMT+8') ||
-          localTimeZoneName.contains('UTC+8')) {
-        timeZoneId = 'Asia/Shanghai';
-      } else if (localTimeZoneName.contains('PST') ||
-          localTimeZoneName.contains('GMT-8')) {
-        timeZoneId = 'America/Los_Angeles';
-      } else if (localTimeZoneName.contains('EST') ||
-          localTimeZoneName.contains('GMT-5')) {
-        timeZoneId = 'America/New_York';
-      } else if (localTimeZoneName.contains('JST') ||
-          localTimeZoneName.contains('GMT+9')) {
-        timeZoneId = 'Asia/Tokyo';
-      } else if (localTimeZoneName.contains('GMT')) {
-        final offset = DateTime.now().timeZoneOffset.inHours;
-        if (offset == 8) {
-          timeZoneId = 'Asia/Shanghai';
-        } else if (offset == 9) {
-          timeZoneId = 'Asia/Tokyo';
-        } else if (offset == -5) {
-          timeZoneId = 'America/New_York';
-        } else if (offset == -8) {
-          timeZoneId = 'America/Los_Angeles';
-        }
-      }
-
-      if (timeZoneId != null) {
-        try {
-          final location = tz.getLocation(timeZoneId);
-          tz.setLocalLocation(location);
-          // debugPrint('StatisticsScreen: Set timezone to $timeZoneId');
-        } catch (e) {
-          debugPrint('StatisticsScreen: Failed to set timezone: $e');
-        }
-      }
-
-      return tz.TZDateTime.now(tz.local);
-    } catch (e) {
-      debugPrint('StatisticsScreen: Timezone initialization failed: $e');
-      return DateTime.now();
-    }
+    return _timezoneService.getCurrentTime();
   }
 
   @override
   void initState() {
     super.initState();
+    _timezoneService = TimezoneService();
     _tabController = TabController(length: 4, vsync: this);
-    _tabController.addListener(_onTabChanged);
   }
 
   @override
   void dispose() {
-    _tabController.removeListener(_onTabChanged);
-    if (_tabController.animation != null) {
-      _tabController.animation!.removeListener(_onAnimationChanged);
-    }
     _tabController.dispose();
     super.dispose();
-  }
-
-  void _onTabChanged() {
-    // 监听所有标签页变化，包括点击切换和滑动切换
-    // TabController的animation在滑动时会发生变化，我们可以据此判断当前的目标页面
-    if (_tabController.animation != null) {
-      _tabController.animation!.addListener(_onAnimationChanged);
-    }
-
-    // 立即更新当前标签页索引
-    if (_currentTabIndex != _tabController.index) {
-      setState(() {
-        _currentTabIndex = _tabController.index;
-      });
-    }
-  }
-
-  void _onAnimationChanged() {
-    // 根据动画进度计算当前的目标页面索引
-    if (_tabController.animation != null) {
-      final animationValue = _tabController.animation!.value;
-      final targetIndex = animationValue.round();
-
-      if (targetIndex != _currentTabIndex) {
-        setState(() {
-          _currentTabIndex = targetIndex;
-        });
-      }
-    }
   }
 
   @override
@@ -285,10 +204,22 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                   child: TabBarView(
                     controller: _tabController,
                     children: [
-                      _buildDailyView(todoProvider, pomodoroProvider),
-                      _buildWeeklyView(todoProvider, pomodoroProvider),
-                      _buildMonthlyView(todoProvider, pomodoroProvider),
-                      _buildOverviewView(todoProvider, pomodoroProvider),
+                      Builder(
+                        builder: (_) =>
+                            _buildDailyView(todoProvider, pomodoroProvider),
+                      ),
+                      Builder(
+                        builder: (_) =>
+                            _buildWeeklyView(todoProvider, pomodoroProvider),
+                      ),
+                      Builder(
+                        builder: (_) =>
+                            _buildMonthlyView(todoProvider, pomodoroProvider),
+                      ),
+                      Builder(
+                        builder: (_) =>
+                            _buildOverviewView(todoProvider, pomodoroProvider),
+                      ),
                     ],
                   ),
                 ),
@@ -311,19 +242,45 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         .where((rt) => rt.dataStatisticsEnabled)
         .toList();
 
-    // 判断是否应该显示按钮
-    final shouldShowButton =
-        repeatTodosWithStats.isNotEmpty && _currentTabIndex != 0;
+    final animation = _tabController.animation;
+    if (animation == null) {
+      final shouldShowButton =
+          repeatTodosWithStats.isNotEmpty && _tabController.index != 0;
+      return _buildDataStatsButtonSwitcher(
+        shouldShowButton: shouldShowButton,
+        todoProvider: todoProvider,
+        l10n: l10n,
+      );
+    }
 
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        final currentIndex = animation.value.round();
+        final shouldShowButton =
+            repeatTodosWithStats.isNotEmpty && currentIndex != 0;
+        return _buildDataStatsButtonSwitcher(
+          shouldShowButton: shouldShowButton,
+          todoProvider: todoProvider,
+          l10n: l10n,
+        );
+      },
+    );
+  }
+
+  Widget _buildDataStatsButtonSwitcher({
+    required bool shouldShowButton,
+    required TodoProvider todoProvider,
+    required AppLocalizations l10n,
+  }) {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
       reverseDuration: const Duration(milliseconds: 300),
       transitionBuilder: (Widget child, Animation<double> animation) {
-        // 使用向下滑动动画
         final slideAnimation =
             Tween<Offset>(
-              begin: const Offset(0, 1.0), // 从下方开始
-              end: Offset.zero, // 到正常位置
+              begin: const Offset(0, 1.0),
+              end: Offset.zero,
             ).animate(
               CurvedAnimation(
                 parent: animation,
@@ -332,7 +289,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               ),
             );
 
-        // 使用淡入淡出动画
         final fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
           CurvedAnimation(
             parent: animation,
@@ -923,7 +879,10 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             SizedBox(height: compact ? 1 : 2),
             Text(
               title,
-              style: TextStyle(fontSize: titleFontSize, color: Colors.grey[600]),
+              style: TextStyle(
+                fontSize: titleFontSize,
+                color: Colors.grey[600],
+              ),
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,

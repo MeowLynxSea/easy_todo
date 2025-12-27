@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import '../models/ai_settings_model.dart';
 import '../models/todo_model.dart';
 import '../models/pomodoro_model.dart';
@@ -10,6 +9,7 @@ import '../services/ai_service.dart';
 import '../services/ai_cache_service.dart';
 import '../services/hive_service.dart';
 import '../services/secure_storage_service.dart';
+import '../services/repositories/ai_settings_repository.dart';
 import 'language_provider.dart';
 
 class AIProvider extends ChangeNotifier {
@@ -17,6 +17,7 @@ class AIProvider extends ChangeNotifier {
   AIService? _aiService;
   final AICacheService _cacheService = AICacheService();
   final SecureStorageService _secureStorageService = SecureStorageService();
+  final AISettingsRepository _settingsRepository = AISettingsRepository();
   LanguageProvider? _languageProvider;
 
   bool _isLoading = false;
@@ -52,11 +53,10 @@ class AIProvider extends ChangeNotifier {
   Future<void> _loadSettings() async {
     try {
       _isInitializing = true; // Set initialization flag
-      final box = await Hive.openBox<AISettingsModel>(
-        HiveService.aiSettingsBoxName,
-      );
-      final hasSavedSettings = box.containsKey('settings');
-      final savedSettings = box.get('settings') ?? AISettingsModel.create();
+      final box = HiveService().aiSettingsBox;
+      final hasSavedSettings = box.containsKey(AISettingsRepository.hiveKey);
+      final savedSettings =
+          box.get(AISettingsRepository.hiveKey) ?? AISettingsModel.create();
 
       final apiKeyFromHive = savedSettings.apiKey;
       final apiKeyFromSecureStorage = await _secureStorageService
@@ -72,7 +72,7 @@ class AIProvider extends ChangeNotifier {
       }
 
       if (apiKeyFromHive.isNotEmpty) {
-        await box.put('settings', savedSettings.copyWith(apiKey: ''));
+        await _settingsRepository.save(savedSettings.copyWith(apiKey: ''));
       }
 
       if (!hasSavedSettings) {
@@ -99,9 +99,7 @@ class AIProvider extends ChangeNotifier {
 
   Future<void> _clearCorruptedSettings() async {
     try {
-      final box = await Hive.openBox<AISettingsModel>(
-        HiveService.aiSettingsBoxName,
-      );
+      final box = HiveService().aiSettingsBox;
       await box.clear();
       debugPrint('AIProvider: Corrupted settings cleared');
     } catch (e) {
@@ -111,10 +109,6 @@ class AIProvider extends ChangeNotifier {
 
   Future<void> _saveSettings() async {
     try {
-      final box = await Hive.openBox<AISettingsModel>(
-        HiveService.aiSettingsBoxName,
-      );
-
       final apiKey = _settings.apiKey.trim();
       if (apiKey.isEmpty) {
         await _secureStorageService.deleteAiApiKey();
@@ -122,7 +116,7 @@ class AIProvider extends ChangeNotifier {
         await _secureStorageService.writeAiApiKey(apiKey);
       }
 
-      await box.put('settings', _settings.copyWith(apiKey: ''));
+      await _settingsRepository.save(_settings.copyWith(apiKey: ''));
     } catch (e) {
       debugPrint('AIProvider: Error saving settings: $e');
     }

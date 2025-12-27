@@ -9,12 +9,16 @@ import 'package:easy_todo/services/hive_service.dart';
 import 'package:easy_todo/services/notification_service.dart';
 import 'package:easy_todo/providers/ai_provider.dart';
 import 'package:easy_todo/providers/todo_provider.dart';
+import 'package:easy_todo/services/repositories/pomodoro_repository.dart';
+import 'package:easy_todo/services/sync_write_service.dart';
 
 enum PomodoroState { idle, running, paused, completed, breakTime }
 
 class PomodoroProvider extends ChangeNotifier {
   final HiveService _hiveService = HiveService();
   final NotificationService _notificationService = NotificationService();
+  final PomodoroRepository _pomodoroRepository = PomodoroRepository();
+  final SyncWriteService _syncWriteService = SyncWriteService();
   AIProvider? _aiProvider;
   TodoProvider? _todoProvider;
 
@@ -151,7 +155,19 @@ class PomodoroProvider extends ChangeNotifier {
   Future<void> _loadPomodoroSessions() async {
     try {
       final pomodoroBox = _hiveService.pomodoroBox;
-      _pomodoroSessions = pomodoroBox.values.toList();
+      for (final session in pomodoroBox.values) {
+        await _syncWriteService.ensureMetaExists(
+          type: SyncTypes.pomodoro,
+          recordId: session.id,
+          schemaVersion: PomodoroRepository.schemaVersion,
+        );
+      }
+      _pomodoroSessions = pomodoroBox.values
+          .where(
+            (s) =>
+                !_syncWriteService.isTombstonedSync(SyncTypes.pomodoro, s.id),
+          )
+          .toList();
       _pomodoroSessions.sort((a, b) => b.startTime.compareTo(a.startTime));
 
       // Calculate completed sessions count
@@ -440,8 +456,7 @@ class PomodoroProvider extends ChangeNotifier {
   Future<void> _saveCurrentSession() async {
     if (_currentSession != null) {
       try {
-        final pomodoroBox = _hiveService.pomodoroBox;
-        await pomodoroBox.put(_currentSession!.id, _currentSession!);
+        await _pomodoroRepository.upsert(_currentSession!);
 
         // Reload sessions from database to ensure consistency
         await _loadPomodoroSessions();

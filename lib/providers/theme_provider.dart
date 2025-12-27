@@ -1,13 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:easy_todo/theme/app_theme.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
+import 'package:easy_todo/services/repositories/user_preferences_repository.dart';
 
 class ThemeProvider extends ChangeNotifier {
-  static const String _themeKey = 'app_theme';
-  static const String _themeColorsKey = 'theme_colors';
-  static const String _customThemeKey = 'custom_theme';
-
   ThemeMode _themeMode = ThemeMode.system;
   Map<String, Color> _themeColors = {
     'primary': AppTheme.primaryColor,
@@ -16,10 +12,11 @@ class ThemeProvider extends ChangeNotifier {
   };
   Map<String, Color>? _customThemeColors;
   int _themeVersion = 0;
+  final UserPreferencesRepository _preferencesRepository =
+      UserPreferencesRepository();
 
   ThemeProvider() {
-    _loadTheme();
-    _loadThemeColors();
+    _loadFromUserPreferences();
   }
 
   ThemeMode get themeMode => _themeMode;
@@ -30,7 +27,7 @@ class ThemeProvider extends ChangeNotifier {
   void setThemeMode(ThemeMode themeMode) {
     _themeMode = themeMode;
     _themeVersion++;
-    _saveTheme();
+    _persistTheme();
     notifyListeners();
   }
 
@@ -39,7 +36,7 @@ class ThemeProvider extends ChangeNotifier {
     _themeVersion++;
     debugPrint('Setting theme colors: $colors');
     debugPrint('Theme version updated to: $_themeVersion');
-    _saveThemeColors();
+    _persistTheme();
     notifyListeners();
   }
 
@@ -47,14 +44,14 @@ class ThemeProvider extends ChangeNotifier {
     _customThemeColors = colors.isNotEmpty ? colors : null;
     _themeVersion++;
     debugPrint('Setting custom theme colors: $_customThemeColors');
-    _saveCustomTheme();
+    _persistTheme();
     notifyListeners();
   }
 
   void clearCustomTheme() {
     _customThemeColors = null;
     _themeVersion++;
-    _saveCustomTheme();
+    _persistTheme();
     notifyListeners();
   }
 
@@ -66,8 +63,7 @@ class ThemeProvider extends ChangeNotifier {
     };
     _customThemeColors = null;
     _themeVersion++;
-    _saveThemeColors();
-    _saveCustomTheme();
+    _persistTheme();
     notifyListeners();
   }
 
@@ -163,65 +159,54 @@ class ThemeProvider extends ChangeNotifier {
     );
   }
 
-  Future<void> _loadTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    final themeIndex = prefs.getInt(_themeKey) ?? 2; // Default to system
-    _themeMode = ThemeMode.values[themeIndex];
+  Future<void> _loadFromUserPreferences() async {
+    final prefs = await _preferencesRepository.load();
+
+    final index = prefs.themeModeIndex;
+    if (index >= 0 && index < ThemeMode.values.length) {
+      _themeMode = ThemeMode.values[index];
+    } else {
+      _themeMode = ThemeMode.system;
+    }
+
+    if (prefs.themeColorsString.isNotEmpty) {
+      try {
+        final parsed = _parseColorsFromString(prefs.themeColorsString);
+        if (parsed.isNotEmpty) {
+          _themeColors = parsed;
+        }
+      } catch (e) {
+        debugPrint('Error parsing theme colors: $e');
+      }
+    }
+
+    if (prefs.customThemeColorsString.isNotEmpty) {
+      try {
+        final parsed = _parseColorsFromString(prefs.customThemeColorsString);
+        _customThemeColors = parsed.isNotEmpty ? parsed : null;
+      } catch (e) {
+        debugPrint('Error parsing custom theme colors: $e');
+      }
+    } else {
+      _customThemeColors = null;
+    }
+
     notifyListeners();
   }
 
-  Future<void> _saveTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_themeKey, _themeMode.index);
-  }
+  Future<void> _persistTheme() async {
+    final themeColorsString = _colorsToString(_themeColors);
+    final customThemeColorsString = _customThemeColors == null
+        ? ''
+        : _colorsToString(_customThemeColors!);
 
-  Future<void> _loadThemeColors() async {
-    final prefs = await SharedPreferences.getInstance();
-    final colorsString = prefs.getString(_themeColorsKey);
-    if (colorsString != null) {
-      try {
-        final colorsMap = _parseColorsFromString(colorsString);
-        if (colorsMap.isNotEmpty) {
-          _themeColors = colorsMap;
-        }
-      } catch (e) {
-        // Keep default colors on error
-        debugPrint('Error loading theme colors: $e');
-      }
-    }
-    _loadCustomTheme();
-  }
-
-  Future<void> _loadCustomTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    final customColorsString = prefs.getString(_customThemeKey);
-    if (customColorsString != null) {
-      try {
-        final customColorsMap = _parseColorsFromString(customColorsString);
-        if (customColorsMap.isNotEmpty) {
-          _customThemeColors = customColorsMap;
-        }
-      } catch (e) {
-        // Keep no custom theme on error
-        debugPrint('Error loading custom theme colors: $e');
-      }
-    }
-  }
-
-  Future<void> _saveThemeColors() async {
-    final prefs = await SharedPreferences.getInstance();
-    final colorsString = _colorsToString(_themeColors);
-    await prefs.setString(_themeColorsKey, colorsString);
-  }
-
-  Future<void> _saveCustomTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (_customThemeColors != null) {
-      final colorsString = _colorsToString(_customThemeColors!);
-      await prefs.setString(_customThemeKey, colorsString);
-    } else {
-      await prefs.remove(_customThemeKey);
-    }
+    await _preferencesRepository.update(
+      (current) => current.copyWith(
+        themeModeIndex: _themeMode.index,
+        themeColorsString: themeColorsString,
+        customThemeColorsString: customThemeColorsString,
+      ),
+    );
   }
 
   String _colorsToString(Map<String, Color> colors) {

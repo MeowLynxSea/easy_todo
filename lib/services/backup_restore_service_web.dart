@@ -11,17 +11,49 @@ import 'package:easy_todo/models/statistics_model.dart';
 import 'package:easy_todo/models/todo_model.dart';
 import 'package:easy_todo/services/file_service.dart';
 import 'package:easy_todo/services/hive_service.dart';
+import 'package:easy_todo/services/repositories/pomodoro_repository.dart';
+import 'package:easy_todo/services/repositories/repeat_todo_repository.dart';
+import 'package:easy_todo/services/repositories/statistics_data_repository.dart';
+import 'package:easy_todo/services/repositories/todo_repository.dart';
+import 'package:easy_todo/services/sync_write_service.dart';
 
 class BackupRestoreService {
   final HiveService _hiveService = HiveService();
+  final SyncWriteService _syncWriteService = SyncWriteService();
+  final TodoRepository _todoRepository = TodoRepository();
+  final RepeatTodoRepository _repeatTodoRepository = RepeatTodoRepository();
+  final PomodoroRepository _pomodoroRepository = PomodoroRepository();
+  final StatisticsDataRepository _statisticsDataRepository =
+      StatisticsDataRepository();
 
   Future<Map<String, dynamic>> backupData() async {
     try {
-      final todos = _hiveService.todosBox.values.toList();
+      final todos = _hiveService.todosBox.values
+          .where(
+            (t) => !_syncWriteService.isTombstonedSync(SyncTypes.todo, t.id),
+          )
+          .toList();
       final statistics = _hiveService.statisticsBox.values.toList();
-      final pomodoroSessions = _hiveService.pomodoroBox.values.toList();
-      final repeatTodos = _hiveService.repeatTodosBox.values.toList();
-      final statisticsData = _hiveService.statisticsDataBox.values.toList();
+      final pomodoroSessions = _hiveService.pomodoroBox.values
+          .where(
+            (s) =>
+                !_syncWriteService.isTombstonedSync(SyncTypes.pomodoro, s.id),
+          )
+          .toList();
+      final repeatTodos = _hiveService.repeatTodosBox.values
+          .where(
+            (t) =>
+                !_syncWriteService.isTombstonedSync(SyncTypes.repeatTodo, t.id),
+          )
+          .toList();
+      final statisticsData = _hiveService.statisticsDataBox.values
+          .where(
+            (d) => !_syncWriteService.isTombstonedSync(
+              SyncTypes.statisticsData,
+              d.id,
+            ),
+          )
+          .toList();
 
       try {
         tz.initializeTimeZones();
@@ -75,20 +107,29 @@ class BackupRestoreService {
       final currentStatistics = _hiveService.statisticsBox.values.toList();
       final currentPomodoroSessions = _hiveService.pomodoroBox.values.toList();
       final currentRepeatTodos = _hiveService.repeatTodosBox.values.toList();
-      final currentStatisticsData =
-          _hiveService.statisticsDataBox.values.toList();
+      final currentStatisticsData = _hiveService.statisticsDataBox.values
+          .toList();
 
       try {
-        await _hiveService.todosBox.clear();
+        for (final todo in _hiveService.todosBox.values) {
+          await _todoRepository.tombstone(todo.id);
+        }
+        for (final session in _hiveService.pomodoroBox.values) {
+          await _pomodoroRepository.tombstone(session.id);
+        }
+        for (final repeatTodo in _hiveService.repeatTodosBox.values) {
+          await _repeatTodoRepository.tombstone(repeatTodo.id);
+        }
+        for (final statData in _hiveService.statisticsDataBox.values) {
+          await _statisticsDataRepository.tombstone(statData.id);
+        }
+
         await _hiveService.statisticsBox.clear();
-        await _hiveService.pomodoroBox.clear();
-        await _hiveService.repeatTodosBox.clear();
-        await _hiveService.statisticsDataBox.clear();
 
         final todosData = backupData['todos'] as List;
         for (final todoData in todosData) {
           final todo = TodoModel.fromJson(todoData);
-          await _hiveService.todosBox.put(todo.id, todo);
+          await _todoRepository.upsert(todo);
         }
 
         final statisticsList = backupData['statistics'] as List;
@@ -102,7 +143,7 @@ class BackupRestoreService {
           final pomodoroData = backupData['pomodoroSessions'] as List;
           for (final sessionData in pomodoroData) {
             final session = PomodoroModel.fromJson(sessionData);
-            await _hiveService.pomodoroBox.put(session.id, session);
+            await _pomodoroRepository.upsert(session);
             pomodoroCount++;
           }
         }
@@ -112,7 +153,7 @@ class BackupRestoreService {
           final repeatTodosData = backupData['repeatTodos'] as List;
           for (final repeatTodoData in repeatTodosData) {
             final repeatTodo = RepeatTodoModel.fromJson(repeatTodoData);
-            await _hiveService.repeatTodosBox.put(repeatTodo.id, repeatTodo);
+            await _repeatTodoRepository.upsert(repeatTodo);
             repeatTodosCount++;
           }
         }
@@ -124,15 +165,12 @@ class BackupRestoreService {
             final statisticsData = StatisticsDataModel.fromJson(
               statisticsDataJson,
             );
-            await _hiveService.statisticsDataBox.put(
-              statisticsData.id,
-              statisticsData,
-            );
+            await _statisticsDataRepository.upsert(statisticsData);
             statisticsDataCount++;
           }
         }
 
-        _ensureRepeatTodoConsistency();
+        await _ensureRepeatTodoConsistency();
 
         return {
           'success': true,
@@ -145,15 +183,24 @@ class BackupRestoreService {
         };
       } catch (restoreError) {
         try {
-          await _hiveService.todosBox.clear();
+          for (final todo in _hiveService.todosBox.values) {
+            await _todoRepository.tombstone(todo.id);
+          }
+          for (final session in _hiveService.pomodoroBox.values) {
+            await _pomodoroRepository.tombstone(session.id);
+          }
+          for (final repeatTodo in _hiveService.repeatTodosBox.values) {
+            await _repeatTodoRepository.tombstone(repeatTodo.id);
+          }
+          for (final statData in _hiveService.statisticsDataBox.values) {
+            await _statisticsDataRepository.tombstone(statData.id);
+          }
+
           await _hiveService.statisticsBox.clear();
-          await _hiveService.pomodoroBox.clear();
-          await _hiveService.repeatTodosBox.clear();
-          await _hiveService.statisticsDataBox.clear();
 
           for (final todo in currentTodos) {
             final restoredTodo = TodoModel.fromJson(todo.toJson());
-            await _hiveService.todosBox.put(restoredTodo.id, restoredTodo);
+            await _todoRepository.upsert(restoredTodo);
           }
           for (final stat in currentStatistics) {
             await _hiveService.statisticsBox.add(
@@ -162,25 +209,17 @@ class BackupRestoreService {
           }
           for (final session in currentPomodoroSessions) {
             final restoredSession = PomodoroModel.fromJson(session.toJson());
-            await _hiveService.pomodoroBox.put(
-              restoredSession.id,
-              restoredSession,
-            );
+            await _pomodoroRepository.upsert(restoredSession);
           }
           for (final repeatTodo in currentRepeatTodos) {
-            final restoredRepeatTodo =
-                RepeatTodoModel.fromJson(repeatTodo.toJson());
-            await _hiveService.repeatTodosBox.put(
-              restoredRepeatTodo.id,
-              restoredRepeatTodo,
+            final restoredRepeatTodo = RepeatTodoModel.fromJson(
+              repeatTodo.toJson(),
             );
+            await _repeatTodoRepository.upsert(restoredRepeatTodo);
           }
           for (final data in currentStatisticsData) {
             final restoredData = StatisticsDataModel.fromJson(data.toJson());
-            await _hiveService.statisticsDataBox.put(
-              restoredData.id,
-              restoredData,
-            );
+            await _statisticsDataRepository.upsert(restoredData);
           }
         } catch (_) {}
 
@@ -191,7 +230,7 @@ class BackupRestoreService {
     }
   }
 
-  void _ensureRepeatTodoConsistency() {
+  Future<void> _ensureRepeatTodoConsistency() async {
     final todos = _hiveService.todosBox.values.toList();
     final repeatTodos = _hiveService.repeatTodosBox.values.toList();
 
@@ -211,8 +250,8 @@ class BackupRestoreService {
 
         if (repeatTodo.lastGeneratedDate == null ||
             repeatTodo.lastGeneratedDate!.isBefore(latestGenerated.createdAt)) {
-          repeatTodo.lastGeneratedDate = latestGenerated.createdAt;
-          repeatTodo.save();
+          repeatTodo.lastGeneratedDate = latestGenerated.createdAt.toUtc();
+          await repeatTodo.save();
         }
       }
     }
@@ -341,7 +380,7 @@ class BackupRestoreService {
             .toList();
 
         for (final todo in completedTodos) {
-          await _hiveService.todosBox.delete(todo.id);
+          await _todoRepository.tombstone(todo.id);
           todosDeleted++;
         }
       }
@@ -366,7 +405,7 @@ class BackupRestoreService {
             .where((sd) => sd.date.isBefore(cutoffDate))
             .toList();
         for (final statData in oldStatisticsData) {
-          await _hiveService.statisticsDataBox.delete(statData.id);
+          await _statisticsDataRepository.tombstone(statData.id);
           statisticsDeleted++;
         }
       }
@@ -383,7 +422,7 @@ class BackupRestoreService {
             .where((session) => session.startTime.isBefore(cutoffDate))
             .toList();
         for (final session in oldPomodoroSessions) {
-          await _hiveService.pomodoroBox.delete(session.id);
+          await _pomodoroRepository.tombstone(session.id);
           pomodoroSessionsDeleted++;
         }
       }

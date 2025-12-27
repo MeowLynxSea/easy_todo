@@ -14,11 +14,21 @@ import 'package:easy_todo/providers/language_provider.dart';
 import 'package:easy_todo/utils/ai_status_constants.dart';
 import 'package:easy_todo/utils/date_utils.dart';
 import 'package:easy_todo/utils/repeat_backfill_utils.dart';
+import 'package:easy_todo/services/sync_write_service.dart';
+import 'package:easy_todo/utils/hlc_clock.dart';
+import 'package:easy_todo/services/repositories/todo_repository.dart';
+import 'package:easy_todo/services/repositories/repeat_todo_repository.dart';
+import 'package:easy_todo/services/repositories/statistics_data_repository.dart';
 
 class TodoProvider extends ChangeNotifier {
   final HiveService _hiveService = HiveService();
   final NotificationService _notificationService = NotificationService();
   final AICacheService _aiCacheService = AICacheService();
+  final SyncWriteService _syncWriteService = SyncWriteService();
+  final TodoRepository _todoRepository = TodoRepository();
+  final RepeatTodoRepository _repeatTodoRepository = RepeatTodoRepository();
+  final StatisticsDataRepository _statisticsDataRepository =
+      StatisticsDataRepository();
   AIProvider? _aiProvider;
   LanguageProvider? _languageProvider;
   List<TodoModel> _todos = [];
@@ -48,10 +58,47 @@ class TodoProvider extends ChangeNotifier {
     return systemTime;
   }
 
+  String _repeatGeneratedKey(String repeatTodoId, DateTime date) {
+    final local = localDay(date);
+    final y = local.year.toString().padLeft(4, '0');
+    final m = local.month.toString().padLeft(2, '0');
+    final d = local.day.toString().padLeft(2, '0');
+    return '$repeatTodoId:$y$m$d';
+  }
+
+  Future<void> _putTodo(TodoModel todo) async {
+    await _todoRepository.upsert(todo);
+  }
+
+  Future<void> _tombstoneTodo(String todoId) async {
+    await _todoRepository.tombstone(todoId);
+  }
+
+  Future<void> _putRepeatTodo(RepeatTodoModel repeatTodo) async {
+    await _repeatTodoRepository.upsert(repeatTodo);
+  }
+
+  Future<void> _tombstoneRepeatTodo(String repeatTodoId) async {
+    await _repeatTodoRepository.tombstone(repeatTodoId);
+  }
+
+  Future<void> _putStatisticsData(StatisticsDataModel data) async {
+    await _statisticsDataRepository.upsert(data);
+  }
+
+  Future<void> _tombstoneStatisticsData(String id) async {
+    await _statisticsDataRepository.tombstone(id);
+  }
+
   Future<void> _hydrateRepeatGenerationStateIfNeeded() async {
     final todosBox = _hiveService.todosBox;
     if (_todos.isEmpty && todosBox.isNotEmpty) {
       _todos = todosBox.values.toList();
+      _todos = _todos
+          .where(
+            (t) => !_syncWriteService.isTombstonedSync(SyncTypes.todo, t.id),
+          )
+          .toList();
       _todos.sort((a, b) => a.order.compareTo(b.order));
       _applyFilters();
     }
@@ -59,6 +106,12 @@ class TodoProvider extends ChangeNotifier {
     final repeatTodosBox = _hiveService.repeatTodosBox;
     if (_repeatTodos.isEmpty && repeatTodosBox.isNotEmpty) {
       _repeatTodos = repeatTodosBox.values.toList();
+      _repeatTodos = _repeatTodos
+          .where(
+            (t) =>
+                !_syncWriteService.isTombstonedSync(SyncTypes.repeatTodo, t.id),
+          )
+          .toList();
       _repeatTodos.sort((a, b) => a.order.compareTo(b.order));
     }
   }
@@ -173,7 +226,6 @@ class TodoProvider extends ChangeNotifier {
   Future<void> _verifyAndRestoreAILabels() async {
     if (_aiProvider != null) {}
 
-    final todosBox = _hiveService.todosBox;
     bool needsUpdate = false;
 
     // Skip if AI provider is not available
@@ -216,7 +268,7 @@ class TodoProvider extends ChangeNotifier {
               aiProcessed: true,
             );
 
-            await todosBox.put(restoredTodo.id, restoredTodo);
+            await _putTodo(restoredTodo);
             _todos[i] = restoredTodo;
             needsUpdate = true;
           } else {}
@@ -238,13 +290,13 @@ class TodoProvider extends ChangeNotifier {
         if (needsCategory || needsPriority) {
           // Reset aiProcessed flag only for missing enabled features
           final resetTodo = todo.copyWith(aiProcessed: false);
-          await todosBox.put(resetTodo.id, resetTodo);
+          await _putTodo(resetTodo);
           _todos[i] = resetTodo;
           needsUpdate = true;
         } else {
           // If features are disabled but data is partially missing, mark as processed with existing data
           final resetTodo = todo.copyWith(aiProcessed: true);
-          await todosBox.put(resetTodo.id, resetTodo);
+          await _putTodo(resetTodo);
           _todos[i] = resetTodo;
           needsUpdate = true;
         }
@@ -311,7 +363,7 @@ class TodoProvider extends ChangeNotifier {
                 aiProcessed: categoryOk && priorityOk,
               );
 
-              await todosBox.put(updatedTodo.id, updatedTodo);
+              await _putTodo(updatedTodo);
               _todos[i] = updatedTodo;
               needsUpdate = true;
             }
@@ -319,7 +371,7 @@ class TodoProvider extends ChangeNotifier {
             // No features need processing, mark as processed with existing data
             if (!todo.aiProcessed) {
               final updatedTodo = todo.copyWith(aiProcessed: true);
-              await todosBox.put(updatedTodo.id, updatedTodo);
+              await _putTodo(updatedTodo);
               _todos[i] = updatedTodo;
               needsUpdate = true;
             }
@@ -343,7 +395,6 @@ class TodoProvider extends ChangeNotifier {
 
   // Verify and restore AI labels for repeat todos
   Future<void> _verifyAndRestoreRepeatTodoAILabels() async {
-    final repeatTodosBox = _hiveService.repeatTodosBox;
     bool needsUpdate = false;
 
     // Skip if AI provider is not available
@@ -368,13 +419,13 @@ class TodoProvider extends ChangeNotifier {
         if (needsCategory || needsPriority) {
           // Reset aiProcessed flag only for missing enabled features
           final resetRepeatTodo = repeatTodo.copyWith(aiProcessed: false);
-          await repeatTodosBox.put(resetRepeatTodo.id, resetRepeatTodo);
+          await _putRepeatTodo(resetRepeatTodo);
           _repeatTodos[i] = resetRepeatTodo;
           needsUpdate = true;
         } else {
           // If features are disabled but data is partially missing, mark as processed with existing data
           final resetRepeatTodo = repeatTodo.copyWith(aiProcessed: true);
-          await repeatTodosBox.put(resetRepeatTodo.id, resetRepeatTodo);
+          await _putRepeatTodo(resetRepeatTodo);
           _repeatTodos[i] = resetRepeatTodo;
           needsUpdate = true;
         }
@@ -464,14 +515,14 @@ class TodoProvider extends ChangeNotifier {
                 aiProcessed: categoryOk && priorityOk,
               );
 
-              await repeatTodosBox.put(updatedRepeatTodo.id, updatedRepeatTodo);
+              await _putRepeatTodo(updatedRepeatTodo);
               _repeatTodos[i] = updatedRepeatTodo;
               needsUpdate = true;
             }
           } else {
             // No features need processing, mark as processed with existing data
             final updatedRepeatTodo = repeatTodo.copyWith(aiProcessed: true);
-            await repeatTodosBox.put(updatedRepeatTodo.id, updatedRepeatTodo);
+            await _putRepeatTodo(updatedRepeatTodo);
             _repeatTodos[i] = updatedRepeatTodo;
             needsUpdate = true;
           }
@@ -546,8 +597,7 @@ class TodoProvider extends ChangeNotifier {
               aiProcessed: true,
             );
 
-            final todosBox = _hiveService.todosBox;
-            await todosBox.put(updatedTodo.id, updatedTodo);
+            await _putTodo(updatedTodo);
 
             // Update the todo in the list
             final index = _todos.indexWhere((t) => t.id == todo.id);
@@ -603,8 +653,7 @@ class TodoProvider extends ChangeNotifier {
               aiProcessed: true,
             );
 
-            final todosBox = _hiveService.todosBox;
-            await todosBox.put(updatedTodo.id, updatedTodo);
+            await _putTodo(updatedTodo);
 
             // Update the todo in the list
             final index = _todos.indexWhere((t) => t.id == todo.id);
@@ -634,6 +683,36 @@ class TodoProvider extends ChangeNotifier {
       final todosBox = _hiveService.todosBox;
       _todos = todosBox.values.toList();
 
+      for (final todo in _todos) {
+        await _syncWriteService.ensureMetaExists(
+          type: SyncTypes.todo,
+          recordId: todo.id,
+          schemaVersion: TodoRepository.schemaVersion,
+        );
+      }
+
+      // Filter tombstoned records from UI lists.
+      _todos = _todos
+          .where(
+            (t) => !_syncWriteService.isTombstonedSync(SyncTypes.todo, t.id),
+          )
+          .toList();
+
+      // Backfill repeat-generated stable keys for cross-device dedup.
+      for (var i = 0; i < _todos.length; i++) {
+        final todo = _todos[i];
+        if (!todo.isGeneratedFromRepeat || todo.repeatTodoId == null) continue;
+        final expectedKey = _repeatGeneratedKey(
+          todo.repeatTodoId!,
+          todo.createdAt,
+        );
+        if (todo.generatedKey == expectedKey) continue;
+
+        final updated = todo.copyWith(generatedKey: expectedKey);
+        await _putTodo(updated);
+        _todos[i] = updated;
+      }
+
       // Log AI data for each loaded todo
       for (int i = 0; i < _todos.length; i++) {
         final todo = _todos[i];
@@ -648,6 +727,8 @@ class TodoProvider extends ChangeNotifier {
       }
 
       _todos.sort((a, b) => a.order.compareTo(b.order));
+
+      await _dedupeRepeatGeneratedTodosByKeyIfNeeded();
 
       // 仅在数据没有变化时使用缓存来提高性能
       final cacheKey = 'todos_${_currentFilter.name}_$_searchQuery';
@@ -698,6 +779,64 @@ class TodoProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> _dedupeRepeatGeneratedTodosByKeyIfNeeded() async {
+    final groups = <String, List<TodoModel>>{};
+    for (final todo in _todos) {
+      final key = todo.generatedKey;
+      if (key == null || key.isEmpty) continue;
+      groups.putIfAbsent(key, () => <TodoModel>[]).add(todo);
+    }
+
+    final idsToTombstone = <String>{};
+
+    for (final entry in groups.entries) {
+      final candidates = entry.value;
+      if (candidates.length <= 1) continue;
+
+      TodoModel winner = candidates.first;
+      for (final candidate in candidates.skip(1)) {
+        final better = _compareTodoBySyncMeta(candidate, winner) > 0;
+        if (better) {
+          winner = candidate;
+        }
+      }
+
+      for (final candidate in candidates) {
+        if (candidate.id == winner.id) continue;
+        idsToTombstone.add(candidate.id);
+      }
+    }
+
+    if (idsToTombstone.isEmpty) return;
+
+    for (final id in idsToTombstone) {
+      await _notificationService.cancelTodoReminder(id);
+      await _tombstoneTodo(id);
+    }
+
+    _todos.removeWhere((t) => idsToTombstone.contains(t.id));
+  }
+
+  int _compareTodoBySyncMeta(TodoModel a, TodoModel b) {
+    final metaA = _syncWriteService.getMetaSync(SyncTypes.todo, a.id);
+    final metaB = _syncWriteService.getMetaSync(SyncTypes.todo, b.id);
+
+    final hlcA = HlcTimestamp(
+      wallTimeMsUtc: metaA?.hlcWallMsUtc ?? 0,
+      counter: metaA?.hlcCounter ?? 0,
+      deviceId: metaA?.hlcDeviceId ?? '',
+    );
+    final hlcB = HlcTimestamp(
+      wallTimeMsUtc: metaB?.hlcWallMsUtc ?? 0,
+      counter: metaB?.hlcCounter ?? 0,
+      deviceId: metaB?.hlcDeviceId ?? '',
+    );
+
+    final cmp = HlcClock.compare(hlcA, hlcB);
+    if (cmp != 0) return cmp;
+    return a.id.compareTo(b.id);
+  }
+
   Future<void> loadRepeatTodos() async {
     try {
       final repeatTodosBox = _hiveService.repeatTodosBox;
@@ -712,6 +851,17 @@ class TodoProvider extends ChangeNotifier {
         try {
           // Basic validation
           if (repeatTodo.id.isNotEmpty && repeatTodo.title.isNotEmpty) {
+            await _syncWriteService.ensureMetaExists(
+              type: SyncTypes.repeatTodo,
+              recordId: repeatTodo.id,
+              schemaVersion: RepeatTodoRepository.schemaVersion,
+            );
+            if (_syncWriteService.isTombstonedSync(
+              SyncTypes.repeatTodo,
+              repeatTodo.id,
+            )) {
+              continue;
+            }
             validRepeatTodos.add(repeatTodo);
           } else {
             debugPrint(
@@ -752,8 +902,24 @@ class TodoProvider extends ChangeNotifier {
   Future<void> loadStatisticsData() async {
     try {
       final statsDataBox = _hiveService.statisticsDataBox;
-      _statisticsData = statsDataBox.values.toList();
+      for (final data in statsDataBox.values) {
+        await _syncWriteService.ensureMetaExists(
+          type: SyncTypes.statisticsData,
+          recordId: data.id,
+          schemaVersion: StatisticsDataRepository.schemaVersion,
+        );
+      }
+
+      _statisticsData = statsDataBox.values
+          .where(
+            (d) => !_syncWriteService.isTombstonedSync(
+              SyncTypes.statisticsData,
+              d.id,
+            ),
+          )
+          .toList();
       _statisticsData.sort((a, b) => b.date.compareTo(a.date));
+      notifyListeners();
     } catch (e) {
       debugPrint('Error loading statistics data: $e');
     }
@@ -788,8 +954,7 @@ class TodoProvider extends ChangeNotifier {
         endTime: endTime,
       );
 
-      final todosBox = _hiveService.todosBox;
-      await todosBox.put(newTodo.id, newTodo);
+      await _putTodo(newTodo);
 
       _todos.add(newTodo);
       _applyFilters();
@@ -822,8 +987,6 @@ class TodoProvider extends ChangeNotifier {
 
   Future<void> updateTodo(TodoModel updatedTodo) async {
     try {
-      final todosBox = _hiveService.todosBox;
-
       // Get the original todo for comparison
       final originalTodoIndex = _todos.indexWhere(
         (todo) => todo.id == updatedTodo.id,
@@ -846,7 +1009,7 @@ class TodoProvider extends ChangeNotifier {
         await _notificationService.cancelTodoReminder(updatedTodo.id);
       }
 
-      await todosBox.put(updatedTodo.id, updatedTodo);
+      await _putTodo(updatedTodo);
 
       final index = _todos.indexWhere((todo) => todo.id == updatedTodo.id);
       if (index != -1) {
@@ -882,12 +1045,10 @@ class TodoProvider extends ChangeNotifier {
       _failedAiRequests.remove(id);
       _lastRequestTime.remove(id);
 
-      final todosBox = _hiveService.todosBox;
-
       // Cancel notification before deleting
       await _notificationService.cancelTodoReminder(id);
 
-      await todosBox.delete(id);
+      await _tombstoneTodo(id);
 
       _todos.removeWhere((todo) => todo.id == id);
       _applyFilters();
@@ -952,8 +1113,7 @@ class TodoProvider extends ChangeNotifier {
         (data) => data.todoId == todo.id,
       );
       if (existingDataIndex != -1) {
-        final statsDataBox = _hiveService.statisticsDataBox;
-        await statsDataBox.delete(_statisticsData[existingDataIndex].id);
+        await _tombstoneStatisticsData(_statisticsData[existingDataIndex].id);
         _statisticsData.removeAt(existingDataIndex);
       }
       await _ensureRepeatTodoConsistency(todo.repeatTodoId!);
@@ -1000,7 +1160,6 @@ class TodoProvider extends ChangeNotifier {
       );
 
       StatisticsDataModel statisticsData;
-      final statsDataBox = _hiveService.statisticsDataBox;
 
       if (existingDataIndex != -1) {
         // Update existing statistics data
@@ -1012,7 +1171,7 @@ class TodoProvider extends ChangeNotifier {
               _getLocalDateTime(), // Update timestamp to reflect when data was modified
         );
 
-        await statsDataBox.put(statisticsData.id, statisticsData);
+        await _putStatisticsData(statisticsData);
         _statisticsData[existingDataIndex] = statisticsData;
       } else {
         // Create new statistics data
@@ -1024,7 +1183,7 @@ class TodoProvider extends ChangeNotifier {
           todoCreatedAt: todo.createdAt,
         );
 
-        await statsDataBox.put(statisticsData.id, statisticsData);
+        await _putStatisticsData(statisticsData);
         _statisticsData.add(statisticsData);
       }
 
@@ -1059,7 +1218,6 @@ class TodoProvider extends ChangeNotifier {
   Future<void> reorderTodos(int oldIndex, int newIndex) async {
     if (oldIndex == newIndex) return;
 
-    final todosBox = _hiveService.todosBox;
     final todo = _todos.removeAt(oldIndex);
 
     if (newIndex > oldIndex) {
@@ -1070,7 +1228,7 @@ class TodoProvider extends ChangeNotifier {
 
     for (int i = 0; i < _todos.length; i++) {
       _todos[i] = _todos[i].copyWith(order: i);
-      await todosBox.put(_todos[i].id, _todos[i]);
+      await _putTodo(_todos[i]);
     }
 
     _applyFilters();
@@ -1330,20 +1488,32 @@ class TodoProvider extends ChangeNotifier {
       final statisticsDataBox = _hiveService.statisticsDataBox;
       final pomodoroBox = _hiveService.pomodoroBox;
 
-      debugPrint('Clearing todos box...');
-      await todosBox.clear();
+      debugPrint('Tombstoning todos...');
+      for (final todo in todosBox.values) {
+        await _tombstoneTodo(todo.id);
+      }
 
       debugPrint('Clearing statistics box...');
       await statisticsBox.clear();
 
-      debugPrint('Clearing repeat todos box...');
-      await repeatTodosBox.clear();
+      debugPrint('Tombstoning repeat todos...');
+      for (final repeatTodo in repeatTodosBox.values) {
+        await _tombstoneRepeatTodo(repeatTodo.id);
+      }
 
-      debugPrint('Clearing statistics data box...');
-      await statisticsDataBox.clear();
+      debugPrint('Tombstoning statistics data...');
+      for (final statData in statisticsDataBox.values) {
+        await _tombstoneStatisticsData(statData.id);
+      }
 
-      debugPrint('Clearing pomodoro box...');
-      await pomodoroBox.clear();
+      debugPrint('Tombstoning pomodoro sessions...');
+      for (final session in pomodoroBox.values) {
+        await _syncWriteService.tombstoneRecord(
+          type: SyncTypes.pomodoro,
+          recordId: session.id,
+          schemaVersion: 1,
+        );
+      }
 
       debugPrint('Clearing in-memory lists...');
       _todos = [];
@@ -1432,8 +1602,7 @@ class TodoProvider extends ChangeNotifier {
       );
 
       // Save to database
-      final repeatTodosBox = _hiveService.repeatTodosBox;
-      await repeatTodosBox.put(processedRepeatTodo.id, processedRepeatTodo);
+      await _putRepeatTodo(processedRepeatTodo);
 
       // Update in memory
       final index = _repeatTodos.indexWhere((rt) => rt.id == repeatTodoId);
@@ -1483,15 +1652,13 @@ class TodoProvider extends ChangeNotifier {
 
   Future<void> addRepeatTodo(RepeatTodoModel repeatTodo) async {
     try {
-      final repeatTodosBox = _hiveService.repeatTodosBox;
-
       // Set order if not set
       final finalRepeatTodo = repeatTodo.order == 0
           ? repeatTodo.copyWith(order: _repeatTodos.length)
           : repeatTodo;
 
       // Create the repeat todo first without AI processing
-      await repeatTodosBox.put(finalRepeatTodo.id, finalRepeatTodo);
+      await _putRepeatTodo(finalRepeatTodo);
       _repeatTodos.add(finalRepeatTodo);
       _repeatTodos.sort((a, b) => a.order.compareTo(b.order));
 
@@ -1511,7 +1678,7 @@ class TodoProvider extends ChangeNotifier {
         final updatedRepeatTodo = finalRepeatTodo.copyWith(
           lastGeneratedDate: now,
         );
-        await repeatTodosBox.put(updatedRepeatTodo.id, updatedRepeatTodo);
+        await _putRepeatTodo(updatedRepeatTodo);
         final index = _repeatTodos.indexWhere(
           (rt) => rt.id == finalRepeatTodo.id,
         );
@@ -1543,8 +1710,7 @@ class TodoProvider extends ChangeNotifier {
       );
 
       // Always update the basic todo data first
-      final repeatTodosBox = _hiveService.repeatTodosBox;
-      await repeatTodosBox.put(updatedRepeatTodo.id, updatedRepeatTodo);
+      await _putRepeatTodo(updatedRepeatTodo);
 
       final index = _repeatTodos.indexWhere(
         (rt) => rt.id == updatedRepeatTodo.id,
@@ -1623,7 +1789,6 @@ class TodoProvider extends ChangeNotifier {
   Future<void> deleteRepeatTodo(String id) async {
     try {
       debugPrint('Deleting repeat todo with ID: $id');
-      final repeatTodosBox = _hiveService.repeatTodosBox;
 
       // Delete all todos generated from this repeat
       final generatedTodos = _todos
@@ -1638,7 +1803,7 @@ class TodoProvider extends ChangeNotifier {
         await deleteTodo(todo.id);
       }
 
-      await repeatTodosBox.delete(id);
+      await _tombstoneRepeatTodo(id);
       _repeatTodos.removeWhere((rt) => rt.id == id);
 
       debugPrint(
@@ -2249,12 +2414,14 @@ class TodoProvider extends ChangeNotifier {
     }
 
     // 直接使用当前本地时间创建任务，不进行任何标准化
+    final generatedKey = _repeatGeneratedKey(repeatTodo.id, targetDate);
     final newTodo = TodoModel.create(
       title: repeatTodo.title,
       description: repeatTodo.description,
       order: _todos.length,
       repeatTodoId: repeatTodo.id,
       isGeneratedFromRepeat: true,
+      generatedKey: generatedKey,
       dataUnit: repeatTodo.dataUnit,
       aiCategory: inheritedCategory,
       aiPriority: inheritedPriority,
@@ -2275,8 +2442,7 @@ class TodoProvider extends ChangeNotifier {
       'Todo creation time - Hour: ${correctedTodo.createdAt.hour}, Minute: ${correctedTodo.createdAt.minute}',
     );
 
-    final todosBox = _hiveService.todosBox;
-    await todosBox.put(correctedTodo.id, correctedTodo);
+    await _putTodo(correctedTodo);
 
     _todos.add(correctedTodo);
     _applyFilters();
@@ -2305,6 +2471,11 @@ class TodoProvider extends ChangeNotifier {
     final todosBox = _hiveService.todosBox;
     if (_todos.isEmpty && todosBox.isNotEmpty) {
       _todos = todosBox.values.toList();
+      _todos = _todos
+          .where(
+            (t) => !_syncWriteService.isTombstonedSync(SyncTypes.todo, t.id),
+          )
+          .toList();
       _todos.sort((a, b) => a.order.compareTo(b.order));
     }
 
@@ -2322,7 +2493,9 @@ class TodoProvider extends ChangeNotifier {
     }
 
     final idsToDelete = todoList.map((t) => t.id).toList(growable: false);
-    await todosBox.deleteAll(idsToDelete);
+    for (final id in idsToDelete) {
+      await _tombstoneTodo(id);
+    }
 
     final idSet = idsToDelete.toSet();
     _todos.removeWhere((todo) => idSet.contains(todo.id));
@@ -2341,6 +2514,11 @@ class TodoProvider extends ChangeNotifier {
     final todosBox = _hiveService.todosBox;
     if (_todos.isEmpty && todosBox.isNotEmpty) {
       _todos = todosBox.values.toList();
+      _todos = _todos
+          .where(
+            (t) => !_syncWriteService.isTombstonedSync(SyncTypes.todo, t.id),
+          )
+          .toList();
       _todos.sort((a, b) => a.order.compareTo(b.order));
     }
 
@@ -2399,12 +2577,14 @@ class TodoProvider extends ChangeNotifier {
 
   bool _hasGeneratedTodoForDate(RepeatTodoModel repeatTodo, DateTime dateTime) {
     final date = _normalizeDay(dateTime);
+    final expectedKey = _repeatGeneratedKey(repeatTodo.id, date);
 
     return _todos.any(
       (todo) =>
           todo.repeatTodoId == repeatTodo.id &&
           todo.isGeneratedFromRepeat &&
-          _isSameDay(todo.createdAt, date),
+          (todo.generatedKey == expectedKey ||
+              _isSameDay(todo.createdAt, date)),
     );
   }
 
@@ -2509,8 +2689,6 @@ class TodoProvider extends ChangeNotifier {
       return;
     }
 
-    final todosBox = _hiveService.todosBox;
-
     for (final todo in generatedTodos) {
       // 只更新发生变化的字段
       TodoModel updatedGeneratedTodo = todo;
@@ -2570,7 +2748,7 @@ class TodoProvider extends ChangeNotifier {
       }
 
       // 保存更新
-      await todosBox.put(updatedGeneratedTodo.id, updatedGeneratedTodo);
+      await _putTodo(updatedGeneratedTodo);
 
       // 更新内存中的列表
       final index = _todos.indexWhere((t) => t.id == todo.id);
@@ -2603,7 +2781,7 @@ class TodoProvider extends ChangeNotifier {
         aiProcessed: processedTemplate.aiProcessed,
       );
 
-      await todosBox.put(todoId, updatedTodo);
+      await _putTodo(updatedTodo);
 
       // 更新内存中的列表
       final index = _todos.indexWhere((t) => t.id == todoId);
@@ -2710,7 +2888,6 @@ class TodoProvider extends ChangeNotifier {
   Future<void> reorderRepeatTodos(int oldIndex, int newIndex) async {
     if (oldIndex == newIndex) return;
 
-    final repeatTodosBox = _hiveService.repeatTodosBox;
     final repeatTodo = _repeatTodos.removeAt(oldIndex);
 
     if (newIndex > oldIndex) {
@@ -2721,7 +2898,7 @@ class TodoProvider extends ChangeNotifier {
 
     for (int i = 0; i < _repeatTodos.length; i++) {
       _repeatTodos[i] = _repeatTodos[i].copyWith(order: i);
-      await repeatTodosBox.put(_repeatTodos[i].id, _repeatTodos[i]);
+      await _putRepeatTodo(_repeatTodos[i]);
     }
 
     notifyListeners();
@@ -2876,10 +3053,10 @@ class TodoProvider extends ChangeNotifier {
         );
 
         // Save to Hive database
-        await todosBox.put(updatedTodo.id, updatedTodo);
+        await _putTodo(updatedTodo);
 
         // Ensure Hive flushes to disk
-        await todosBox.flush();
+        await _hiveService.todosBox.flush();
 
         // Update the todo in the in-memory list
         final index = _todos.indexWhere((t) => t.id == todo.id);
@@ -2944,7 +3121,6 @@ class TodoProvider extends ChangeNotifier {
     try {
       // Get current language code
       final languageCode = _languageProvider?.currentLanguageCode ?? 'en';
-      final todosBox = _hiveService.todosBox;
       bool needsUpdate = false;
 
       // Process categorization if needed
@@ -2992,10 +3168,10 @@ class TodoProvider extends ChangeNotifier {
         );
 
         // Save to Hive database
-        await todosBox.put(updatedTodo.id, updatedTodo);
+        await _putTodo(updatedTodo);
 
         // Ensure Hive flushes to disk
-        await todosBox.flush();
+        await _hiveService.todosBox.flush();
 
         // Update the todo in the in-memory list
         final index = _todos.indexWhere((t) => t.id == todo.id);
@@ -3062,10 +3238,10 @@ class TodoProvider extends ChangeNotifier {
           );
 
           final todosBox = _hiveService.todosBox;
-          await todosBox.put(updatedTodo.id, updatedTodo);
+          await _putTodo(updatedTodo);
 
           // Ensure Hive flushes to disk for batch processing
-          await todosBox.flush();
+          await _hiveService.todosBox.flush();
 
           _todos[todoIndex] = updatedTodo;
 

@@ -9,6 +9,7 @@ import 'package:easy_todo/services/timezone_service.dart';
 import 'package:easy_todo/models/pomodoro_model.dart';
 import 'package:easy_todo/models/notification_settings_model.dart';
 import 'package:easy_todo/services/hive_service.dart';
+import 'package:easy_todo/services/sync_write_service.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:easy_todo/providers/ai_provider.dart';
@@ -1265,7 +1266,8 @@ class NotificationService {
             (todo) =>
                 todo.reminderEnabled &&
                 todo.reminderTime != null &&
-                !todo.isCompleted,
+                !todo.isCompleted &&
+                !SyncWriteService().isTombstonedSync(SyncTypes.todo, todo.id),
           )
           .toList();
 

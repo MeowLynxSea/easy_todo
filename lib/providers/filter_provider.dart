@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:easy_todo/providers/todo_provider.dart';
+import 'package:easy_todo/services/repositories/user_preferences_repository.dart';
 
 class FilterProvider extends ChangeNotifier {
-  static const String _statusFilterKey = 'todo_status_filter';
-  static const String _timeFilterKey = 'todo_time_filter';
-  static const String _sortOrderKey = 'todo_sort_order';
-  static const String _selectedCategoriesKey = 'todo_selected_categories';
-
   TodoFilter _statusFilter = TodoFilter.active;
   TimeFilter _timeFilter = TimeFilter.all;
   SortOrder _sortOrder = SortOrder.timeAscending;
   Set<String> _selectedCategories = {};
+  final UserPreferencesRepository _preferencesRepository =
+      UserPreferencesRepository();
 
   FilterProvider() {
     _loadPreferences();
@@ -63,31 +60,23 @@ class FilterProvider extends ChangeNotifier {
   }
 
   Future<void> _loadPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    _statusFilter = TodoFilter
-        .values[prefs.getInt(_statusFilterKey) ?? TodoFilter.active.index];
-    _timeFilter =
-        TimeFilter.values[prefs.getInt(_timeFilterKey) ?? TimeFilter.all.index];
-    _sortOrder = SortOrder
-        .values[prefs.getInt(_sortOrderKey) ?? SortOrder.timeAscending.index];
-
-    final categoriesString = prefs.getString(_selectedCategoriesKey);
-    if (categoriesString != null && categoriesString.isNotEmpty) {
-      _selectedCategories = Set<String>.from(categoriesString.split(','));
-    }
+    final userPrefs = await _preferencesRepository.load();
+    _statusFilter = TodoFilter.values[userPrefs.statusFilterIndex];
+    _timeFilter = TimeFilter.values[userPrefs.timeFilterIndex];
+    _sortOrder = SortOrder.values[userPrefs.sortOrderIndex];
+    _selectedCategories = userPrefs.selectedCategories.toSet();
 
     notifyListeners();
   }
 
   Future<void> _savePreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_statusFilterKey, _statusFilter.index);
-    await prefs.setInt(_timeFilterKey, _timeFilter.index);
-    await prefs.setInt(_sortOrderKey, _sortOrder.index);
-    await prefs.setString(
-      _selectedCategoriesKey,
-      _selectedCategories.join(','),
+    await _preferencesRepository.update(
+      (current) => current.copyWith(
+        statusFilterIndex: _statusFilter.index,
+        timeFilterIndex: _timeFilter.index,
+        sortOrderIndex: _sortOrder.index,
+        selectedCategories: _selectedCategories.toList(growable: false),
+      ),
     );
   }
 

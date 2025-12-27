@@ -385,8 +385,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
   void _onTabTapped(int index) {
     if (_currentIndex == index) return;
 
-    final currentPageIndex = _pageController.hasClients &&
-            _pageController.page != null
+    final currentPageIndex =
+        _pageController.hasClients && _pageController.page != null
         ? _pageController.page!.round()
         : _currentIndex;
     final distance = (currentPageIndex - index).abs();

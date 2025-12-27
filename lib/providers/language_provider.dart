@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:easy_todo/services/repositories/user_preferences_repository.dart';
 
 class LanguageProvider extends ChangeNotifier {
-  static const String _languageKey = 'app_language';
   Locale _locale = const Locale('zh');
   VoidCallback? onLanguageChanged;
+  final UserPreferencesRepository _preferencesRepository =
+      UserPreferencesRepository();
 
   LanguageProvider() {
     _loadLanguage();
@@ -32,15 +33,18 @@ class LanguageProvider extends ChangeNotifier {
   }
 
   Future<void> _loadLanguage() async {
-    final prefs = await SharedPreferences.getInstance();
-    final languageCode = prefs.getString(_languageKey) ?? 'zh';
+    final prefs = await _preferencesRepository.load();
+    final languageCode = prefs.languageCode.isNotEmpty
+        ? prefs.languageCode
+        : 'zh';
     _locale = Locale(languageCode);
     notifyListeners();
   }
 
   Future<void> _saveLanguage() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_languageKey, _locale.languageCode);
+    await _preferencesRepository.update(
+      (current) => current.copyWith(languageCode: _locale.languageCode),
+    );
   }
 
   static const List<Locale> supportedLocales = [

@@ -912,10 +912,7 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
       for (int day = 1; day <= daysInMonth; day++) {
         final targetDate = DateTime(currentYear, currentMonth, day);
         final dayData = sortedData
-            .where(
-              (data) =>
-                  isSameLocalDay(data.todoCreatedAt, targetDate),
-            )
+            .where((data) => isSameLocalDay(data.todoCreatedAt, targetDate))
             .toList();
 
         if (dayData.isNotEmpty) {
@@ -1046,10 +1043,7 @@ class _DataStatisticsScreenState extends State<DataStatisticsScreen>
       for (int dayOffset = 0; dayOffset < totalDays; dayOffset++) {
         final targetDate = startDate.add(Duration(days: dayOffset));
         final dayData = sortedData
-            .where(
-              (data) =>
-                  isSameLocalDay(data.todoCreatedAt, targetDate),
-            )
+            .where((data) => isSameLocalDay(data.todoCreatedAt, targetDate))
             .toList();
 
         if (dayData.isNotEmpty) {

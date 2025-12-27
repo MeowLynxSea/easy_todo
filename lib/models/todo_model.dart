@@ -63,6 +63,11 @@ class TodoModel extends HiveObject {
   @HiveField(18)
   DateTime? endTime;
 
+  /// Stable de-dup key for todos generated from repeat templates.
+  /// Format: "{repeatTodoId}:{yyyyMMdd}".
+  @HiveField(19)
+  String? generatedKey;
+
   TodoModel({
     required this.id,
     required this.title,
@@ -83,6 +88,7 @@ class TodoModel extends HiveObject {
     this.aiProcessed = false,
     this.startTime,
     this.endTime,
+    this.generatedKey,
   });
 
   factory TodoModel.create({
@@ -93,6 +99,7 @@ class TodoModel extends HiveObject {
     bool reminderEnabled = false,
     String? repeatTodoId,
     bool isGeneratedFromRepeat = false,
+    String? generatedKey,
     double? dataValue,
     String? dataUnit,
     String? aiCategory,
@@ -122,6 +129,7 @@ class TodoModel extends HiveObject {
       reminderEnabled: reminderEnabled,
       repeatTodoId: repeatTodoId,
       isGeneratedFromRepeat: isGeneratedFromRepeat,
+      generatedKey: generatedKey,
       dataValue: dataValue,
       dataUnit: dataUnit,
       aiCategory: aiCategory,
@@ -152,6 +160,7 @@ class TodoModel extends HiveObject {
     bool? aiProcessed,
     Object? startTime = _unset,
     Object? endTime = _unset,
+    Object? generatedKey = _unset,
   }) {
     final resolvedDescription = identical(description, _unset)
         ? this.description
@@ -159,10 +168,15 @@ class TodoModel extends HiveObject {
     final resolvedReminderTime = identical(reminderTime, _unset)
         ? this.reminderTime
         : reminderTime as DateTime?;
-    final resolvedStartTime =
-        identical(startTime, _unset) ? this.startTime : startTime as DateTime?;
-    final resolvedEndTime =
-        identical(endTime, _unset) ? this.endTime : endTime as DateTime?;
+    final resolvedStartTime = identical(startTime, _unset)
+        ? this.startTime
+        : startTime as DateTime?;
+    final resolvedEndTime = identical(endTime, _unset)
+        ? this.endTime
+        : endTime as DateTime?;
+    final resolvedGeneratedKey = identical(generatedKey, _unset)
+        ? this.generatedKey
+        : generatedKey as String?;
 
     return TodoModel(
       id: id ?? this.id,
@@ -185,6 +199,7 @@ class TodoModel extends HiveObject {
       aiProcessed: aiProcessed ?? this.aiProcessed,
       startTime: resolvedStartTime,
       endTime: resolvedEndTime,
+      generatedKey: resolvedGeneratedKey,
     );
   }
 
@@ -209,6 +224,7 @@ class TodoModel extends HiveObject {
       'aiProcessed': aiProcessed,
       'startTime': startTime?.toIso8601String(),
       'endTime': endTime?.toIso8601String(),
+      'generatedKey': generatedKey,
     };
   }
 
@@ -239,6 +255,7 @@ class TodoModel extends HiveObject {
           ? DateTime.parse(json['startTime'])
           : null,
       endTime: json['endTime'] != null ? DateTime.parse(json['endTime']) : null,
+      generatedKey: json['generatedKey'],
     );
   }
 

@@ -63,7 +63,9 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_startTime != null && _endTime != null && _endTime!.isBefore(_startTime!)) {
+    if (_startTime != null &&
+        _endTime != null &&
+        _endTime!.isBefore(_startTime!)) {
       final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -311,10 +313,7 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          l10n.timeRange,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        Text(l10n.timeRange, style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         ListTile(
           title: Text(l10n.startTime),

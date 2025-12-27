@@ -1,65 +1,123 @@
 import 'package:flutter/foundation.dart';
-import 'package:easy_todo/models/app_settings_model.dart';
+import 'package:easy_todo/models/device_settings_model.dart';
+import 'package:easy_todo/models/user_preferences_model.dart';
 import 'package:easy_todo/services/hive_service.dart';
 import 'package:easy_todo/services/biometric_service.dart';
+import 'package:easy_todo/services/repositories/user_preferences_repository.dart';
 
 class AppSettingsProvider extends ChangeNotifier {
   final HiveService _hiveService = HiveService();
   final BiometricService _biometricService = BiometricService.instance;
+  final UserPreferencesRepository _preferencesRepository =
+      UserPreferencesRepository();
 
-  AppSettingsModel _settings = AppSettingsModel.create();
+  DeviceSettingsModel _deviceSettings = DeviceSettingsModel.create();
+  UserPreferencesModel _preferences = UserPreferencesModel.create();
   bool _isLoading = false;
 
   AppSettingsProvider() {
     _loadSettings();
   }
 
-  AppSettingsModel get settings => _settings;
+  DeviceSettingsModel get deviceSettings => _deviceSettings;
+  UserPreferencesModel get preferences => _preferences;
   bool get isLoading => _isLoading;
-  bool get biometricLockEnabled => _settings.biometricLockEnabled;
-  bool get autoUpdateEnabled => _settings.autoUpdateEnabled;
-  String get viewMode => _settings.viewMode;
-  bool get viewOpenInNewPage => _settings.viewOpenInNewPage;
-  String get historyViewMode => _settings.historyViewMode;
-  int get scheduleDayStartMinutes => _settings.scheduleDayStartMinutes;
-  int get scheduleDayEndMinutes => _settings.scheduleDayEndMinutes;
-  double get scheduleLabelTextScale => _settings.scheduleLabelTextScale;
+  bool get biometricLockEnabled => _deviceSettings.biometricLockEnabled;
+  bool get autoUpdateEnabled => _deviceSettings.autoUpdateEnabled;
+  String get viewMode => _preferences.viewMode;
+  bool get viewOpenInNewPage => _preferences.viewOpenInNewPage;
+  String get historyViewMode => _preferences.historyViewMode;
+  int get scheduleDayStartMinutes => _preferences.scheduleDayStartMinutes;
+  int get scheduleDayEndMinutes => _preferences.scheduleDayEndMinutes;
+  double get scheduleLabelTextScale => _preferences.scheduleLabelTextScale;
   List<int> get scheduleVisibleWeekdays =>
-      List<int>.unmodifiable(_settings.scheduleVisibleWeekdays);
+      List<int>.unmodifiable(_preferences.scheduleVisibleWeekdays);
 
   Future<void> _loadSettings() async {
     _isLoading = true;
     notifyListeners();
 
-    final settingsBox = _hiveService.appSettingsBox;
+    final deviceBox = _hiveService.deviceSettingsBox;
     try {
-      final savedSettings = settingsBox.get('appSettings');
+      final savedDevice = deviceBox.get('deviceSettings');
 
-      if (savedSettings != null) {
-        _settings = savedSettings;
-      } else {
-        // 如果没有保存的设置，创建默认设置
-        _settings = AppSettingsModel.create();
-        await settingsBox.put('appSettings', _settings);
+      if (savedDevice != null) {
+        _deviceSettings = savedDevice;
+      }
+
+      var preferencesChanged = false;
+      _preferences = await _preferencesRepository.load();
+
+      if (savedDevice == null) {
+        // Legacy migration from AppSettingsModel (pre-sync split).
+        final legacyBox = _hiveService.appSettingsBox;
+        final legacy = legacyBox.get('appSettings');
+        if (legacy != null) {
+          if (savedDevice == null) {
+            _deviceSettings = DeviceSettingsModel(
+              biometricLockEnabled: legacy.biometricLockEnabled,
+              autoUpdateEnabled: legacy.autoUpdateEnabled,
+            );
+          }
+
+          final defaultPrefs = UserPreferencesModel.create();
+          if (_preferences.viewMode == defaultPrefs.viewMode &&
+              _preferences.viewOpenInNewPage ==
+                  defaultPrefs.viewOpenInNewPage &&
+              _preferences.historyViewMode == defaultPrefs.historyViewMode &&
+              _preferences.scheduleDayStartMinutes ==
+                  defaultPrefs.scheduleDayStartMinutes &&
+              _preferences.scheduleDayEndMinutes ==
+                  defaultPrefs.scheduleDayEndMinutes &&
+              _preferences.scheduleLabelTextScale ==
+                  defaultPrefs.scheduleLabelTextScale &&
+              _preferences.scheduleVisibleWeekdays.length ==
+                  defaultPrefs.scheduleVisibleWeekdays.length) {
+            _preferences = UserPreferencesModel(
+              languageCode: _preferences.languageCode,
+              themeModeIndex: _preferences.themeModeIndex,
+              themeColorsString: _preferences.themeColorsString,
+              customThemeColorsString: _preferences.customThemeColorsString,
+              statusFilterIndex: _preferences.statusFilterIndex,
+              timeFilterIndex: _preferences.timeFilterIndex,
+              sortOrderIndex: _preferences.sortOrderIndex,
+              selectedCategories: _preferences.selectedCategories,
+              viewMode: legacy.viewMode,
+              viewOpenInNewPage: legacy.viewOpenInNewPage,
+              historyViewMode: legacy.historyViewMode,
+              scheduleDayStartMinutes: legacy.scheduleDayStartMinutes,
+              scheduleDayEndMinutes: legacy.scheduleDayEndMinutes,
+              scheduleVisibleWeekdays: legacy.scheduleVisibleWeekdays,
+              scheduleLabelTextScale: legacy.scheduleLabelTextScale,
+            );
+            preferencesChanged = true;
+          }
+        }
       }
 
       if (kIsWeb) {
         final needsDisable =
-            _settings.autoUpdateEnabled || _settings.biometricLockEnabled;
+            _deviceSettings.autoUpdateEnabled ||
+            _deviceSettings.biometricLockEnabled;
         if (needsDisable) {
-          _settings = _settings.copyWith(
+          _deviceSettings = _deviceSettings.copyWith(
             autoUpdateEnabled: false,
             biometricLockEnabled: false,
           );
-          await settingsBox.put('appSettings', _settings);
         }
+      }
+
+      await deviceBox.put('deviceSettings', _deviceSettings);
+      if (preferencesChanged) {
+        await _preferencesRepository.save(_preferences);
       }
     } catch (e) {
       debugPrint('Error loading app settings: $e');
-      // If there's an error loading settings (e.g., format mismatch), create default settings
-      _settings = AppSettingsModel.create();
+      _deviceSettings = DeviceSettingsModel.create();
+      _preferences = UserPreferencesModel.create();
       try {
-        await settingsBox.put('appSettings', _settings);
+        await deviceBox.put('deviceSettings', _deviceSettings);
+        await _preferencesRepository.save(_preferences);
       } catch (saveError) {
         debugPrint('Error saving default app settings: $saveError');
       }
@@ -69,12 +127,20 @@ class AppSettingsProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _saveSettings() async {
+  Future<void> _saveDeviceSettings() async {
     try {
-      final settingsBox = _hiveService.appSettingsBox;
-      await settingsBox.put('appSettings', _settings);
+      final deviceBox = _hiveService.deviceSettingsBox;
+      await deviceBox.put('deviceSettings', _deviceSettings);
     } catch (e) {
       debugPrint('Error saving app settings: $e');
+    }
+  }
+
+  Future<void> _savePreferences() async {
+    try {
+      await _preferencesRepository.save(_preferences);
+    } catch (e) {
+      debugPrint('Error saving user preferences: $e');
     }
   }
 
@@ -123,8 +189,8 @@ class AppSettingsProvider extends ChangeNotifier {
       }
 
       // 更新设置
-      _settings = _settings.copyWith(biometricLockEnabled: enabled);
-      await _saveSettings();
+      _deviceSettings = _deviceSettings.copyWith(biometricLockEnabled: enabled);
+      await _saveDeviceSettings();
 
       _isLoading = false;
       notifyListeners();
@@ -139,7 +205,7 @@ class AppSettingsProvider extends ChangeNotifier {
 
   /// 验证指纹（用于应用启动时的验证）
   Future<bool> authenticateForAppAccess({String? reason}) async {
-    if (!_settings.biometricLockEnabled) {
+    if (!_deviceSettings.biometricLockEnabled) {
       return true; // 如果未启用指纹锁，直接允许访问
     }
 
@@ -190,29 +256,29 @@ class AppSettingsProvider extends ChangeNotifier {
 
   /// 设置自动更新
   Future<void> setAutoUpdate(bool enabled) async {
-    _settings = _settings.copyWith(autoUpdateEnabled: enabled);
-    await _saveSettings();
+    _deviceSettings = _deviceSettings.copyWith(autoUpdateEnabled: enabled);
+    await _saveDeviceSettings();
     notifyListeners();
   }
 
   /// 设置视图模式
   Future<void> setViewMode(String mode) async {
-    _settings = _settings.copyWith(viewMode: mode);
-    await _saveSettings();
+    _preferences = _preferences.copyWith(viewMode: mode);
+    await _savePreferences();
     notifyListeners();
   }
 
   /// 设置视图在新页面打开
   Future<void> setViewOpenInNewPage(bool enabled) async {
-    _settings = _settings.copyWith(viewOpenInNewPage: enabled);
-    await _saveSettings();
+    _preferences = _preferences.copyWith(viewOpenInNewPage: enabled);
+    await _savePreferences();
     notifyListeners();
   }
 
   /// 设置历史视图模式
   Future<void> setHistoryViewMode(String mode) async {
-    _settings = _settings.copyWith(historyViewMode: mode);
-    await _saveSettings();
+    _preferences = _preferences.copyWith(historyViewMode: mode);
+    await _savePreferences();
     notifyListeners();
   }
 
@@ -225,11 +291,11 @@ class AppSettingsProvider extends ChangeNotifier {
       endMinutes: endMinutes,
     );
 
-    _settings = _settings.copyWith(
+    _preferences = _preferences.copyWith(
       scheduleDayStartMinutes: normalized.startMinutes,
       scheduleDayEndMinutes: normalized.endMinutes,
     );
-    await _saveSettings();
+    await _savePreferences();
     notifyListeners();
   }
 
@@ -237,26 +303,26 @@ class AppSettingsProvider extends ChangeNotifier {
     final normalized = _normalizeScheduleWeekdays(weekdays);
     if (normalized.isEmpty) return;
 
-    _settings = _settings.copyWith(scheduleVisibleWeekdays: normalized);
-    await _saveSettings();
+    _preferences = _preferences.copyWith(scheduleVisibleWeekdays: normalized);
+    await _savePreferences();
     notifyListeners();
   }
 
   Future<void> resetScheduleLayoutSettings() async {
-    _settings = _settings.copyWith(
+    _preferences = _preferences.copyWith(
       scheduleDayStartMinutes: 0,
       scheduleDayEndMinutes: 1440,
       scheduleVisibleWeekdays: const <int>[1, 2, 3, 4, 5, 6, 7],
       scheduleLabelTextScale: 1.0,
     );
-    await _saveSettings();
+    await _savePreferences();
     notifyListeners();
   }
 
   Future<void> setScheduleLabelTextScale(double scale) async {
     final normalized = scale.clamp(0.8, 1.4).toDouble();
-    _settings = _settings.copyWith(scheduleLabelTextScale: normalized);
-    await _saveSettings();
+    _preferences = _preferences.copyWith(scheduleLabelTextScale: normalized);
+    await _savePreferences();
     notifyListeners();
   }
 

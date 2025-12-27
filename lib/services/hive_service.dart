@@ -4,13 +4,23 @@ import 'package:easy_todo/models/todo_model.dart';
 import 'package:easy_todo/models/statistics_model.dart';
 import 'package:easy_todo/models/notification_settings_model.dart';
 import 'package:easy_todo/models/app_settings_model.dart';
+import 'package:easy_todo/models/device_settings_model.dart';
 import 'package:easy_todo/models/pomodoro_model.dart';
 import 'package:easy_todo/models/repeat_todo_model.dart';
 import 'package:easy_todo/models/statistics_data_model.dart';
 import 'package:easy_todo/models/ai_settings_model.dart';
+import 'package:easy_todo/models/user_preferences_model.dart';
 import 'package:easy_todo/adapters/time_of_day_adapter.dart';
 import 'package:easy_todo/adapters/repeat_type_adapter.dart';
 import 'package:easy_todo/adapters/statistics_mode_adapter.dart';
+import 'package:easy_todo/adapters/device_settings_model_adapter.dart';
+import 'package:easy_todo/adapters/sync_meta_adapter.dart';
+import 'package:easy_todo/adapters/sync_outbox_item_adapter.dart';
+import 'package:easy_todo/adapters/sync_state_adapter.dart';
+import 'package:easy_todo/adapters/user_preferences_model_adapter.dart';
+import 'package:easy_todo/models/sync_meta.dart';
+import 'package:easy_todo/models/sync_outbox_item.dart';
+import 'package:easy_todo/models/sync_state.dart';
 import 'package:easy_todo/services/cache_service.dart';
 
 class HiveService {
@@ -18,11 +28,17 @@ class HiveService {
   static const String _statisticsBoxName = 'statistics';
   static const String _notificationSettingsBoxName = 'notificationSettings';
   static const String _appSettingsBoxName = 'appSettings';
+  static const String _deviceSettingsBoxName = 'deviceSettings';
+  static const String _userPreferencesBoxName = 'userPreferences';
   static const String _pomodoroBoxName = 'pomodoro';
   static const String _pomodoroSettingsBoxName = 'pomodoroSettings';
   static const String _repeatTodosBoxName = 'repeatTodos';
   static const String _statisticsDataBoxName = 'statisticsData';
   static const String aiSettingsBoxName = 'aiSettings';
+
+  static const String _syncStateBoxName = 'sync_state_box';
+  static const String _syncMetaBoxName = 'sync_meta_box';
+  static const String _syncOutboxBoxName = 'sync_outbox_box';
 
   static Future<void> init() async {
     try {
@@ -37,10 +53,15 @@ class HiveService {
         Hive.registerAdapter(StatisticsModelAdapter());
         Hive.registerAdapter(NotificationSettingsModelAdapter());
         Hive.registerAdapter(AppSettingsModelAdapter());
+        Hive.registerAdapter(DeviceSettingsModelAdapter());
+        Hive.registerAdapter(UserPreferencesModelAdapter());
         Hive.registerAdapter(PomodoroModelAdapter());
         Hive.registerAdapter(RepeatTodoModelAdapter());
         Hive.registerAdapter(StatisticsDataModelAdapter());
         Hive.registerAdapter(AISettingsModelAdapter());
+        Hive.registerAdapter(SyncStateAdapter());
+        Hive.registerAdapter(SyncMetaAdapter());
+        Hive.registerAdapter(SyncOutboxItemAdapter());
         // debugPrint('All Hive adapters registered successfully');
       } catch (e) {
         debugPrint('Error registering Hive adapters: $e');
@@ -55,10 +76,16 @@ class HiveService {
           _notificationSettingsBoxName,
         );
         await Hive.openBox<AppSettingsModel>(_appSettingsBoxName);
+        await Hive.openBox<DeviceSettingsModel>(_deviceSettingsBoxName);
+        await Hive.openBox<UserPreferencesModel>(_userPreferencesBoxName);
         await Hive.openBox<PomodoroModel>(_pomodoroBoxName);
         await Hive.openBox<dynamic>(_pomodoroSettingsBoxName);
         await Hive.openBox<RepeatTodoModel>(_repeatTodosBoxName);
         await Hive.openBox<StatisticsDataModel>(_statisticsDataBoxName);
+
+        await _openOrRecreateBox<SyncState>(_syncStateBoxName);
+        await _openOrRecreateBox<SyncMeta>(_syncMetaBoxName);
+        await _openOrRecreateBox<SyncOutboxItem>(_syncOutboxBoxName);
 
         try {
           await Hive.openBox<AISettingsModel>(aiSettingsBoxName);
@@ -94,6 +121,20 @@ class HiveService {
     }
   }
 
+  static Future<Box<T>> _openOrRecreateBox<T>(String name) async {
+    try {
+      return await Hive.openBox<T>(name);
+    } catch (e) {
+      debugPrint('Error opening Hive box $name: $e');
+      try {
+        await Hive.deleteBoxFromDisk(name);
+      } catch (deleteError) {
+        debugPrint('Error deleting Hive box $name: $deleteError');
+      }
+      return Hive.openBox<T>(name);
+    }
+  }
+
   Box<TodoModel> get todosBox => Hive.box<TodoModel>(_todosBoxName);
   Box<StatisticsModel> get statisticsBox =>
       Hive.box<StatisticsModel>(_statisticsBoxName);
@@ -101,6 +142,10 @@ class HiveService {
       Hive.box<NotificationSettingsModel>(_notificationSettingsBoxName);
   Box<AppSettingsModel> get appSettingsBox =>
       Hive.box<AppSettingsModel>(_appSettingsBoxName);
+  Box<DeviceSettingsModel> get deviceSettingsBox =>
+      Hive.box<DeviceSettingsModel>(_deviceSettingsBoxName);
+  Box<UserPreferencesModel> get userPreferencesBox =>
+      Hive.box<UserPreferencesModel>(_userPreferencesBoxName);
   Box<PomodoroModel> get pomodoroBox =>
       Hive.box<PomodoroModel>(_pomodoroBoxName);
   Box<dynamic> get pomodoroSettingsBox =>
@@ -109,6 +154,13 @@ class HiveService {
       Hive.box<RepeatTodoModel>(_repeatTodosBoxName);
   Box<StatisticsDataModel> get statisticsDataBox =>
       Hive.box<StatisticsDataModel>(_statisticsDataBoxName);
+  Box<AISettingsModel> get aiSettingsBox =>
+      Hive.box<AISettingsModel>(aiSettingsBoxName);
+
+  Box<SyncState> get syncStateBox => Hive.box<SyncState>(_syncStateBoxName);
+  Box<SyncMeta> get syncMetaBox => Hive.box<SyncMeta>(_syncMetaBoxName);
+  Box<SyncOutboxItem> get syncOutboxBox =>
+      Hive.box<SyncOutboxItem>(_syncOutboxBoxName);
 
   /// Recover from schema errors by attempting to migrate data
   static Future<void> _recoverFromSchemaError() async {

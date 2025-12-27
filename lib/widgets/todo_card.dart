@@ -516,10 +516,7 @@ class _TodoCardState extends State<TodoCard> {
             value: 'edit',
             child: Row(
               children: [
-                Icon(
-                  Icons.edit,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+                Icon(Icons.edit, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 8),
                 Text(
                   AppLocalizations.of(context)!.edit,

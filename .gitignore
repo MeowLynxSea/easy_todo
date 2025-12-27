@@ -74,3 +74,13 @@ app.*.map.json
 **/Flutter/App.framework
 **/*.xcuserstate
 **/xcuserdata/
+
+# sync_server (Rust) build artifacts / runtime files
+sync_server/target/
+sync_server/*.db
+sync_server/*.db-*
+sync_server/*.sqlite
+sync_server/*.sqlite-*
+sync_server/*.sqlite3
+sync_server/*.sqlite3-*
+sync_server/.env

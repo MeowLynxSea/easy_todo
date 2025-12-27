@@ -537,24 +537,21 @@ class _DayColumn extends StatelessWidget {
                             child: Text(
                               compact ? compactDayLabel : dayLabel,
                               overflow: TextOverflow.ellipsis,
-                              style: Theme.of(
-                                context,
-                              ).textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w600),
                             ),
                           ),
                           if (!compact) ...[
                             const SizedBox(width: 6),
                             Text(
                               dateLabel,
-                              style: Theme.of(
-                                context,
-                              ).textTheme.labelSmall?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurface.withValues(alpha: 0.65),
-                              ),
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.65),
+                                  ),
                             ),
                           ],
                         ],
@@ -1149,7 +1146,12 @@ class _ScheduleItemPreviewBubble extends StatelessWidget {
     );
 
     final children = <Widget>[
-      Text(title, style: titleStyle, maxLines: 2, overflow: TextOverflow.ellipsis),
+      Text(
+        title,
+        style: titleStyle,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
       if (description.isNotEmpty) ...[
         const SizedBox(height: 6),
         Text(

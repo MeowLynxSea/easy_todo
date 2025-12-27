@@ -9,6 +9,12 @@ import 'package:easy_todo/models/statistics_data_model.dart';
 import 'package:easy_todo/models/statistics_model.dart';
 import 'package:easy_todo/models/todo_model.dart';
 import 'package:easy_todo/services/backup_restore_service.dart';
+import 'package:easy_todo/adapters/sync_meta_adapter.dart';
+import 'package:easy_todo/adapters/sync_outbox_item_adapter.dart';
+import 'package:easy_todo/adapters/sync_state_adapter.dart';
+import 'package:easy_todo/models/sync_meta.dart';
+import 'package:easy_todo/models/sync_outbox_item.dart';
+import 'package:easy_todo/models/sync_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 
@@ -28,7 +34,9 @@ void main() {
       if (!Hive.isAdapterRegistered(StatisticsModeAdapter().typeId)) {
         Hive.registerAdapter(StatisticsModeAdapter());
       }
-      if (!Hive.isAdapterRegistered(0)) Hive.registerAdapter(TodoModelAdapter());
+      if (!Hive.isAdapterRegistered(0)) {
+        Hive.registerAdapter(TodoModelAdapter());
+      }
       if (!Hive.isAdapterRegistered(1)) {
         Hive.registerAdapter(StatisticsModelAdapter());
       }
@@ -41,12 +49,24 @@ void main() {
       if (!Hive.isAdapterRegistered(6)) {
         Hive.registerAdapter(StatisticsDataModelAdapter());
       }
+      if (!Hive.isAdapterRegistered(SyncStateAdapter().typeId)) {
+        Hive.registerAdapter(SyncStateAdapter());
+      }
+      if (!Hive.isAdapterRegistered(SyncMetaAdapter().typeId)) {
+        Hive.registerAdapter(SyncMetaAdapter());
+      }
+      if (!Hive.isAdapterRegistered(SyncOutboxItemAdapter().typeId)) {
+        Hive.registerAdapter(SyncOutboxItemAdapter());
+      }
 
       await Hive.openBox<TodoModel>('todos');
       await Hive.openBox<StatisticsModel>('statistics');
       await Hive.openBox<PomodoroModel>('pomodoro');
       await Hive.openBox<RepeatTodoModel>('repeatTodos');
       await Hive.openBox<StatisticsDataModel>('statisticsData');
+      await Hive.openBox<SyncState>('sync_state_box');
+      await Hive.openBox<SyncMeta>('sync_meta_box');
+      await Hive.openBox<SyncOutboxItem>('sync_outbox_box');
     });
 
     setUp(() async {
@@ -55,6 +75,9 @@ void main() {
       await Hive.box<PomodoroModel>('pomodoro').clear();
       await Hive.box<RepeatTodoModel>('repeatTodos').clear();
       await Hive.box<StatisticsDataModel>('statisticsData').clear();
+      await Hive.box<SyncState>('sync_state_box').clear();
+      await Hive.box<SyncMeta>('sync_meta_box').clear();
+      await Hive.box<SyncOutboxItem>('sync_outbox_box').clear();
     });
 
     tearDownAll(() async {
@@ -194,10 +217,7 @@ void main() {
       expect(pomodoroBox.get(pomodoro.id)?.toJson(), pomodoro.toJson());
 
       expect(statisticsDataBox.length, 1);
-      expect(
-        statisticsDataBox.get(dataPoint.id)?.toJson(),
-        dataPoint.toJson(),
-      );
+      expect(statisticsDataBox.get(dataPoint.id)?.toJson(), dataPoint.toJson());
     });
 
     test('updates repeatTodo.lastGeneratedDate from generated todos', () async {
@@ -246,8 +266,9 @@ void main() {
       final result = await service.restoreFromBackupJson(backupJson);
       expect(result['success'], isTrue);
 
-      final restoredRepeatTodo =
-          Hive.box<RepeatTodoModel>('repeatTodos').get(repeatTodo.id);
+      final restoredRepeatTodo = Hive.box<RepeatTodoModel>(
+        'repeatTodos',
+      ).get(repeatTodo.id);
       expect(restoredRepeatTodo, isNotNull);
       expect(restoredRepeatTodo!.lastGeneratedDate, isNotNull);
       expect(

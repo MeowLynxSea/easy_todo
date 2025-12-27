@@ -699,10 +699,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
 
     // 计算今天已经填写数据的任务数
     final completedDataEntryTasks = todoProvider.statisticsData
-        .where(
-          (data) =>
-              isSameLocalDay(data.todoCreatedAt, todayDate),
-        )
+        .where((data) => isSameLocalDay(data.todoCreatedAt, todayDate))
         .map((data) => data.repeatTodoId)
         .toSet()
         .length;
@@ -1002,9 +999,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     final weekData = List.generate(7, (index) {
       final day = monday.add(Duration(days: index));
       final dayTodos = provider.allTodos
-          .where(
-            (todo) => isSameLocalDay(todo.createdAt, day),
-          )
+          .where((todo) => isSameLocalDay(todo.createdAt, day))
           .toList();
 
       final completed = dayTodos.where((todo) => todo.isCompleted).length;

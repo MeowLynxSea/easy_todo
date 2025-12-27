@@ -62,5 +62,45 @@ void main() {
       expect(updated.reminderEnabled, isFalse);
       expect(updated.reminderTime, isNull);
     });
+
+    test('keeps generatedKey when omitted', () {
+      final todo = TodoModel(
+        id: 't1',
+        title: 'todo',
+        createdAt: DateTime(2025, 1, 1),
+        generatedKey: 'r1:20250101',
+      );
+
+      final updated = todo.copyWith(title: 'updated');
+
+      expect(updated.generatedKey, 'r1:20250101');
+    });
+
+    test('clears generatedKey when set to null', () {
+      final todo = TodoModel(
+        id: 't1',
+        title: 'todo',
+        createdAt: DateTime(2025, 1, 1),
+        generatedKey: 'r1:20250101',
+      );
+
+      final updated = todo.copyWith(generatedKey: null);
+
+      expect(updated.generatedKey, isNull);
+    });
+  });
+
+  group('TodoModel JSON', () {
+    test('round-trips generatedKey', () {
+      final todo = TodoModel(
+        id: 't1',
+        title: 'todo',
+        createdAt: DateTime.utc(2025, 1, 1),
+        generatedKey: 'r1:20250101',
+      );
+
+      final decoded = TodoModel.fromJson(todo.toJson());
+      expect(decoded.generatedKey, 'r1:20250101');
+    });
   });
 }

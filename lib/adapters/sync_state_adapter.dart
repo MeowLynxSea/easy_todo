@@ -16,13 +16,17 @@ class SyncStateAdapter extends TypeAdapter<SyncState> {
       lastHlcWallMsUtc: fields[1] as int,
       lastHlcCounter: fields[2] as int,
       lastServerSeq: fields[3] as int,
+      syncEnabled: (fields[4] as bool?) ?? false,
+      serverUrl: (fields[5] as String?) ?? '',
+      authToken: (fields[6] as String?) ?? '',
+      dekId: fields[7] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, SyncState obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.deviceId)
       ..writeByte(1)
@@ -30,6 +34,14 @@ class SyncStateAdapter extends TypeAdapter<SyncState> {
       ..writeByte(2)
       ..write(obj.lastHlcCounter)
       ..writeByte(3)
-      ..write(obj.lastServerSeq);
+      ..write(obj.lastServerSeq)
+      ..writeByte(4)
+      ..write(obj.syncEnabled)
+      ..writeByte(5)
+      ..write(obj.serverUrl)
+      ..writeByte(6)
+      ..write(obj.authToken)
+      ..writeByte(7)
+      ..write(obj.dekId);
   }
 }

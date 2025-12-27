@@ -110,4 +110,57 @@ class AISettingsModel extends HiveObject {
       apiEndpoint.isNotEmpty &&
       modelName.isNotEmpty &&
       (apiFormat == 'ollama' || apiKey.isNotEmpty);
+
+  Map<String, dynamic> toJson({bool includeApiKey = false}) {
+    return {
+      'enableAIFeatures': enableAIFeatures,
+      'apiEndpoint': apiEndpoint,
+      'apiKey': includeApiKey ? apiKey : '',
+      'modelName': modelName,
+      'enableAutoCategorization': enableAutoCategorization,
+      'enablePrioritySorting': enablePrioritySorting,
+      'enableMotivationalMessages': enableMotivationalMessages,
+      'enableSmartNotifications': enableSmartNotifications,
+      'temperature': temperature,
+      'maxTokens': maxTokens,
+      'requestTimeout': requestTimeout,
+      'maxRequestsPerMinute': maxRequestsPerMinute,
+      'customPersonaPrompt': customPersonaPrompt,
+      'apiFormat': apiFormat,
+    };
+  }
+
+  factory AISettingsModel.fromJson(Map<String, dynamic> json) {
+    final defaults = AISettingsModel.create();
+    return AISettingsModel(
+      enableAIFeatures:
+          (json['enableAIFeatures'] as bool?) ?? defaults.enableAIFeatures,
+      apiEndpoint: (json['apiEndpoint'] as String?) ?? defaults.apiEndpoint,
+      apiKey: (json['apiKey'] as String?) ?? defaults.apiKey,
+      modelName: (json['modelName'] as String?) ?? defaults.modelName,
+      enableAutoCategorization:
+          (json['enableAutoCategorization'] as bool?) ??
+          defaults.enableAutoCategorization,
+      enablePrioritySorting:
+          (json['enablePrioritySorting'] as bool?) ??
+          defaults.enablePrioritySorting,
+      enableMotivationalMessages:
+          (json['enableMotivationalMessages'] as bool?) ??
+          defaults.enableMotivationalMessages,
+      enableSmartNotifications:
+          (json['enableSmartNotifications'] as bool?) ??
+          defaults.enableSmartNotifications,
+      temperature: (json['temperature'] as num?)?.toDouble() ??
+          defaults.temperature,
+      maxTokens: (json['maxTokens'] as num?)?.toInt() ?? defaults.maxTokens,
+      requestTimeout:
+          (json['requestTimeout'] as num?)?.toInt() ?? defaults.requestTimeout,
+      maxRequestsPerMinute: (json['maxRequestsPerMinute'] as num?)?.toInt() ??
+          defaults.maxRequestsPerMinute,
+      customPersonaPrompt:
+          (json['customPersonaPrompt'] as String?) ??
+          defaults.customPersonaPrompt,
+      apiFormat: (json['apiFormat'] as String?) ?? defaults.apiFormat,
+    );
+  }
 }

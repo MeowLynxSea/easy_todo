@@ -5,13 +5,14 @@ use std::time::{Duration, Instant};
 
 use anyhow::Context;
 use axum::extract::{Query, State};
-use axum::http::{header, HeaderMap, StatusCode};
+use axum::http::{header, HeaderMap, Method, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqlitePoolOptions;
 use sqlx::{Pool, Row, Sqlite, Transaction};
+use tower_http::cors::{Any, CorsLayer};
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
 use tracing::{error, info};
@@ -631,6 +632,14 @@ async fn main() -> anyhow::Result<()> {
         .route("/v1/key-bundle", get(get_key_bundle).put(put_key_bundle))
         .route("/v1/sync/push", post(push_sync))
         .route("/v1/sync/pull", get(pull_sync))
+        // Dev-friendly CORS for Flutter Web on a different port (e.g. localhost:8080).
+        // For production deployments, replace with a strict allowlist.
+        .layer(
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods([Method::GET, Method::POST, Method::PUT, Method::OPTIONS])
+                .allow_headers(Any),
+        )
         .layer(RequestBodyLimitLayer::new(BODY_LIMIT_BYTES))
         .layer(TraceLayer::new_for_http())
         .with_state(state);

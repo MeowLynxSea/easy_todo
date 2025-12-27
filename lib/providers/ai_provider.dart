@@ -97,6 +97,10 @@ class AIProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> reloadFromHive() async {
+    await _loadSettings();
+  }
+
   Future<void> _clearCorruptedSettings() async {
     try {
       final box = HiveService().aiSettingsBox;

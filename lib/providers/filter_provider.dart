@@ -80,6 +80,10 @@ class FilterProvider extends ChangeNotifier {
     );
   }
 
+  Future<void> reloadFromPreferences() async {
+    await _loadPreferences();
+  }
+
   void resetToDefaults() {
     _statusFilter = TodoFilter.active;
     _timeFilter = TimeFilter.all;

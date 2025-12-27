@@ -22,6 +22,7 @@ import 'package:easy_todo/screens/about_screen.dart';
 import 'package:easy_todo/screens/theme_settings_screen.dart';
 import 'package:easy_todo/screens/pomodoro_settings_screen.dart';
 import 'package:easy_todo/screens/ai_settings_screen.dart';
+import 'package:easy_todo/screens/sync_settings_screen.dart';
 import 'package:easy_todo/providers/ai_provider.dart';
 import 'package:easy_todo/widgets/web_desktop_content.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -237,13 +238,27 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      l10n.dataStorage,
+                      l10n.dataAndSync,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 16),
+                    _buildPreferenceItem(
+                      icon: Icons.cloud_sync_outlined,
+                      title: l10n.cloudSync,
+                      subtitle: l10n.cloudSyncSubtitle,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SyncSettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    const Divider(),
                     _buildPreferenceItem(
                       icon: Icons.backup_outlined,
                       title: l10n.backupRestore,

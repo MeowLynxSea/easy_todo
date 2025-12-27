@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:easy_todo/models/sync/key_bundle.dart';
 import 'package:easy_todo/models/sync/sync_record_envelope.dart';
+import 'package:easy_todo/services/crypto/scrypt_dart_async.dart';
 import 'package:easy_todo/utils/base64_utils.dart';
+import 'package:flutter/foundation.dart';
 import 'package:pointycastle/key_derivators/api.dart' as pc;
 import 'package:pointycastle/key_derivators/scrypt.dart' as pc;
 
@@ -41,6 +42,15 @@ class SyncCrypto {
     required List<int> salt,
     required ScryptParams params,
   }) async {
+    if (kIsWeb) {
+      final derived = await const ScryptDartAsync().derive(
+        passphrase: passphrase,
+        salt: Uint8List.fromList(salt),
+        params: params,
+      );
+      return SecretKey(derived);
+    }
+
     final derivator = pc.Scrypt()
       ..init(
         pc.ScryptParameters(
@@ -305,3 +315,4 @@ class SyncCrypto {
     );
   }
 }
+

@@ -174,6 +174,474 @@ abstract class AppLocalizations {
   /// **'Data & Storage'**
   String get dataStorage;
 
+  /// No description provided for @dataAndSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Data & Sync'**
+  String get dataAndSync;
+
+  /// No description provided for @cloudSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud Sync'**
+  String get cloudSync;
+
+  /// No description provided for @cloudSyncSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'End-to-end encrypted sync (manual)'**
+  String get cloudSyncSubtitle;
+
+  /// No description provided for @cloudSyncOverviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual E2EE sync'**
+  String get cloudSyncOverviewTitle;
+
+  /// No description provided for @cloudSyncOverviewSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Server stores only ciphertext; unlock with your passphrase on this device.'**
+  String get cloudSyncOverviewSubtitle;
+
+  /// No description provided for @cloudSyncConfigSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync config saved'**
+  String get cloudSyncConfigSaved;
+
+  /// No description provided for @cloudSyncServerOkSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Server reachable'**
+  String get cloudSyncServerOkSnack;
+
+  /// No description provided for @cloudSyncServerCheckFailedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Server check failed'**
+  String get cloudSyncServerCheckFailedSnack;
+
+  /// No description provided for @cloudSyncDisabledSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync disabled'**
+  String get cloudSyncDisabledSnack;
+
+  /// No description provided for @cloudSyncEnableSwitchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable cloud sync'**
+  String get cloudSyncEnableSwitchTitle;
+
+  /// No description provided for @cloudSyncEnableSwitchSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Guided setup: server + passphrase'**
+  String get cloudSyncEnableSwitchSubtitle;
+
+  /// No description provided for @cloudSyncServerSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Server'**
+  String get cloudSyncServerSection;
+
+  /// No description provided for @cloudSyncSetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'1) Configure server'**
+  String get cloudSyncSetupTitle;
+
+  /// No description provided for @cloudSyncSetupSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set server URL and token, then check connectivity.'**
+  String get cloudSyncSetupSubtitle;
+
+  /// No description provided for @cloudSyncSetupDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Server configuration'**
+  String get cloudSyncSetupDialogTitle;
+
+  /// No description provided for @cloudSyncServerUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Server URL'**
+  String get cloudSyncServerUrl;
+
+  /// No description provided for @cloudSyncServerUrlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'http://127.0.0.1:8787'**
+  String get cloudSyncServerUrlHint;
+
+  /// No description provided for @cloudSyncBearerToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Bearer token (dev login)'**
+  String get cloudSyncBearerToken;
+
+  /// No description provided for @cloudSyncShowToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Show token'**
+  String get cloudSyncShowToken;
+
+  /// No description provided for @cloudSyncHideToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide token'**
+  String get cloudSyncHideToken;
+
+  /// No description provided for @cloudSyncCheckServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Check server'**
+  String get cloudSyncCheckServer;
+
+  /// No description provided for @cloudSyncEditServerConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get cloudSyncEditServerConfig;
+
+  /// No description provided for @cloudSyncNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get cloudSyncNotSet;
+
+  /// No description provided for @cloudSyncTokenSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Token is set'**
+  String get cloudSyncTokenSet;
+
+  /// No description provided for @cloudSyncStatusSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get cloudSyncStatusSection;
+
+  /// No description provided for @cloudSyncEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get cloudSyncEnabled;
+
+  /// No description provided for @cloudSyncUnlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked'**
+  String get cloudSyncUnlocked;
+
+  /// No description provided for @cloudSyncEnabledOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled: On'**
+  String get cloudSyncEnabledOn;
+
+  /// No description provided for @cloudSyncEnabledOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled: Off'**
+  String get cloudSyncEnabledOff;
+
+  /// No description provided for @cloudSyncUnlockedYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked: Yes'**
+  String get cloudSyncUnlockedYes;
+
+  /// No description provided for @cloudSyncUnlockedNo.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked: No'**
+  String get cloudSyncUnlockedNo;
+
+  /// No description provided for @cloudSyncConfiguredYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Configured: Yes'**
+  String get cloudSyncConfiguredYes;
+
+  /// No description provided for @cloudSyncConfiguredNo.
+  ///
+  /// In en, this message translates to:
+  /// **'Configured: No'**
+  String get cloudSyncConfiguredNo;
+
+  /// No description provided for @cloudSyncLastServerSeq.
+  ///
+  /// In en, this message translates to:
+  /// **'Last serverSeq'**
+  String get cloudSyncLastServerSeq;
+
+  /// No description provided for @cloudSyncDekId.
+  ///
+  /// In en, this message translates to:
+  /// **'DEK ID'**
+  String get cloudSyncDekId;
+
+  /// No description provided for @cloudSyncLastSyncAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Last sync'**
+  String get cloudSyncLastSyncAt;
+
+  /// No description provided for @cloudSyncError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error'**
+  String get cloudSyncError;
+
+  /// No description provided for @cloudSyncDeviceId.
+  ///
+  /// In en, this message translates to:
+  /// **'Device ID'**
+  String get cloudSyncDeviceId;
+
+  /// No description provided for @cloudSyncEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable'**
+  String get cloudSyncEnable;
+
+  /// No description provided for @cloudSyncUnlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get cloudSyncUnlock;
+
+  /// No description provided for @cloudSyncSyncNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync now'**
+  String get cloudSyncSyncNow;
+
+  /// No description provided for @cloudSyncDisable.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable'**
+  String get cloudSyncDisable;
+
+  /// No description provided for @cloudSyncSecurityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'2) Unlock'**
+  String get cloudSyncSecurityTitle;
+
+  /// No description provided for @cloudSyncSecuritySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock uses your passphrase to access the DEK. Mobile/desktop can cache it in secure storage.'**
+  String get cloudSyncSecuritySubtitle;
+
+  /// No description provided for @cloudSyncLockStateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Encryption key'**
+  String get cloudSyncLockStateTitle;
+
+  /// No description provided for @cloudSyncLockStateUnlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked on this device'**
+  String get cloudSyncLockStateUnlocked;
+
+  /// No description provided for @cloudSyncLockStateLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked — enter passphrase to unlock'**
+  String get cloudSyncLockStateLocked;
+
+  /// No description provided for @cloudSyncActionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'3) Sync'**
+  String get cloudSyncActionsTitle;
+
+  /// No description provided for @cloudSyncActionsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Push local changes then pull remote updates.'**
+  String get cloudSyncActionsSubtitle;
+
+  /// No description provided for @cloudSyncAdvancedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced'**
+  String get cloudSyncAdvancedTitle;
+
+  /// No description provided for @cloudSyncAdvancedSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Debug info (device-local)'**
+  String get cloudSyncAdvancedSubtitle;
+
+  /// No description provided for @cloudSyncEnableDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable sync'**
+  String get cloudSyncEnableDialogTitle;
+
+  /// No description provided for @cloudSyncUnlockDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock sync'**
+  String get cloudSyncUnlockDialogTitle;
+
+  /// No description provided for @cloudSyncPassphraseDialogHint.
+  ///
+  /// In en, this message translates to:
+  /// **'If you already enabled sync on another device, enter the same passphrase twice.'**
+  String get cloudSyncPassphraseDialogHint;
+
+  /// No description provided for @cloudSyncPassphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Passphrase'**
+  String get cloudSyncPassphrase;
+
+  /// No description provided for @cloudSyncConfirmPassphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm passphrase'**
+  String get cloudSyncConfirmPassphrase;
+
+  /// No description provided for @cloudSyncShowPassphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Show'**
+  String get cloudSyncShowPassphrase;
+
+  /// No description provided for @cloudSyncEnabledSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync enabled'**
+  String get cloudSyncEnabledSnack;
+
+  /// No description provided for @cloudSyncUnlockedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked'**
+  String get cloudSyncUnlockedSnack;
+
+  /// No description provided for @cloudSyncSyncedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced'**
+  String get cloudSyncSyncedSnack;
+
+  /// No description provided for @cloudSyncInvalidPassphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid passphrase'**
+  String get cloudSyncInvalidPassphrase;
+
+  /// No description provided for @cloudSyncRollbackTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Possible server rollback'**
+  String get cloudSyncRollbackTitle;
+
+  /// No description provided for @cloudSyncRollbackMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The server may have rolled back or restored from a backup. Continuing may cause data loss. What do you want to do?'**
+  String get cloudSyncRollbackMessage;
+
+  /// No description provided for @cloudSyncStopSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop sync'**
+  String get cloudSyncStopSync;
+
+  /// No description provided for @cloudSyncContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get cloudSyncContinue;
+
+  /// No description provided for @cloudSyncWebDekNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Web uses session-only DEK caching. Refreshing the page requires unlocking again.'**
+  String get cloudSyncWebDekNote;
+
+  /// No description provided for @cloudSyncStatusIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'idle'**
+  String get cloudSyncStatusIdle;
+
+  /// No description provided for @cloudSyncStatusRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'running'**
+  String get cloudSyncStatusRunning;
+
+  /// No description provided for @cloudSyncStatusError.
+  ///
+  /// In en, this message translates to:
+  /// **'error'**
+  String get cloudSyncStatusError;
+
+  /// No description provided for @cloudSyncErrorPassphraseMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passphrase mismatch'**
+  String get cloudSyncErrorPassphraseMismatch;
+
+  /// No description provided for @cloudSyncErrorNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync not configured'**
+  String get cloudSyncErrorNotConfigured;
+
+  /// No description provided for @cloudSyncErrorDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync is disabled'**
+  String get cloudSyncErrorDisabled;
+
+  /// No description provided for @cloudSyncErrorLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync is locked (missing DEK)'**
+  String get cloudSyncErrorLocked;
+
+  /// No description provided for @cloudSyncErrorUnauthorized.
+  ///
+  /// In en, this message translates to:
+  /// **'Unauthorized (check token)'**
+  String get cloudSyncErrorUnauthorized;
+
+  /// No description provided for @cloudSyncErrorKeyBundleNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Key bundle not found on server'**
+  String get cloudSyncErrorKeyBundleNotFound;
+
+  /// No description provided for @cloudSyncErrorNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Network error'**
+  String get cloudSyncErrorNetwork;
+
+  /// No description provided for @cloudSyncErrorConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'Conflict (bundle version mismatch)'**
+  String get cloudSyncErrorConflict;
+
+  /// No description provided for @cloudSyncErrorUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown error'**
+  String get cloudSyncErrorUnknown;
+
   /// No description provided for @backupRestore.
   ///
   /// In en, this message translates to:

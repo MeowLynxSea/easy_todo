@@ -110,4 +110,69 @@ class UserPreferencesModel {
       scheduleLabelTextScale: 1.0,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'languageCode': languageCode,
+      'themeModeIndex': themeModeIndex,
+      'themeColorsString': themeColorsString,
+      'customThemeColorsString': customThemeColorsString,
+      'statusFilterIndex': statusFilterIndex,
+      'timeFilterIndex': timeFilterIndex,
+      'sortOrderIndex': sortOrderIndex,
+      'selectedCategories': selectedCategories,
+      'viewMode': viewMode,
+      'viewOpenInNewPage': viewOpenInNewPage,
+      'historyViewMode': historyViewMode,
+      'scheduleDayStartMinutes': scheduleDayStartMinutes,
+      'scheduleDayEndMinutes': scheduleDayEndMinutes,
+      'scheduleVisibleWeekdays': scheduleVisibleWeekdays,
+      'scheduleLabelTextScale': scheduleLabelTextScale,
+    };
+  }
+
+  factory UserPreferencesModel.fromJson(Map<String, dynamic> json) {
+    final defaults = UserPreferencesModel.create();
+    return UserPreferencesModel(
+      languageCode: (json['languageCode'] as String?) ?? defaults.languageCode,
+      themeModeIndex:
+          (json['themeModeIndex'] as num?)?.toInt() ?? defaults.themeModeIndex,
+      themeColorsString:
+          (json['themeColorsString'] as String?) ?? defaults.themeColorsString,
+      customThemeColorsString:
+          (json['customThemeColorsString'] as String?) ??
+          defaults.customThemeColorsString,
+      statusFilterIndex:
+          (json['statusFilterIndex'] as num?)?.toInt() ??
+          defaults.statusFilterIndex,
+      timeFilterIndex:
+          (json['timeFilterIndex'] as num?)?.toInt() ?? defaults.timeFilterIndex,
+      sortOrderIndex:
+          (json['sortOrderIndex'] as num?)?.toInt() ?? defaults.sortOrderIndex,
+      selectedCategories:
+          (json['selectedCategories'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          defaults.selectedCategories,
+      viewMode: (json['viewMode'] as String?) ?? defaults.viewMode,
+      viewOpenInNewPage:
+          (json['viewOpenInNewPage'] as bool?) ?? defaults.viewOpenInNewPage,
+      historyViewMode:
+          (json['historyViewMode'] as String?) ?? defaults.historyViewMode,
+      scheduleDayStartMinutes:
+          (json['scheduleDayStartMinutes'] as num?)?.toInt() ??
+          defaults.scheduleDayStartMinutes,
+      scheduleDayEndMinutes:
+          (json['scheduleDayEndMinutes'] as num?)?.toInt() ??
+          defaults.scheduleDayEndMinutes,
+      scheduleVisibleWeekdays:
+          (json['scheduleVisibleWeekdays'] as List<dynamic>?)
+              ?.map((e) => (e as num).toInt())
+              .toList() ??
+          defaults.scheduleVisibleWeekdays,
+      scheduleLabelTextScale:
+          (json['scheduleLabelTextScale'] as num?)?.toDouble() ??
+          defaults.scheduleLabelTextScale,
+    );
+  }
 }

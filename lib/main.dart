@@ -16,6 +16,7 @@ import 'package:easy_todo/providers/filter_provider.dart';
 import 'package:easy_todo/providers/app_settings_provider.dart';
 import 'package:easy_todo/providers/pomodoro_provider.dart';
 import 'package:easy_todo/providers/ai_provider.dart';
+import 'package:easy_todo/providers/sync_provider.dart';
 import 'package:easy_todo/screens/todo_list_screen.dart';
 import 'package:easy_todo/screens/history_screen.dart';
 import 'package:easy_todo/screens/schedule_screen.dart';
@@ -96,6 +97,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (context) => AppSettingsProvider()),
         ChangeNotifierProvider(create: (context) => PomodoroProvider()),
         ChangeNotifierProvider(create: (context) => AIProvider()),
+        ChangeNotifierProvider(create: (context) => SyncProvider()),
       ],
       child: Consumer3<LanguageProvider, ThemeProvider, AIProvider>(
         builder: (context, languageProvider, themeProvider, aiProvider, child) {

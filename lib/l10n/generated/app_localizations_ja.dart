@@ -43,6 +43,245 @@ class AppLocalizationsJa extends AppLocalizations {
   String get dataStorage => 'データとストレージ';
 
   @override
+  String get dataAndSync => 'データと同期';
+
+  @override
+  String get cloudSync => 'クラウド同期';
+
+  @override
+  String get cloudSyncSubtitle => 'エンドツーエンド暗号化（手動）';
+
+  @override
+  String get cloudSyncOverviewTitle => '手動 E2EE 同期';
+
+  @override
+  String get cloudSyncOverviewSubtitle =>
+      'サーバーは暗号文のみ保存します。この端末でパスフレーズを使って解除してください。';
+
+  @override
+  String get cloudSyncConfigSaved => '同期設定を保存しました';
+
+  @override
+  String get cloudSyncServerOkSnack => 'サーバーに接続できました';
+
+  @override
+  String get cloudSyncServerCheckFailedSnack => 'サーバー確認に失敗しました';
+
+  @override
+  String get cloudSyncDisabledSnack => '同期を無効化しました';
+
+  @override
+  String get cloudSyncEnableSwitchTitle => 'クラウド同期を有効化';
+
+  @override
+  String get cloudSyncEnableSwitchSubtitle => 'ガイド付き設定：サーバー + パスフレーズ';
+
+  @override
+  String get cloudSyncServerSection => 'サーバー';
+
+  @override
+  String get cloudSyncSetupTitle => '1）サーバー設定';
+
+  @override
+  String get cloudSyncSetupSubtitle => 'URL とトークンを設定し、接続を確認します。';
+
+  @override
+  String get cloudSyncSetupDialogTitle => 'サーバー設定';
+
+  @override
+  String get cloudSyncServerUrl => 'サーバーURL';
+
+  @override
+  String get cloudSyncServerUrlHint => 'http://127.0.0.1:8787';
+
+  @override
+  String get cloudSyncBearerToken => 'Bearer トークン（開発用）';
+
+  @override
+  String get cloudSyncShowToken => 'トークンを表示';
+
+  @override
+  String get cloudSyncHideToken => 'トークンを非表示';
+
+  @override
+  String get cloudSyncCheckServer => 'サーバー確認';
+
+  @override
+  String get cloudSyncEditServerConfig => '編集';
+
+  @override
+  String get cloudSyncNotSet => '未設定';
+
+  @override
+  String get cloudSyncTokenSet => '設定済み';
+
+  @override
+  String get cloudSyncStatusSection => '状態';
+
+  @override
+  String get cloudSyncEnabled => '有効';
+
+  @override
+  String get cloudSyncUnlocked => 'ロック解除済み';
+
+  @override
+  String get cloudSyncEnabledOn => '有効：オン';
+
+  @override
+  String get cloudSyncEnabledOff => '有効：オフ';
+
+  @override
+  String get cloudSyncUnlockedYes => '解除：はい';
+
+  @override
+  String get cloudSyncUnlockedNo => '解除：いいえ';
+
+  @override
+  String get cloudSyncConfiguredYes => '設定済み：はい';
+
+  @override
+  String get cloudSyncConfiguredNo => '設定済み：いいえ';
+
+  @override
+  String get cloudSyncLastServerSeq => '前回の serverSeq';
+
+  @override
+  String get cloudSyncDekId => 'DEK ID';
+
+  @override
+  String get cloudSyncLastSyncAt => '前回の同期';
+
+  @override
+  String get cloudSyncError => 'エラー';
+
+  @override
+  String get cloudSyncDeviceId => '端末 ID';
+
+  @override
+  String get cloudSyncEnable => '有効化';
+
+  @override
+  String get cloudSyncUnlock => 'ロック解除';
+
+  @override
+  String get cloudSyncSyncNow => '今すぐ同期';
+
+  @override
+  String get cloudSyncDisable => '無効化';
+
+  @override
+  String get cloudSyncSecurityTitle => '2）ロック解除';
+
+  @override
+  String get cloudSyncSecuritySubtitle =>
+      'ロック解除はパスフレーズで DEK を取得します。モバイル/デスクトップは安全に保存できます。';
+
+  @override
+  String get cloudSyncLockStateTitle => '暗号鍵';
+
+  @override
+  String get cloudSyncLockStateUnlocked => 'この端末で解除済み';
+
+  @override
+  String get cloudSyncLockStateLocked => 'ロック中 — パスフレーズを入力';
+
+  @override
+  String get cloudSyncActionsTitle => '3）同期';
+
+  @override
+  String get cloudSyncActionsSubtitle => 'ローカル変更を送信し、リモート更新を取得します。';
+
+  @override
+  String get cloudSyncAdvancedTitle => '詳細';
+
+  @override
+  String get cloudSyncAdvancedSubtitle => 'デバッグ情報（端末ローカル）';
+
+  @override
+  String get cloudSyncEnableDialogTitle => '同期を有効化';
+
+  @override
+  String get cloudSyncUnlockDialogTitle => '同期をロック解除';
+
+  @override
+  String get cloudSyncPassphraseDialogHint =>
+      '他の端末で同期を有効化済みの場合は、同じパスフレーズを2回入力してください。';
+
+  @override
+  String get cloudSyncPassphrase => 'パスフレーズ';
+
+  @override
+  String get cloudSyncConfirmPassphrase => 'パスフレーズを確認';
+
+  @override
+  String get cloudSyncShowPassphrase => '表示';
+
+  @override
+  String get cloudSyncEnabledSnack => '同期を有効化しました';
+
+  @override
+  String get cloudSyncUnlockedSnack => 'ロック解除しました';
+
+  @override
+  String get cloudSyncSyncedSnack => '同期しました';
+
+  @override
+  String get cloudSyncInvalidPassphrase => 'パスフレーズが正しくありません';
+
+  @override
+  String get cloudSyncRollbackTitle => 'サーバーのロールバックの可能性';
+
+  @override
+  String get cloudSyncRollbackMessage =>
+      'サーバーがロールバック、またはバックアップから復元された可能性があります。続行するとデータが失われる場合があります。どうしますか？';
+
+  @override
+  String get cloudSyncStopSync => '同期を停止';
+
+  @override
+  String get cloudSyncContinue => '続行';
+
+  @override
+  String get cloudSyncWebDekNote =>
+      'Web は DEK をセッション内のみキャッシュします。再読み込み後は再度ロック解除が必要です。';
+
+  @override
+  String get cloudSyncStatusIdle => '待機中';
+
+  @override
+  String get cloudSyncStatusRunning => '同期中';
+
+  @override
+  String get cloudSyncStatusError => 'エラー';
+
+  @override
+  String get cloudSyncErrorPassphraseMismatch => 'パスフレーズが一致しません';
+
+  @override
+  String get cloudSyncErrorNotConfigured => '同期が設定されていません';
+
+  @override
+  String get cloudSyncErrorDisabled => '同期は無効です';
+
+  @override
+  String get cloudSyncErrorLocked => '同期がロックされています（DEK 不足）';
+
+  @override
+  String get cloudSyncErrorUnauthorized => '認証されていません（トークンを確認）';
+
+  @override
+  String get cloudSyncErrorKeyBundleNotFound => 'サーバーに keyBundle が見つかりません';
+
+  @override
+  String get cloudSyncErrorNetwork => 'ネットワークエラー';
+
+  @override
+  String get cloudSyncErrorConflict => '競合（bundleVersion 不一致）';
+
+  @override
+  String get cloudSyncErrorUnknown => '不明なエラー';
+
+  @override
   String get backupRestore => 'バックアップと復元';
 
   @override

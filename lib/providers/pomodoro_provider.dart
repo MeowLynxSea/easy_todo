@@ -179,6 +179,11 @@ class PomodoroProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> reloadFromHive() async {
+    await _loadPomodoroSessions();
+    notifyListeners();
+  }
+
   Future<void> startPomodoro(String todoId, {bool isBreak = false}) async {
     // Stop any existing timer
     await stopTimer();

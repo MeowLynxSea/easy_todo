@@ -127,6 +127,10 @@ class AppSettingsProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> reloadFromStorage() async {
+    await _loadSettings();
+  }
+
   Future<void> _saveDeviceSettings() async {
     try {
       final deviceBox = _hiveService.deviceSettingsBox;

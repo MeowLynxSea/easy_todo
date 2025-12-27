@@ -47,6 +47,10 @@ class LanguageProvider extends ChangeNotifier {
     );
   }
 
+  Future<void> reloadFromPreferences() async {
+    await _loadLanguage();
+  }
+
   static const List<Locale> supportedLocales = [
     Locale('zh'),
     Locale('en'),

@@ -43,6 +43,249 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dataStorage => 'Data & Storage';
 
   @override
+  String get dataAndSync => 'Data & Sync';
+
+  @override
+  String get cloudSync => 'Cloud Sync';
+
+  @override
+  String get cloudSyncSubtitle => 'End-to-end encrypted sync (manual)';
+
+  @override
+  String get cloudSyncOverviewTitle => 'Manual E2EE sync';
+
+  @override
+  String get cloudSyncOverviewSubtitle =>
+      'Server stores only ciphertext; unlock with your passphrase on this device.';
+
+  @override
+  String get cloudSyncConfigSaved => 'Sync config saved';
+
+  @override
+  String get cloudSyncServerOkSnack => 'Server reachable';
+
+  @override
+  String get cloudSyncServerCheckFailedSnack => 'Server check failed';
+
+  @override
+  String get cloudSyncDisabledSnack => 'Sync disabled';
+
+  @override
+  String get cloudSyncEnableSwitchTitle => 'Enable cloud sync';
+
+  @override
+  String get cloudSyncEnableSwitchSubtitle =>
+      'Guided setup: server + passphrase';
+
+  @override
+  String get cloudSyncServerSection => 'Server';
+
+  @override
+  String get cloudSyncSetupTitle => '1) Configure server';
+
+  @override
+  String get cloudSyncSetupSubtitle =>
+      'Set server URL and token, then check connectivity.';
+
+  @override
+  String get cloudSyncSetupDialogTitle => 'Server configuration';
+
+  @override
+  String get cloudSyncServerUrl => 'Server URL';
+
+  @override
+  String get cloudSyncServerUrlHint => 'http://127.0.0.1:8787';
+
+  @override
+  String get cloudSyncBearerToken => 'Bearer token (dev login)';
+
+  @override
+  String get cloudSyncShowToken => 'Show token';
+
+  @override
+  String get cloudSyncHideToken => 'Hide token';
+
+  @override
+  String get cloudSyncCheckServer => 'Check server';
+
+  @override
+  String get cloudSyncEditServerConfig => 'Edit';
+
+  @override
+  String get cloudSyncNotSet => 'Not set';
+
+  @override
+  String get cloudSyncTokenSet => 'Token is set';
+
+  @override
+  String get cloudSyncStatusSection => 'Status';
+
+  @override
+  String get cloudSyncEnabled => 'Enabled';
+
+  @override
+  String get cloudSyncUnlocked => 'Unlocked';
+
+  @override
+  String get cloudSyncEnabledOn => 'Enabled: On';
+
+  @override
+  String get cloudSyncEnabledOff => 'Enabled: Off';
+
+  @override
+  String get cloudSyncUnlockedYes => 'Unlocked: Yes';
+
+  @override
+  String get cloudSyncUnlockedNo => 'Unlocked: No';
+
+  @override
+  String get cloudSyncConfiguredYes => 'Configured: Yes';
+
+  @override
+  String get cloudSyncConfiguredNo => 'Configured: No';
+
+  @override
+  String get cloudSyncLastServerSeq => 'Last serverSeq';
+
+  @override
+  String get cloudSyncDekId => 'DEK ID';
+
+  @override
+  String get cloudSyncLastSyncAt => 'Last sync';
+
+  @override
+  String get cloudSyncError => 'Error';
+
+  @override
+  String get cloudSyncDeviceId => 'Device ID';
+
+  @override
+  String get cloudSyncEnable => 'Enable';
+
+  @override
+  String get cloudSyncUnlock => 'Unlock';
+
+  @override
+  String get cloudSyncSyncNow => 'Sync now';
+
+  @override
+  String get cloudSyncDisable => 'Disable';
+
+  @override
+  String get cloudSyncSecurityTitle => '2) Unlock';
+
+  @override
+  String get cloudSyncSecuritySubtitle =>
+      'Unlock uses your passphrase to access the DEK. Mobile/desktop can cache it in secure storage.';
+
+  @override
+  String get cloudSyncLockStateTitle => 'Encryption key';
+
+  @override
+  String get cloudSyncLockStateUnlocked => 'Unlocked on this device';
+
+  @override
+  String get cloudSyncLockStateLocked => 'Locked — enter passphrase to unlock';
+
+  @override
+  String get cloudSyncActionsTitle => '3) Sync';
+
+  @override
+  String get cloudSyncActionsSubtitle =>
+      'Push local changes then pull remote updates.';
+
+  @override
+  String get cloudSyncAdvancedTitle => 'Advanced';
+
+  @override
+  String get cloudSyncAdvancedSubtitle => 'Debug info (device-local)';
+
+  @override
+  String get cloudSyncEnableDialogTitle => 'Enable sync';
+
+  @override
+  String get cloudSyncUnlockDialogTitle => 'Unlock sync';
+
+  @override
+  String get cloudSyncPassphraseDialogHint =>
+      'If you already enabled sync on another device, enter the same passphrase twice.';
+
+  @override
+  String get cloudSyncPassphrase => 'Passphrase';
+
+  @override
+  String get cloudSyncConfirmPassphrase => 'Confirm passphrase';
+
+  @override
+  String get cloudSyncShowPassphrase => 'Show';
+
+  @override
+  String get cloudSyncEnabledSnack => 'Sync enabled';
+
+  @override
+  String get cloudSyncUnlockedSnack => 'Unlocked';
+
+  @override
+  String get cloudSyncSyncedSnack => 'Synced';
+
+  @override
+  String get cloudSyncInvalidPassphrase => 'Invalid passphrase';
+
+  @override
+  String get cloudSyncRollbackTitle => 'Possible server rollback';
+
+  @override
+  String get cloudSyncRollbackMessage =>
+      'The server may have rolled back or restored from a backup. Continuing may cause data loss. What do you want to do?';
+
+  @override
+  String get cloudSyncStopSync => 'Stop sync';
+
+  @override
+  String get cloudSyncContinue => 'Continue';
+
+  @override
+  String get cloudSyncWebDekNote =>
+      'Web uses session-only DEK caching. Refreshing the page requires unlocking again.';
+
+  @override
+  String get cloudSyncStatusIdle => 'idle';
+
+  @override
+  String get cloudSyncStatusRunning => 'running';
+
+  @override
+  String get cloudSyncStatusError => 'error';
+
+  @override
+  String get cloudSyncErrorPassphraseMismatch => 'Passphrase mismatch';
+
+  @override
+  String get cloudSyncErrorNotConfigured => 'Sync not configured';
+
+  @override
+  String get cloudSyncErrorDisabled => 'Sync is disabled';
+
+  @override
+  String get cloudSyncErrorLocked => 'Sync is locked (missing DEK)';
+
+  @override
+  String get cloudSyncErrorUnauthorized => 'Unauthorized (check token)';
+
+  @override
+  String get cloudSyncErrorKeyBundleNotFound =>
+      'Key bundle not found on server';
+
+  @override
+  String get cloudSyncErrorNetwork => 'Network error';
+
+  @override
+  String get cloudSyncErrorConflict => 'Conflict (bundle version mismatch)';
+
+  @override
+  String get cloudSyncErrorUnknown => 'Unknown error';
+
+  @override
   String get backupRestore => 'Backup & Restore';
 
   @override

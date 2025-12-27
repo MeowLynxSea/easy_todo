@@ -209,6 +209,10 @@ class ThemeProvider extends ChangeNotifier {
     );
   }
 
+  Future<void> reloadFromPreferences() async {
+    await _loadFromUserPreferences();
+  }
+
   String _colorsToString(Map<String, Color> colors) {
     return colors.entries
         .map((entry) => '${entry.key}:${entry.value.toARGB32()}')

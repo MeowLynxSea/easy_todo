@@ -43,6 +43,245 @@ class AppLocalizationsKo extends AppLocalizations {
   String get dataStorage => '데이터 및 저장소';
 
   @override
+  String get dataAndSync => '데이터 및 동기화';
+
+  @override
+  String get cloudSync => '클라우드 동기화';
+
+  @override
+  String get cloudSyncSubtitle => '종단간 암호화(수동)';
+
+  @override
+  String get cloudSyncOverviewTitle => '수동 E2EE 동기화';
+
+  @override
+  String get cloudSyncOverviewSubtitle =>
+      '서버는 암호문만 저장합니다. 이 기기에서 암호 구문으로 잠금을 해제하세요.';
+
+  @override
+  String get cloudSyncConfigSaved => '동기화 설정을 저장했습니다';
+
+  @override
+  String get cloudSyncServerOkSnack => '서버에 연결되었습니다';
+
+  @override
+  String get cloudSyncServerCheckFailedSnack => '서버 확인에 실패했습니다';
+
+  @override
+  String get cloudSyncDisabledSnack => '동기화가 비활성화되었습니다';
+
+  @override
+  String get cloudSyncEnableSwitchTitle => '클라우드 동기화 활성화';
+
+  @override
+  String get cloudSyncEnableSwitchSubtitle => '가이드 설정: 서버 + 암호 구문';
+
+  @override
+  String get cloudSyncServerSection => '서버';
+
+  @override
+  String get cloudSyncSetupTitle => '1) 서버 설정';
+
+  @override
+  String get cloudSyncSetupSubtitle => '서버 URL과 토큰을 설정한 뒤 연결을 확인하세요.';
+
+  @override
+  String get cloudSyncSetupDialogTitle => '서버 설정';
+
+  @override
+  String get cloudSyncServerUrl => '서버 URL';
+
+  @override
+  String get cloudSyncServerUrlHint => 'http://127.0.0.1:8787';
+
+  @override
+  String get cloudSyncBearerToken => 'Bearer 토큰(개발용)';
+
+  @override
+  String get cloudSyncShowToken => '토큰 표시';
+
+  @override
+  String get cloudSyncHideToken => '토큰 숨기기';
+
+  @override
+  String get cloudSyncCheckServer => '서버 확인';
+
+  @override
+  String get cloudSyncEditServerConfig => '편집';
+
+  @override
+  String get cloudSyncNotSet => '설정 안 됨';
+
+  @override
+  String get cloudSyncTokenSet => '설정됨';
+
+  @override
+  String get cloudSyncStatusSection => '상태';
+
+  @override
+  String get cloudSyncEnabled => '활성화됨';
+
+  @override
+  String get cloudSyncUnlocked => '잠금 해제됨';
+
+  @override
+  String get cloudSyncEnabledOn => '활성화: 켜짐';
+
+  @override
+  String get cloudSyncEnabledOff => '활성화: 꺼짐';
+
+  @override
+  String get cloudSyncUnlockedYes => '잠금 해제: 예';
+
+  @override
+  String get cloudSyncUnlockedNo => '잠금 해제: 아니오';
+
+  @override
+  String get cloudSyncConfiguredYes => '설정됨: 예';
+
+  @override
+  String get cloudSyncConfiguredNo => '설정됨: 아니오';
+
+  @override
+  String get cloudSyncLastServerSeq => '마지막 serverSeq';
+
+  @override
+  String get cloudSyncDekId => 'DEK ID';
+
+  @override
+  String get cloudSyncLastSyncAt => '마지막 동기화';
+
+  @override
+  String get cloudSyncError => '오류';
+
+  @override
+  String get cloudSyncDeviceId => '기기 ID';
+
+  @override
+  String get cloudSyncEnable => '활성화';
+
+  @override
+  String get cloudSyncUnlock => '잠금 해제';
+
+  @override
+  String get cloudSyncSyncNow => '지금 동기화';
+
+  @override
+  String get cloudSyncDisable => '비활성화';
+
+  @override
+  String get cloudSyncSecurityTitle => '2) 잠금 해제';
+
+  @override
+  String get cloudSyncSecuritySubtitle =>
+      '잠금 해제는 암호 구문으로 DEK를 가져옵니다. 모바일/데스크톱은 보안 저장소에 캐시할 수 있습니다.';
+
+  @override
+  String get cloudSyncLockStateTitle => '암호화 키';
+
+  @override
+  String get cloudSyncLockStateUnlocked => '이 기기에서 잠금 해제됨';
+
+  @override
+  String get cloudSyncLockStateLocked => '잠김 — 암호 구문을 입력하세요';
+
+  @override
+  String get cloudSyncActionsTitle => '3) 동기화';
+
+  @override
+  String get cloudSyncActionsSubtitle => '로컬 변경을 푸시한 뒤 원격 업데이트를 가져옵니다.';
+
+  @override
+  String get cloudSyncAdvancedTitle => '고급';
+
+  @override
+  String get cloudSyncAdvancedSubtitle => '디버그 정보(로컬)';
+
+  @override
+  String get cloudSyncEnableDialogTitle => '동기화 활성화';
+
+  @override
+  String get cloudSyncUnlockDialogTitle => '동기화 잠금 해제';
+
+  @override
+  String get cloudSyncPassphraseDialogHint =>
+      '다른 기기에서 이미 동기화를 활성화했다면, 동일한 암호 구문을 두 번 입력하세요.';
+
+  @override
+  String get cloudSyncPassphrase => '암호 구문';
+
+  @override
+  String get cloudSyncConfirmPassphrase => '암호 구문 확인';
+
+  @override
+  String get cloudSyncShowPassphrase => '표시';
+
+  @override
+  String get cloudSyncEnabledSnack => '동기화가 활성화되었습니다';
+
+  @override
+  String get cloudSyncUnlockedSnack => '잠금 해제되었습니다';
+
+  @override
+  String get cloudSyncSyncedSnack => '동기화되었습니다';
+
+  @override
+  String get cloudSyncInvalidPassphrase => '암호 구문이 올바르지 않습니다';
+
+  @override
+  String get cloudSyncRollbackTitle => '서버 롤백 가능성';
+
+  @override
+  String get cloudSyncRollbackMessage =>
+      '서버가 롤백되었거나 백업에서 복원되었을 수 있습니다. 계속하면 데이터 손실이 발생할 수 있습니다. 어떻게 하시겠습니까?';
+
+  @override
+  String get cloudSyncStopSync => '동기화 중지';
+
+  @override
+  String get cloudSyncContinue => '계속';
+
+  @override
+  String get cloudSyncWebDekNote =>
+      'Web은 DEK를 세션 동안만 캐시합니다. 새로고침 후 다시 잠금 해제가 필요합니다.';
+
+  @override
+  String get cloudSyncStatusIdle => '대기';
+
+  @override
+  String get cloudSyncStatusRunning => '동기화 중';
+
+  @override
+  String get cloudSyncStatusError => '오류';
+
+  @override
+  String get cloudSyncErrorPassphraseMismatch => '암호 구문이 일치하지 않습니다';
+
+  @override
+  String get cloudSyncErrorNotConfigured => '동기화가 설정되지 않았습니다';
+
+  @override
+  String get cloudSyncErrorDisabled => '동기화가 비활성화되었습니다';
+
+  @override
+  String get cloudSyncErrorLocked => '동기화가 잠겨 있습니다(DEK 없음)';
+
+  @override
+  String get cloudSyncErrorUnauthorized => '인증되지 않았습니다(토큰 확인)';
+
+  @override
+  String get cloudSyncErrorKeyBundleNotFound => '서버에서 keyBundle을 찾을 수 없습니다';
+
+  @override
+  String get cloudSyncErrorNetwork => '네트워크 오류';
+
+  @override
+  String get cloudSyncErrorConflict => '충돌(bundleVersion 불일치)';
+
+  @override
+  String get cloudSyncErrorUnknown => '알 수 없는 오류';
+
+  @override
   String get backupRestore => '백업 및 복원';
 
   @override

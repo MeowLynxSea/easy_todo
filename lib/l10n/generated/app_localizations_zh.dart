@@ -42,6 +42,240 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dataStorage => '数据和存储';
 
   @override
+  String get dataAndSync => '数据与同步';
+
+  @override
+  String get cloudSync => '云同步';
+
+  @override
+  String get cloudSyncSubtitle => '端到端加密同步（手动）';
+
+  @override
+  String get cloudSyncOverviewTitle => '手动端到端加密同步';
+
+  @override
+  String get cloudSyncOverviewSubtitle => '服务器仅保存密文；在本机用同步口令解锁后才能同步。';
+
+  @override
+  String get cloudSyncConfigSaved => '已保存同步配置';
+
+  @override
+  String get cloudSyncServerOkSnack => '服务器可连接';
+
+  @override
+  String get cloudSyncServerCheckFailedSnack => '服务器检测失败';
+
+  @override
+  String get cloudSyncDisabledSnack => '已停用同步';
+
+  @override
+  String get cloudSyncEnableSwitchTitle => '启用云同步';
+
+  @override
+  String get cloudSyncEnableSwitchSubtitle => '引导式设置：服务器 + 同步口令';
+
+  @override
+  String get cloudSyncServerSection => '服务器';
+
+  @override
+  String get cloudSyncSetupTitle => '1）配置服务器';
+
+  @override
+  String get cloudSyncSetupSubtitle => '填写服务器地址与 token，并先检测连通性。';
+
+  @override
+  String get cloudSyncSetupDialogTitle => '服务器配置';
+
+  @override
+  String get cloudSyncServerUrl => '服务器地址';
+
+  @override
+  String get cloudSyncServerUrlHint => 'http://127.0.0.1:8787';
+
+  @override
+  String get cloudSyncBearerToken => 'Bearer Token（开发联调）';
+
+  @override
+  String get cloudSyncShowToken => '显示 token';
+
+  @override
+  String get cloudSyncHideToken => '隐藏 token';
+
+  @override
+  String get cloudSyncCheckServer => '检测服务器';
+
+  @override
+  String get cloudSyncEditServerConfig => '编辑配置';
+
+  @override
+  String get cloudSyncNotSet => '未设置';
+
+  @override
+  String get cloudSyncTokenSet => '已设置';
+
+  @override
+  String get cloudSyncStatusSection => '状态';
+
+  @override
+  String get cloudSyncEnabled => '已启用';
+
+  @override
+  String get cloudSyncUnlocked => '已解锁';
+
+  @override
+  String get cloudSyncEnabledOn => '已启用：是';
+
+  @override
+  String get cloudSyncEnabledOff => '已启用：否';
+
+  @override
+  String get cloudSyncUnlockedYes => '已解锁：是';
+
+  @override
+  String get cloudSyncUnlockedNo => '已解锁：否';
+
+  @override
+  String get cloudSyncConfiguredYes => '已配置：是';
+
+  @override
+  String get cloudSyncConfiguredNo => '已配置：否';
+
+  @override
+  String get cloudSyncLastServerSeq => '上次 serverSeq';
+
+  @override
+  String get cloudSyncDekId => 'DEK ID';
+
+  @override
+  String get cloudSyncLastSyncAt => '上次同步';
+
+  @override
+  String get cloudSyncError => '错误';
+
+  @override
+  String get cloudSyncDeviceId => '设备 ID';
+
+  @override
+  String get cloudSyncEnable => '启用';
+
+  @override
+  String get cloudSyncUnlock => '解锁';
+
+  @override
+  String get cloudSyncSyncNow => '立即同步';
+
+  @override
+  String get cloudSyncDisable => '停用';
+
+  @override
+  String get cloudSyncSecurityTitle => '2）解锁';
+
+  @override
+  String get cloudSyncSecuritySubtitle => '解锁会使用同步口令获取 DEK；移动端/桌面端可安全缓存以便静默同步。';
+
+  @override
+  String get cloudSyncLockStateTitle => '加密密钥';
+
+  @override
+  String get cloudSyncLockStateUnlocked => '本机已解锁';
+
+  @override
+  String get cloudSyncLockStateLocked => '未解锁：请输入口令解锁';
+
+  @override
+  String get cloudSyncActionsTitle => '3）同步';
+
+  @override
+  String get cloudSyncActionsSubtitle => '先推送本地变更，再拉取远端更新。';
+
+  @override
+  String get cloudSyncAdvancedTitle => '高级';
+
+  @override
+  String get cloudSyncAdvancedSubtitle => '调试信息（仅本机）';
+
+  @override
+  String get cloudSyncEnableDialogTitle => '启用同步';
+
+  @override
+  String get cloudSyncUnlockDialogTitle => '解锁同步';
+
+  @override
+  String get cloudSyncPassphraseDialogHint => '如果你已在其他设备启用过同步，请在两处输入相同的同步口令。';
+
+  @override
+  String get cloudSyncPassphrase => '同步口令';
+
+  @override
+  String get cloudSyncConfirmPassphrase => '确认同步口令';
+
+  @override
+  String get cloudSyncShowPassphrase => '显示';
+
+  @override
+  String get cloudSyncEnabledSnack => '已启用同步';
+
+  @override
+  String get cloudSyncUnlockedSnack => '已解锁';
+
+  @override
+  String get cloudSyncSyncedSnack => '同步完成';
+
+  @override
+  String get cloudSyncInvalidPassphrase => '口令错误';
+
+  @override
+  String get cloudSyncRollbackTitle => '检测到可能的服务器回滚';
+
+  @override
+  String get cloudSyncRollbackMessage => '服务器可能发生了回滚或从备份恢复。继续可能导致数据回退/丢失。是否继续？';
+
+  @override
+  String get cloudSyncStopSync => '停止同步';
+
+  @override
+  String get cloudSyncContinue => '继续';
+
+  @override
+  String get cloudSyncWebDekNote => 'Web 端默认仅会话缓存 DEK，刷新页面后需要重新输入口令解锁。';
+
+  @override
+  String get cloudSyncStatusIdle => '空闲';
+
+  @override
+  String get cloudSyncStatusRunning => '同步中';
+
+  @override
+  String get cloudSyncStatusError => '错误';
+
+  @override
+  String get cloudSyncErrorPassphraseMismatch => '两次输入的口令不一致';
+
+  @override
+  String get cloudSyncErrorNotConfigured => '未配置同步服务器';
+
+  @override
+  String get cloudSyncErrorDisabled => '同步已停用';
+
+  @override
+  String get cloudSyncErrorLocked => '同步未解锁（缺少 DEK）';
+
+  @override
+  String get cloudSyncErrorUnauthorized => '未授权（请检查 token）';
+
+  @override
+  String get cloudSyncErrorKeyBundleNotFound => '服务器未找到 keyBundle';
+
+  @override
+  String get cloudSyncErrorNetwork => '网络错误';
+
+  @override
+  String get cloudSyncErrorConflict => '冲突（bundleVersion 不匹配）';
+
+  @override
+  String get cloudSyncErrorUnknown => '未知错误';
+
+  @override
   String get backupRestore => '备份和恢复';
 
   @override

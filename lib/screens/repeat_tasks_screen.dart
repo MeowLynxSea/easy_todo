@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:easy_todo/models/repeat_todo_model.dart';
 import 'package:easy_todo/providers/todo_provider.dart';
+import 'package:easy_todo/utils/date_utils.dart';
 import 'package:easy_todo/widgets/repeat_todo_dialog.dart';
 import 'package:easy_todo/widgets/ai_loading_indicator.dart';
 import 'package:easy_todo/widgets/web_desktop_content.dart';
@@ -185,10 +186,7 @@ class _RepeatTasksScreenState extends State<RepeatTasksScreen> {
 
   // Helper method to check if two dates are the same day
   bool _isSameDay(DateTime date1, DateTime date2) {
-    // 使用标准化日期比较，确保时区一致性
-    final normalizedDate1 = DateTime(date1.year, date1.month, date1.day);
-    final normalizedDate2 = DateTime(date2.year, date2.month, date2.day);
-    return normalizedDate1.isAtSameMomentAs(normalizedDate2);
+    return isSameLocalDay(date1, date2);
   }
 
   Future<BackfillStartBasis?> _showBackfillStartConflictDialog({

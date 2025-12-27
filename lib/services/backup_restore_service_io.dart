@@ -9,6 +9,7 @@ import 'package:easy_todo/models/repeat_todo_model.dart';
 import 'package:easy_todo/models/statistics_data_model.dart';
 import 'package:easy_todo/services/file_service.dart';
 import 'package:easy_todo/services/hive_service.dart';
+import 'package:easy_todo/utils/date_utils.dart';
 
 class BackupRestoreService {
   final HiveService _hiveService = HiveService();
@@ -261,10 +262,7 @@ class BackupRestoreService {
 
   /// 检查两个日期是否是同一天
   bool _isSameDay(DateTime date1, DateTime date2) {
-    // 使用标准化日期比较，确保时区一致性
-    final normalizedDate1 = DateTime(date1.year, date1.month, date1.day);
-    final normalizedDate2 = DateTime(date2.year, date2.month, date2.day);
-    return normalizedDate1.isAtSameMomentAs(normalizedDate2);
+    return isSameLocalDay(date1, date2);
   }
 
   /// 获取存储统计信息

@@ -540,11 +540,14 @@ class _RepeatTodoDialogState extends State<RepeatTodoDialog> {
   Future<void> _selectStartDate() async {
     // 使用与每日任务相同的系统时间
     final now = DateTime.now();
+    final firstDate = widget.repeatTodo == null ? now : DateTime(2000);
 
     final picked = await showDatePicker(
       context: context,
-      initialDate: _startDate ?? now,
-      firstDate: now,
+      initialDate: (_startDate ?? now).isBefore(firstDate)
+          ? firstDate
+          : (_startDate ?? now),
+      firstDate: firstDate,
       lastDate: DateTime(2100),
     );
 
@@ -558,11 +561,13 @@ class _RepeatTodoDialogState extends State<RepeatTodoDialog> {
   Future<void> _selectEndDate() async {
     // 使用与每日任务相同的系统时间
     final now = DateTime.now();
+    final firstDate = _startDate ?? now;
+    final initialDate = _endDate ?? now.add(const Duration(days: 30));
 
     final picked = await showDatePicker(
       context: context,
-      initialDate: _endDate ?? now.add(const Duration(days: 30)),
-      firstDate: now,
+      initialDate: initialDate.isBefore(firstDate) ? firstDate : initialDate,
+      firstDate: firstDate,
       lastDate: DateTime(2100),
     );
 

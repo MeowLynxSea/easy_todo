@@ -12,6 +12,7 @@ import 'package:easy_todo/providers/filter_provider.dart';
 import 'package:easy_todo/providers/ai_provider.dart';
 import 'package:easy_todo/providers/language_provider.dart';
 import 'package:easy_todo/utils/ai_status_constants.dart';
+import 'package:easy_todo/utils/date_utils.dart';
 import 'package:easy_todo/utils/repeat_backfill_utils.dart';
 
 class TodoProvider extends ChangeNotifier {
@@ -33,6 +34,7 @@ class TodoProvider extends ChangeNotifier {
   List<RepeatTodoModel> _repeatTodos = [];
   List<StatisticsDataModel> _statisticsData = [];
   DateTime? _lastRepeatCheck;
+  Future<void> _repeatOperation = Future.value();
 
   // AI processing tracking for repeat todos
   final Set<String> _processingRepeatTodos = {};
@@ -44,6 +46,27 @@ class TodoProvider extends ChangeNotifier {
     final systemTime = DateTime.now();
     // debugPrint('System time: $systemTime (timezone offset: ${systemTime.timeZoneOffset}, timezone name: ${systemTime.timeZoneName})');
     return systemTime;
+  }
+
+  Future<void> _hydrateRepeatGenerationStateIfNeeded() async {
+    final todosBox = _hiveService.todosBox;
+    if (_todos.isEmpty && todosBox.isNotEmpty) {
+      _todos = todosBox.values.toList();
+      _todos.sort((a, b) => a.order.compareTo(b.order));
+      _applyFilters();
+    }
+
+    final repeatTodosBox = _hiveService.repeatTodosBox;
+    if (_repeatTodos.isEmpty && repeatTodosBox.isNotEmpty) {
+      _repeatTodos = repeatTodosBox.values.toList();
+      _repeatTodos.sort((a, b) => a.order.compareTo(b.order));
+    }
+  }
+
+  Future<T> _enqueueRepeatOperation<T>(Future<T> Function() operation) {
+    final next = _repeatOperation.then((_) => operation());
+    _repeatOperation = next.then((_) {}, onError: (_) {});
+    return next;
   }
 
   bool _isLoading = false;
@@ -1184,10 +1207,7 @@ class TodoProvider extends ChangeNotifier {
   }
 
   bool _isSameDay(DateTime date1, DateTime date2) {
-    // 使用标准化的本地日期进行比较，确保时区一致性
-    final normalizedDate1 = DateTime(date1.year, date1.month, date1.day);
-    final normalizedDate2 = DateTime(date2.year, date2.month, date2.day);
-    return normalizedDate1.isAtSameMomentAs(normalizedDate2);
+    return isSameLocalDay(date1, date2);
   }
 
   List<TodoModel> getTodayTodos() {
@@ -1644,195 +1664,206 @@ class TodoProvider extends ChangeNotifier {
   }
 
   Future<void> checkAndGenerateRepeatTodos() async {
-    final now = _getLocalDateTime();
-    // final systemTime = DateTime.now();
-    // debugPrint('checkAndGenerateRepeatTodos called at: $now');
-    // debugPrint('System time: $systemTime');
-    // debugPrint('Time difference: ${now.difference(systemTime).inMinutes} minutes');
+    return _enqueueRepeatOperation(() async {
+      await _hydrateRepeatGenerationStateIfNeeded();
 
-    // 避免过于频繁的检查（至少间隔30秒）
-    if (_lastRepeatCheck != null &&
-        now.difference(_lastRepeatCheck!).inSeconds < 30) {
-      debugPrint('Skipping repeat todo check - last check was too recent');
-      return;
-    }
+      final now = _getLocalDateTime();
+      // final systemTime = DateTime.now();
+      // debugPrint('checkAndGenerateRepeatTodos called at: $now');
+      // debugPrint('System time: $systemTime');
+      // debugPrint('Time difference: ${now.difference(systemTime).inMinutes} minutes');
 
-    _lastRepeatCheck = now;
+      final previousRepeatCheck = _lastRepeatCheck;
 
-    // 检查是否日期变化了（新的本地日期开始）
-    final lastCheckDate = _lastRepeatCheck != null
-        ? DateTime(
-            _lastRepeatCheck!.year,
-            _lastRepeatCheck!.month,
-            _lastRepeatCheck!.day,
-          )
-        : null;
-    final currentDate = DateTime(now.year, now.month, now.day);
-
-    final isNewDay =
-        lastCheckDate == null || !currentDate.isAtSameMomentAs(lastCheckDate);
-    // debugPrint('Is new day: $isNewDay, Last check date: $lastCheckDate, Current date: $currentDate');
-    // debugPrint('Current hour: ${now.hour}, Current minute: ${now.minute}');
-
-    for (final repeatTodo in _repeatTodos) {
-      // Check if repeat task has expired and should be deactivated
-      if (repeatTodo.isActive &&
-          repeatTodo.endDate != null &&
-          _normalizeDay(now).isAfter(_normalizeDay(repeatTodo.endDate!))) {
-        final deactivatedRepeatTodo = repeatTodo.copyWith(isActive: false);
-        await updateRepeatTodo(deactivatedRepeatTodo, skipAIProcessing: true);
-        continue;
+      // 避免过于频繁的检查（至少间隔30秒）
+      if (previousRepeatCheck != null &&
+          now.difference(previousRepeatCheck).inSeconds < 30) {
+        debugPrint('Skipping repeat todo check - last check was too recent');
+        return;
       }
 
-      // 检查是否需要生成任务
-      final shouldCheckGeneration =
-          isNewDay || repeatTodo.shouldGenerateTodo(now);
+      _lastRepeatCheck = now;
 
-      if (shouldCheckGeneration) {
-        final backfilledLatestDay = await _backfillRepeatTodosIfNeeded(
-          repeatTodo,
-          now,
-        );
+      // 检查是否日期变化了（新的本地日期开始）
+      final lastCheckDate = previousRepeatCheck != null
+          ? localDay(previousRepeatCheck)
+          : null;
+      final currentDate = localDay(now);
 
-        // 检查今天是否已经为这个重复模板生成了任务
-        final hasGeneratedToday = _hasGeneratedTodoForToday(repeatTodo, now);
+      final isNewDay =
+          lastCheckDate == null || !isSameLocalDay(currentDate, lastCheckDate);
+      // debugPrint('Is new day: $isNewDay, Last check date: $lastCheckDate, Current date: $currentDate');
+      // debugPrint('Current hour: ${now.hour}, Current minute: ${now.minute}');
 
-        var generatedToday = false;
-        if (!hasGeneratedToday) {
-          // 检查今天是否符合重复条件
-          final shouldGenerateToday = _shouldGenerateForToday(repeatTodo, now);
-
-          if (shouldGenerateToday) {
-            await _generateTodoFromRepeat(repeatTodo);
-            generatedToday = true;
-          }
+      for (final repeatTodo in _repeatTodos) {
+        // Check if repeat task has expired and should be deactivated
+        if (repeatTodo.isActive &&
+            repeatTodo.endDate != null &&
+            _normalizeDay(now).isAfter(_normalizeDay(repeatTodo.endDate!))) {
+          final deactivatedRepeatTodo = repeatTodo.copyWith(isActive: false);
+          await updateRepeatTodo(deactivatedRepeatTodo, skipAIProcessing: true);
+          continue;
         }
 
-        DateTime? newLastGeneratedDate;
-        if (generatedToday) {
-          newLastGeneratedDate = now;
-        } else if (backfilledLatestDay != null) {
-          newLastGeneratedDate = DateTime(
-            backfilledLatestDay.year,
-            backfilledLatestDay.month,
-            backfilledLatestDay.day,
-            now.hour,
-            now.minute,
-            now.second,
+        // 检查是否需要生成任务
+        final shouldCheckGeneration =
+            isNewDay || repeatTodo.shouldGenerateTodo(now);
+
+        if (shouldCheckGeneration) {
+          final backfilledLatestDay = await _backfillRepeatTodosIfNeeded(
+            repeatTodo,
+            now,
           );
-        }
 
-        if (newLastGeneratedDate != null) {
-          final currentLast = repeatTodo.lastGeneratedDate;
-          final shouldUpdate =
-              currentLast == null ||
-              _normalizeDay(
-                currentLast,
-              ).isBefore(_normalizeDay(newLastGeneratedDate));
+          // 检查今天是否已经为这个重复模板生成了任务
+          final hasGeneratedToday = _hasGeneratedTodoForToday(repeatTodo, now);
 
-          if (shouldUpdate) {
-            // Update last generated date (skip AI processing for this metadata update)
-            final updatedRepeatTodo = repeatTodo.copyWith(
-              lastGeneratedDate: newLastGeneratedDate,
+          var generatedToday = false;
+          if (!hasGeneratedToday) {
+            // 检查今天是否符合重复条件
+            final shouldGenerateToday = _shouldGenerateForToday(
+              repeatTodo,
+              now,
             );
-            await updateRepeatTodo(updatedRepeatTodo, skipAIProcessing: true);
+
+            if (shouldGenerateToday) {
+              await _generateTodoFromRepeat(repeatTodo);
+              generatedToday = true;
+            }
+          }
+
+          DateTime? newLastGeneratedDate;
+          if (generatedToday) {
+            newLastGeneratedDate = now;
+          } else if (backfilledLatestDay != null) {
+            newLastGeneratedDate = DateTime(
+              backfilledLatestDay.year,
+              backfilledLatestDay.month,
+              backfilledLatestDay.day,
+              now.hour,
+              now.minute,
+              now.second,
+            );
+          }
+
+          if (newLastGeneratedDate != null) {
+            final currentLast = repeatTodo.lastGeneratedDate;
+            final shouldUpdate =
+                currentLast == null ||
+                _normalizeDay(
+                  currentLast,
+                ).isBefore(_normalizeDay(newLastGeneratedDate));
+
+            if (shouldUpdate) {
+              // Update last generated date (skip AI processing for this metadata update)
+              final updatedRepeatTodo = repeatTodo.copyWith(
+                lastGeneratedDate: newLastGeneratedDate,
+              );
+              await updateRepeatTodo(updatedRepeatTodo, skipAIProcessing: true);
+            }
           }
         }
       }
-    }
+    });
   }
 
   // 强制检查重复任务（忽略频率限制）
   Future<void> forceCheckRepeatTodos() async {
-    final now = _getLocalDateTime();
-    _lastRepeatCheck = now;
+    return _enqueueRepeatOperation(() async {
+      await _hydrateRepeatGenerationStateIfNeeded();
 
-    // 首先清理过期的重复任务
-    await _cleanupExpiredRepeatTasks(now);
+      final now = _getLocalDateTime();
+      _lastRepeatCheck = now;
 
-    // 检查是否日期变化了（新的本地日期开始）
-    // final lastCheckDate = _lastRepeatCheck != null
-    //     ? DateTime(_lastRepeatCheck!.year, _lastRepeatCheck!.month, _lastRepeatCheck!.day)
-    //     : null;
-    // final currentDate = DateTime(now.year, now.month, now.day);
+      // 首先清理过期的重复任务
+      await _cleanupExpiredRepeatTasks(now);
 
-    // final isNewDay = lastCheckDate == null || !currentDate.isAtSameMomentAs(lastCheckDate);
+      // 检查是否日期变化了（新的本地日期开始）
+      // final lastCheckDate = _lastRepeatCheck != null
+      //     ? DateTime(_lastRepeatCheck!.year, _lastRepeatCheck!.month, _lastRepeatCheck!.day)
+      //     : null;
+      // final currentDate = DateTime(now.year, now.month, now.day);
 
-    for (final repeatTodo in _repeatTodos) {
-      // Check if repeat task has expired and should be deactivated
-      if (repeatTodo.isActive &&
-          repeatTodo.endDate != null &&
-          _normalizeDay(now).isAfter(_normalizeDay(repeatTodo.endDate!))) {
-        final deactivatedRepeatTodo = repeatTodo.copyWith(isActive: false);
-        await updateRepeatTodo(deactivatedRepeatTodo, skipAIProcessing: true);
-        continue;
-      }
+      // final isNewDay = lastCheckDate == null || !currentDate.isAtSameMomentAs(lastCheckDate);
 
-      // For force refresh, we check if we should generate regardless of timing
-      if (repeatTodo.isActive) {
-        final backfilledLatestDay = await _backfillRepeatTodosIfNeeded(
-          repeatTodo,
-          now,
-        );
+      for (final repeatTodo in _repeatTodos) {
+        // Check if repeat task has expired and should be deactivated
+        if (repeatTodo.isActive &&
+            repeatTodo.endDate != null &&
+            _normalizeDay(now).isAfter(_normalizeDay(repeatTodo.endDate!))) {
+          final deactivatedRepeatTodo = repeatTodo.copyWith(isActive: false);
+          await updateRepeatTodo(deactivatedRepeatTodo, skipAIProcessing: true);
+          continue;
+        }
 
-        // 检查今天是否已经为这个重复模板生成了任务
-        final hasGeneratedToday = _hasGeneratedTodoForToday(repeatTodo, now);
+        // For force refresh, we check if we should generate regardless of timing
+        if (repeatTodo.isActive) {
+          var currentLastGeneratedDate = repeatTodo.lastGeneratedDate;
+          final backfilledLatestDay = await _backfillRepeatTodosIfNeeded(
+            repeatTodo,
+            now,
+          );
 
-        var generatedToday = false;
-        if (!hasGeneratedToday) {
-          // 仅在“今天符合重复规则”时生成。
-          // 注意：`RepeatTodoModel.shouldGenerateTodo` 表示“是否到期/是否错过过生成”，
-          // 不能直接用于“今天是否应生成”，否则 weekly/monthly 可能在不匹配日期时补生成。
-          if (_shouldGenerateForToday(repeatTodo, now)) {
-            await _generateTodoFromRepeat(repeatTodo);
-            generatedToday = true;
-          } else {
-            // 如果不应该在今天生成，但有未来的 lastGeneratedDate，重置它
-            if (repeatTodo.lastGeneratedDate != null &&
-                repeatTodo.lastGeneratedDate!.isAfter(now)) {
-              final correctedRepeatTodo = repeatTodo.copyWith(
-                lastGeneratedDate: null,
+          // 检查今天是否已经为这个重复模板生成了任务
+          final hasGeneratedToday = _hasGeneratedTodoForToday(repeatTodo, now);
+
+          var generatedToday = false;
+          if (!hasGeneratedToday) {
+            // 仅在“今天符合重复规则”时生成。
+            // 注意：`RepeatTodoModel.shouldGenerateTodo` 表示“是否到期/是否错过过生成”，
+            // 不能直接用于“今天是否应生成”，否则 weekly/monthly 可能在不匹配日期时补生成。
+            if (_shouldGenerateForToday(repeatTodo, now)) {
+              await _generateTodoFromRepeat(repeatTodo);
+              generatedToday = true;
+            } else {
+              // 如果不应该在今天生成，但有未来的 lastGeneratedDate，重置它
+              if (currentLastGeneratedDate != null &&
+                  currentLastGeneratedDate.isAfter(now)) {
+                final correctedRepeatTodo = repeatTodo.copyWith(
+                  lastGeneratedDate: null,
+                );
+                await updateRepeatTodo(
+                  correctedRepeatTodo,
+                  skipAIProcessing: true,
+                );
+                currentLastGeneratedDate = null;
+              }
+            }
+          }
+
+          DateTime? newLastGeneratedDate;
+          if (generatedToday) {
+            newLastGeneratedDate = now;
+          } else if (backfilledLatestDay != null) {
+            newLastGeneratedDate = DateTime(
+              backfilledLatestDay.year,
+              backfilledLatestDay.month,
+              backfilledLatestDay.day,
+              now.hour,
+              now.minute,
+              now.second,
+            );
+          }
+
+          if (newLastGeneratedDate != null) {
+            final currentLast = currentLastGeneratedDate;
+            final shouldUpdate =
+                currentLast == null ||
+                _normalizeDay(
+                  currentLast,
+                ).isBefore(_normalizeDay(newLastGeneratedDate));
+
+            if (shouldUpdate) {
+              // Update last generated date (skip AI processing for this metadata update)
+              final updatedRepeatTodo = repeatTodo.copyWith(
+                lastGeneratedDate: newLastGeneratedDate,
               );
-              await updateRepeatTodo(
-                correctedRepeatTodo,
-                skipAIProcessing: true,
-              );
+              await updateRepeatTodo(updatedRepeatTodo, skipAIProcessing: true);
             }
           }
         }
-
-        DateTime? newLastGeneratedDate;
-        if (generatedToday) {
-          newLastGeneratedDate = now;
-        } else if (backfilledLatestDay != null) {
-          newLastGeneratedDate = DateTime(
-            backfilledLatestDay.year,
-            backfilledLatestDay.month,
-            backfilledLatestDay.day,
-            now.hour,
-            now.minute,
-            now.second,
-          );
-        }
-
-        if (newLastGeneratedDate != null) {
-          final currentLast = repeatTodo.lastGeneratedDate;
-          final shouldUpdate =
-              currentLast == null ||
-              _normalizeDay(
-                currentLast,
-              ).isBefore(_normalizeDay(newLastGeneratedDate));
-
-          if (shouldUpdate) {
-            // Update last generated date (skip AI processing for this metadata update)
-            final updatedRepeatTodo = repeatTodo.copyWith(
-              lastGeneratedDate: newLastGeneratedDate,
-            );
-            await updateRepeatTodo(updatedRepeatTodo, skipAIProcessing: true);
-          }
-        }
       }
-    }
+    });
   }
 
   // 完全强制刷新：为每个活动重复任务生成今天的任务（只在应该生成的时候）
@@ -1844,216 +1875,251 @@ class TodoProvider extends ChangeNotifier {
     )?
     onBackfillStartConflict,
   }) async {
-    final now = _getLocalDateTime();
-    _lastRepeatCheck = now;
+    return _enqueueRepeatOperation(() async {
+      await _hydrateRepeatGenerationStateIfNeeded();
 
-    // 首先清理过期的重复任务
-    await _cleanupExpiredRepeatTasks(now);
+      final now = _getLocalDateTime();
+      _lastRepeatCheck = now;
 
-    for (final repeatTodo in _repeatTodos) {
-      // Check if repeat task has expired and should be deactivated
-      if (repeatTodo.isActive &&
-          repeatTodo.endDate != null &&
-          _normalizeDay(now).isAfter(_normalizeDay(repeatTodo.endDate!))) {
-        final deactivatedRepeatTodo = repeatTodo.copyWith(isActive: false);
-        await updateRepeatTodo(deactivatedRepeatTodo, skipAIProcessing: true);
-        continue;
-      }
+      // 首先清理过期的重复任务
+      await _cleanupExpiredRepeatTasks(now);
 
-      // For complete force refresh, generate task for every active repeat task
-      if (repeatTodo.isActive) {
-        var startBasis = BackfillStartBasis.startDate;
-        if (onBackfillStartConflict != null &&
-            repeatTodo.backfillEnabled &&
-            repeatTodo.backfillDays > 0 &&
-            repeatTodo.startDate != null) {
-          final normalizedStartDate = _normalizeDay(repeatTodo.startDate!);
-          final normalizedBackfillStartDate = _normalizeDay(
-            now,
-          ).subtract(Duration(days: repeatTodo.backfillDays));
-
-          final hasConflict = normalizedStartDate.isAfter(
-            normalizedBackfillStartDate,
-          );
-          if (hasConflict) {
-            startBasis =
-                await onBackfillStartConflict(
-                  repeatTodo,
-                  normalizedStartDate,
-                  normalizedBackfillStartDate,
-                ) ??
-                BackfillStartBasis.startDate;
-          }
+      for (final repeatTodo in _repeatTodos) {
+        // Check if repeat task has expired and should be deactivated
+        if (repeatTodo.isActive &&
+            repeatTodo.endDate != null &&
+            _normalizeDay(now).isAfter(_normalizeDay(repeatTodo.endDate!))) {
+          final deactivatedRepeatTodo = repeatTodo.copyWith(isActive: false);
+          await updateRepeatTodo(deactivatedRepeatTodo, skipAIProcessing: true);
+          continue;
         }
 
-        await _pruneOutOfRangeBackfilledTodosForRepeat(
-          repeatTodo,
-          now,
-          startBasis: startBasis,
-        );
+        // For complete force refresh, generate task for every active repeat task
+        if (repeatTodo.isActive) {
+          var effectiveRepeatTodo = repeatTodo;
+          var startBasis = BackfillStartBasis.startDate;
+          if (onBackfillStartConflict != null &&
+              repeatTodo.backfillEnabled &&
+              repeatTodo.backfillDays > 0 &&
+              repeatTodo.startDate != null) {
+            final normalizedStartDate = _normalizeDay(repeatTodo.startDate!);
+            final normalizedBackfillStartDate = _normalizeDay(
+              now,
+            ).subtract(Duration(days: repeatTodo.backfillDays));
 
-        final backfilledLatestDay = await _backfillRepeatTodosIfNeeded(
-          repeatTodo,
-          now,
-          startBasis: startBasis,
-        );
+            final hasConflict = normalizedStartDate.isAfter(
+              normalizedBackfillStartDate,
+            );
+            if (hasConflict) {
+              startBasis =
+                  await onBackfillStartConflict(
+                    repeatTodo,
+                    normalizedStartDate,
+                    normalizedBackfillStartDate,
+                  ) ??
+                  BackfillStartBasis.startDate;
+            }
+          }
 
-        // 检查今天是否已经为这个重复模板生成了任务
-        final hasGeneratedToday = _hasGeneratedTodoForToday(repeatTodo, now);
+          DateTime? alignedStartDate = computeAlignedStartDateForBackfillChoice(
+            repeatTodo: effectiveRepeatTodo,
+            now: now,
+            startBasis: startBasis,
+          );
+          alignedStartDate ??= onBackfillStartConflict == null
+              ? _inferAlignedStartDateFromExistingBackfilledTodos(
+                  effectiveRepeatTodo,
+                  now,
+                )
+              : null;
+          if (alignedStartDate != null) {
+            final updated = effectiveRepeatTodo.copyWith(
+              startDate: alignedStartDate,
+            );
+            await updateRepeatTodo(updated, skipAIProcessing: true);
+            effectiveRepeatTodo = updated;
+            startBasis = BackfillStartBasis.startDate;
+          }
 
-        var generatedToday = false;
-        if (!hasGeneratedToday) {
-          // 检查重复任务是否应该在今天生成
-          if (_shouldGenerateForToday(repeatTodo, now)) {
-            await _generateTodoFromRepeat(repeatTodo);
-            generatedToday = true;
-          } else {
-            // 如果不应该在今天生成，但有未来的 lastGeneratedDate，重置它
-            if (repeatTodo.lastGeneratedDate != null &&
-                repeatTodo.lastGeneratedDate!.isAfter(now)) {
-              final correctedRepeatTodo = repeatTodo.copyWith(
-                lastGeneratedDate: null,
+          await _pruneOutOfRangeBackfilledTodosForRepeat(
+            effectiveRepeatTodo,
+            now,
+            startBasis: startBasis,
+          );
+
+          final backfilledLatestDay = await _backfillRepeatTodosIfNeeded(
+            effectiveRepeatTodo,
+            now,
+            startBasis: startBasis,
+          );
+
+          // 检查今天是否已经为这个重复模板生成了任务
+          final hasGeneratedToday = _hasGeneratedTodoForToday(
+            effectiveRepeatTodo,
+            now,
+          );
+
+          var generatedToday = false;
+          if (!hasGeneratedToday) {
+            // 检查重复任务是否应该在今天生成
+            if (_shouldGenerateForToday(effectiveRepeatTodo, now)) {
+              await _generateTodoFromRepeat(effectiveRepeatTodo);
+              generatedToday = true;
+            } else {
+              // 如果不应该在今天生成，但有未来的 lastGeneratedDate，重置它
+              if (effectiveRepeatTodo.lastGeneratedDate != null &&
+                  effectiveRepeatTodo.lastGeneratedDate!.isAfter(now)) {
+                effectiveRepeatTodo = effectiveRepeatTodo.copyWith(
+                  lastGeneratedDate: null,
+                );
+                await updateRepeatTodo(
+                  effectiveRepeatTodo,
+                  skipAIProcessing: true,
+                );
+              }
+            }
+          }
+
+          DateTime? newLastGeneratedDate;
+          if (generatedToday) {
+            newLastGeneratedDate = now;
+          } else if (backfilledLatestDay != null) {
+            newLastGeneratedDate = DateTime(
+              backfilledLatestDay.year,
+              backfilledLatestDay.month,
+              backfilledLatestDay.day,
+              now.hour,
+              now.minute,
+              now.second,
+            );
+          }
+
+          if (newLastGeneratedDate != null) {
+            final currentLast = effectiveRepeatTodo.lastGeneratedDate;
+            final shouldUpdate =
+                currentLast == null ||
+                _normalizeDay(
+                  currentLast,
+                ).isBefore(_normalizeDay(newLastGeneratedDate));
+
+            if (shouldUpdate) {
+              // Update last generated date (skip AI processing for this metadata update)
+              final updatedRepeatTodo = effectiveRepeatTodo.copyWith(
+                lastGeneratedDate: newLastGeneratedDate,
               );
-              await updateRepeatTodo(
-                correctedRepeatTodo,
-                skipAIProcessing: true,
-              );
+              await updateRepeatTodo(updatedRepeatTodo, skipAIProcessing: true);
             }
           }
         }
-
-        DateTime? newLastGeneratedDate;
-        if (generatedToday) {
-          newLastGeneratedDate = now;
-        } else if (backfilledLatestDay != null) {
-          newLastGeneratedDate = DateTime(
-            backfilledLatestDay.year,
-            backfilledLatestDay.month,
-            backfilledLatestDay.day,
-            now.hour,
-            now.minute,
-            now.second,
-          );
-        }
-
-        if (newLastGeneratedDate != null) {
-          final currentLast = repeatTodo.lastGeneratedDate;
-          final shouldUpdate =
-              currentLast == null ||
-              _normalizeDay(
-                currentLast,
-              ).isBefore(_normalizeDay(newLastGeneratedDate));
-
-          if (shouldUpdate) {
-            // Update last generated date (skip AI processing for this metadata update)
-            final updatedRepeatTodo = repeatTodo.copyWith(
-              lastGeneratedDate: newLastGeneratedDate,
-            );
-            await updateRepeatTodo(updatedRepeatTodo, skipAIProcessing: true);
-          }
-        }
       }
-    }
+    });
   }
 
   // 只刷新今天的重复任务：删除今天的任务并重新生成（如果应该生成）
   Future<void> refreshTodayRepeatTasks() async {
-    final now = _getLocalDateTime();
-    debugPrint(
-      'refreshTodayRepeatTasks called at: $now (local hour: ${now.hour}:${now.minute})',
-    );
-    _lastRepeatCheck = now;
+    return _enqueueRepeatOperation(() async {
+      await _hydrateRepeatGenerationStateIfNeeded();
 
-    // 清理今天的过期重复任务
-    await _cleanupExpiredRepeatTasks(now);
+      final now = _getLocalDateTime();
+      debugPrint(
+        'refreshTodayRepeatTasks called at: $now (local hour: ${now.hour}:${now.minute})',
+      );
+      _lastRepeatCheck = now;
 
-    // 重要：在清理后重新加载 todos 以确保数据一致性
-    await loadTodos();
+      // 清理今天的过期重复任务
+      await _cleanupExpiredRepeatTasks(now);
 
-    debugPrint('Processing ${_repeatTodos.length} repeat tasks');
+      // 重要：在清理后重新加载 todos 以确保数据一致性
+      await loadTodos();
 
-    for (final repeatTodo in _repeatTodos) {
-      // Check if repeat task has expired and should be deactivated
-      if (repeatTodo.isActive &&
-          repeatTodo.endDate != null &&
-          _normalizeDay(now).isAfter(_normalizeDay(repeatTodo.endDate!))) {
-        debugPrint('Deactivating expired repeat task: "${repeatTodo.title}"');
-        final deactivatedRepeatTodo = repeatTodo.copyWith(isActive: false);
-        await updateRepeatTodo(deactivatedRepeatTodo, skipAIProcessing: true);
-        continue;
-      }
+      debugPrint('Processing ${_repeatTodos.length} repeat tasks');
 
-      // Only process active repeat tasks
-      if (repeatTodo.isActive) {
-        // 检查今天是否已经为这个重复模板生成了任务
-        final hasGeneratedToday = _hasGeneratedTodoForToday(repeatTodo, now);
+      for (final repeatTodo in _repeatTodos) {
+        // Check if repeat task has expired and should be deactivated
+        if (repeatTodo.isActive &&
+            repeatTodo.endDate != null &&
+            _normalizeDay(now).isAfter(_normalizeDay(repeatTodo.endDate!))) {
+          debugPrint('Deactivating expired repeat task: "${repeatTodo.title}"');
+          final deactivatedRepeatTodo = repeatTodo.copyWith(isActive: false);
+          await updateRepeatTodo(deactivatedRepeatTodo, skipAIProcessing: true);
+          continue;
+        }
 
-        debugPrint(
-          'Refresh: Repeat task "${repeatTodo.title}" - hasGeneratedToday: $hasGeneratedToday',
-        );
-
-        if (!hasGeneratedToday) {
-          // 检查重复任务是否应该在今天生成
-          final shouldGenerate = _shouldGenerateForToday(repeatTodo, now);
+        // Only process active repeat tasks
+        if (repeatTodo.isActive) {
+          // 检查今天是否已经为这个重复模板生成了任务
+          final hasGeneratedToday = _hasGeneratedTodoForToday(repeatTodo, now);
 
           debugPrint(
-            'Repeat task "${repeatTodo.title}" - should generate today: $shouldGenerate',
+            'Refresh: Repeat task "${repeatTodo.title}" - hasGeneratedToday: $hasGeneratedToday',
           );
-          debugPrint('  - Repeat type: ${repeatTodo.repeatType}');
-          debugPrint('  - Current date: $now');
-          debugPrint(
-            '  - Current local time: ${now.hour}:${now.minute}:${now.second}',
-          );
-          debugPrint('  - Start date: ${repeatTodo.startDate}');
-          debugPrint('  - End date: ${repeatTodo.endDate}');
-          debugPrint('  - Last generated: ${repeatTodo.lastGeneratedDate}');
 
-          if (shouldGenerate) {
-            // 在生成前，再次检查以确保没有重复
-            final hasGenerated = _hasGeneratedTodoForRepeatToday(
-              repeatTodo,
-              now,
+          if (!hasGeneratedToday) {
+            // 检查重复任务是否应该在今天生成
+            final shouldGenerate = _shouldGenerateForToday(repeatTodo, now);
+
+            debugPrint(
+              'Repeat task "${repeatTodo.title}" - should generate today: $shouldGenerate',
             );
-            if (!hasGenerated) {
-              debugPrint(
-                'Generating todo for repeat task "${repeatTodo.title}" at ${now.hour}:${now.minute}',
-              );
-              await _generateTodoFromRepeat(repeatTodo);
+            debugPrint('  - Repeat type: ${repeatTodo.repeatType}');
+            debugPrint('  - Current date: $now');
+            debugPrint(
+              '  - Current local time: ${now.hour}:${now.minute}:${now.second}',
+            );
+            debugPrint('  - Start date: ${repeatTodo.startDate}');
+            debugPrint('  - End date: ${repeatTodo.endDate}');
+            debugPrint('  - Last generated: ${repeatTodo.lastGeneratedDate}');
 
-              // Update last generated date to today (skip AI processing for this metadata update)
-              final updatedRepeatTodo = repeatTodo.copyWith(
-                lastGeneratedDate: now,
+            if (shouldGenerate) {
+              // 在生成前，再次检查以确保没有重复
+              final hasGenerated = _hasGeneratedTodoForRepeatToday(
+                repeatTodo,
+                now,
               );
-              await updateRepeatTodo(updatedRepeatTodo, skipAIProcessing: true);
+              if (!hasGenerated) {
+                debugPrint(
+                  'Generating todo for repeat task "${repeatTodo.title}" at ${now.hour}:${now.minute}',
+                );
+                await _generateTodoFromRepeat(repeatTodo);
+
+                // Update last generated date to today (skip AI processing for this metadata update)
+                final updatedRepeatTodo = repeatTodo.copyWith(
+                  lastGeneratedDate: now,
+                );
+                await updateRepeatTodo(
+                  updatedRepeatTodo,
+                  skipAIProcessing: true,
+                );
+              } else {
+                debugPrint(
+                  'Task already generated for today for "${repeatTodo.title}"',
+                );
+              }
             } else {
               debugPrint(
-                'Task already generated for today for "${repeatTodo.title}"',
+                'Should not generate today for "${repeatTodo.title}" - current time ${now.hour}:${now.minute} may not meet repeat conditions',
               );
+              // 如果不应该在今天生成，但有未来的 lastGeneratedDate，重置它
+              if (repeatTodo.lastGeneratedDate != null &&
+                  repeatTodo.lastGeneratedDate!.isAfter(now)) {
+                debugPrint(
+                  'Resetting future lastGeneratedDate for "${repeatTodo.title}"',
+                );
+                final correctedRepeatTodo = repeatTodo.copyWith(
+                  lastGeneratedDate: null,
+                );
+                await updateRepeatTodo(
+                  correctedRepeatTodo,
+                  skipAIProcessing: true,
+                );
+              }
             }
           } else {
-            debugPrint(
-              'Should not generate today for "${repeatTodo.title}" - current time ${now.hour}:${now.minute} may not meet repeat conditions',
-            );
-            // 如果不应该在今天生成，但有未来的 lastGeneratedDate，重置它
-            if (repeatTodo.lastGeneratedDate != null &&
-                repeatTodo.lastGeneratedDate!.isAfter(now)) {
-              debugPrint(
-                'Resetting future lastGeneratedDate for "${repeatTodo.title}"',
-              );
-              final correctedRepeatTodo = repeatTodo.copyWith(
-                lastGeneratedDate: null,
-              );
-              await updateRepeatTodo(
-                correctedRepeatTodo,
-                skipAIProcessing: true,
-              );
-            }
+            debugPrint('Already generated today for "${repeatTodo.title}"');
           }
-        } else {
-          debugPrint('Already generated today for "${repeatTodo.title}"');
         }
       }
-    }
+    });
   }
 
   // 检查重复任务是否应该在今天生成
@@ -2098,8 +2164,7 @@ class TodoProvider extends ChangeNotifier {
     DateTime currentDate,
   ) {
     // 检查今天是否已经为这个重复模板生成了任务
-    final localDate = _getLocalDateTime();
-    final today = DateTime(localDate.year, localDate.month, localDate.day);
+    final today = _normalizeDay(currentDate);
 
     final todayTodos = _todos
         .where(
@@ -2119,8 +2184,7 @@ class TodoProvider extends ChangeNotifier {
     DateTime currentDate,
   ) {
     // 检查今天是否已经为这个重复模板生成了任务
-    final localDate = _getLocalDateTime();
-    final today = DateTime(localDate.year, localDate.month, localDate.day);
+    final today = _normalizeDay(currentDate);
 
     final todayTodos = _todos
         .where(
@@ -2147,11 +2211,14 @@ class TodoProvider extends ChangeNotifier {
     );
 
     final targetDateTime = forDate ?? now;
-    final targetDate = DateTime(
-      targetDateTime.year,
-      targetDateTime.month,
-      targetDateTime.day,
-    );
+    final targetDate = _normalizeDay(targetDateTime);
+
+    if (_hasGeneratedTodoForDate(repeatTodo, targetDate)) {
+      debugPrint(
+        'Skip generating repeat todo "${repeatTodo.title}" for $targetDate: already exists',
+      );
+      return null;
+    }
 
     final createdAt = DateTime(
       targetDate.year,
@@ -2224,8 +2291,7 @@ class TodoProvider extends ChangeNotifier {
     return correctedTodo.id;
   }
 
-  DateTime _normalizeDay(DateTime dateTime) =>
-      DateTime(dateTime.year, dateTime.month, dateTime.day);
+  DateTime _normalizeDay(DateTime dateTime) => localDay(dateTime);
 
   bool _isLikelyBackfilledRepeatTodoInstance(TodoModel todo) {
     if (!todo.isGeneratedFromRepeat || todo.repeatTodoId == null) return false;
@@ -2302,6 +2368,33 @@ class TodoProvider extends ChangeNotifier {
     if (toDelete.isEmpty) return 0;
     await _deleteTodosBatch(toDelete);
     return toDelete.length;
+  }
+
+  DateTime? _inferAlignedStartDateFromExistingBackfilledTodos(
+    RepeatTodoModel repeatTodo,
+    DateTime now,
+  ) {
+    if (!repeatTodo.backfillEnabled || repeatTodo.backfillDays < 1) return null;
+    if (repeatTodo.startDate == null) return null;
+
+    final normalizedStartDate = _normalizeDay(repeatTodo.startDate!);
+    final backfillStart = _normalizeDay(
+      now,
+    ).subtract(Duration(days: repeatTodo.backfillDays));
+
+    if (!normalizedStartDate.isAfter(backfillStart)) return null;
+
+    final hasExistingBackfilledBeforeStart = _todos.any((todo) {
+      if (!todo.isGeneratedFromRepeat || todo.repeatTodoId != repeatTodo.id) {
+        return false;
+      }
+      if (!_isLikelyBackfilledRepeatTodoInstance(todo)) return false;
+
+      final day = _normalizeDay(todo.createdAt);
+      return day.isBefore(normalizedStartDate) && !day.isBefore(backfillStart);
+    });
+
+    return hasExistingBackfilledBeforeStart ? backfillStart : null;
   }
 
   bool _hasGeneratedTodoForDate(RepeatTodoModel repeatTodo, DateTime dateTime) {

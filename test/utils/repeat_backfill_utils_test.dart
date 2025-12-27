@@ -103,6 +103,44 @@ void main() {
     });
 
     test(
+      'computeAlignedStartDateForBackfillChoice: aligns startDate when startDate is later',
+      () {
+        final repeatTodo = _repeat(
+          startDate: DateTime(2025, 1, 10),
+          backfillEnabled: true,
+          backfillDays: 7,
+        );
+
+        final aligned = computeAlignedStartDateForBackfillChoice(
+          repeatTodo: repeatTodo,
+          now: DateTime(2025, 1, 10, 12),
+          startBasis: BackfillStartBasis.backfillDays,
+        );
+
+        expect(aligned, DateTime(2025, 1, 3));
+      },
+    );
+
+    test(
+      'computeAlignedStartDateForBackfillChoice: no-op when basis is startDate',
+      () {
+        final repeatTodo = _repeat(
+          startDate: DateTime(2025, 1, 10),
+          backfillEnabled: true,
+          backfillDays: 7,
+        );
+
+        final aligned = computeAlignedStartDateForBackfillChoice(
+          repeatTodo: repeatTodo,
+          now: DateTime(2025, 1, 10, 12),
+          startBasis: BackfillStartBasis.startDate,
+        );
+
+        expect(aligned, isNull);
+      },
+    );
+
+    test(
       'computeBackfillWindow: backfill disabled keeps startDate bound only',
       () {
         final repeatTodo = _repeat(

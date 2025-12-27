@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:easy_todo/models/statistics_data_model.dart';
+import 'package:easy_todo/utils/date_utils.dart';
 
 part 'repeat_todo_model.g.dart';
 
@@ -413,30 +414,16 @@ class RepeatTodoModel extends HiveObject {
 
     // Check if the current date is at or past the next generate date
     // 使用日期比较而不是时间比较，避免时区问题
-    final currentNormalized = DateTime(
-      currentDate.year,
-      currentDate.month,
-      currentDate.day,
-    );
-    final nextNormalized = DateTime(
-      nextDate.year,
-      nextDate.month,
-      nextDate.day,
-    );
-
-    return currentNormalized.isAtSameMomentAs(nextNormalized) ||
-        currentNormalized.isAfter(nextNormalized);
+    final currentDay = localDay(currentDate);
+    final nextDay = localDay(nextDate);
+    return !currentDay.isBefore(nextDay);
   }
 
   bool _isSameDay(DateTime date1, DateTime date2) {
-    // 使用规范化比较，确保时区一致性
-    final normalizedDate1 = DateTime(date1.year, date1.month, date1.day);
-    final normalizedDate2 = DateTime(date2.year, date2.month, date2.day);
-    return normalizedDate1.isAtSameMomentAs(normalizedDate2);
+    return isSameLocalDay(date1, date2);
   }
 
-  DateTime _normalizeDay(DateTime dateTime) =>
-      DateTime(dateTime.year, dateTime.month, dateTime.day);
+  DateTime _normalizeDay(DateTime dateTime) => localDay(dateTime);
 
   int _maxDayOfMonth(int year, int month) => DateTime(year, month + 1, 0).day;
 }

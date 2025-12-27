@@ -46,13 +46,26 @@ class BackupRestoreService {
       // 生成文件名并保存
       final fileName = FileService.generateBackupFileName();
       final backupDir = await FileService.getAppDirectory();
-      final backupFile = File('${backupDir.path}/$fileName');
+      var backupFile = File('${backupDir.path}/$fileName');
+      if (await backupFile.exists()) {
+        final baseName = fileName.endsWith('.json')
+            ? fileName.substring(0, fileName.length - 5)
+            : fileName;
+        var counter = 1;
+        while (await backupFile.exists()) {
+          backupFile = File('${backupDir.path}/${baseName}_$counter.json');
+          counter++;
+        }
+      }
 
-      await backupFile.writeAsString(jsonEncode(backupData));
+      final jsonString = jsonEncode(backupData);
+      final tempFile = File('${backupFile.path}.tmp');
+      await tempFile.writeAsString(jsonString, flush: true);
+      await tempFile.rename(backupFile.path);
 
       return {
         'success': true,
-        'fileName': fileName,
+        'fileName': backupFile.uri.pathSegments.last,
         'filePath': backupFile.path,
         'fileSize': await backupFile.length(),
         'todosCount': todos.length,
@@ -93,7 +106,11 @@ class BackupRestoreService {
 
       // 备份当前数据以防恢复失败时可以回滚
       final currentTodos = _hiveService.todosBox.values.toList();
+      final currentStatistics = _hiveService.statisticsBox.values.toList();
+      final currentPomodoroSessions = _hiveService.pomodoroBox.values.toList();
       final currentRepeatTodos = _hiveService.repeatTodosBox.values.toList();
+      final currentStatisticsData =
+          _hiveService.statisticsDataBox.values.toList();
 
       try {
         // 清空现有数据
@@ -171,13 +188,41 @@ class BackupRestoreService {
         // 恢复失败时，尝试恢复原始数据
         try {
           await _hiveService.todosBox.clear();
+          await _hiveService.statisticsBox.clear();
+          await _hiveService.pomodoroBox.clear();
           await _hiveService.repeatTodosBox.clear();
+          await _hiveService.statisticsDataBox.clear();
 
           for (var todo in currentTodos) {
-            await _hiveService.todosBox.put(todo.id, todo);
+            final restoredTodo = TodoModel.fromJson(todo.toJson());
+            await _hiveService.todosBox.put(restoredTodo.id, restoredTodo);
+          }
+          for (var stat in currentStatistics) {
+            await _hiveService.statisticsBox.add(
+              StatisticsModel.fromJson(stat.toJson()),
+            );
+          }
+          for (var session in currentPomodoroSessions) {
+            final restoredSession = PomodoroModel.fromJson(session.toJson());
+            await _hiveService.pomodoroBox.put(
+              restoredSession.id,
+              restoredSession,
+            );
           }
           for (var repeatTodo in currentRepeatTodos) {
-            await _hiveService.repeatTodosBox.put(repeatTodo.id, repeatTodo);
+            final restoredRepeatTodo =
+                RepeatTodoModel.fromJson(repeatTodo.toJson());
+            await _hiveService.repeatTodosBox.put(
+              restoredRepeatTodo.id,
+              restoredRepeatTodo,
+            );
+          }
+          for (var data in currentStatisticsData) {
+            final restoredData = StatisticsDataModel.fromJson(data.toJson());
+            await _hiveService.statisticsDataBox.put(
+              restoredData.id,
+              restoredData,
+            );
           }
         } catch (rollbackError) {
           // 回滚也失败了，至少不要丢失数据

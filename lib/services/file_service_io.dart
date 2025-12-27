@@ -68,12 +68,12 @@ class FileService {
       }
 
       final now = tz.TZDateTime.now(tz.local);
-      final formatter = DateFormat('yyyy-MM-dd_HH-mm-ss');
+      final formatter = DateFormat('yyyy-MM-dd_HH-mm-ss_SSS');
       return 'easy_todo_backup_${formatter.format(now)}.json';
     } catch (e) {
       debugPrint('FileService: Timezone initialization failed: $e');
       final now = DateTime.now();
-      final formatter = DateFormat('yyyy-MM-dd_HH-mm-ss');
+      final formatter = DateFormat('yyyy-MM-dd_HH-mm-ss_SSS');
       return 'easy_todo_backup_${formatter.format(now)}.json';
     }
   }

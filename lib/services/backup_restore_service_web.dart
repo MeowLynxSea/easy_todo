@@ -72,7 +72,11 @@ class BackupRestoreService {
       }
 
       final currentTodos = _hiveService.todosBox.values.toList();
+      final currentStatistics = _hiveService.statisticsBox.values.toList();
+      final currentPomodoroSessions = _hiveService.pomodoroBox.values.toList();
       final currentRepeatTodos = _hiveService.repeatTodosBox.values.toList();
+      final currentStatisticsData =
+          _hiveService.statisticsDataBox.values.toList();
 
       try {
         await _hiveService.todosBox.clear();
@@ -142,13 +146,41 @@ class BackupRestoreService {
       } catch (restoreError) {
         try {
           await _hiveService.todosBox.clear();
+          await _hiveService.statisticsBox.clear();
+          await _hiveService.pomodoroBox.clear();
           await _hiveService.repeatTodosBox.clear();
+          await _hiveService.statisticsDataBox.clear();
 
           for (final todo in currentTodos) {
-            await _hiveService.todosBox.put(todo.id, todo);
+            final restoredTodo = TodoModel.fromJson(todo.toJson());
+            await _hiveService.todosBox.put(restoredTodo.id, restoredTodo);
+          }
+          for (final stat in currentStatistics) {
+            await _hiveService.statisticsBox.add(
+              StatisticsModel.fromJson(stat.toJson()),
+            );
+          }
+          for (final session in currentPomodoroSessions) {
+            final restoredSession = PomodoroModel.fromJson(session.toJson());
+            await _hiveService.pomodoroBox.put(
+              restoredSession.id,
+              restoredSession,
+            );
           }
           for (final repeatTodo in currentRepeatTodos) {
-            await _hiveService.repeatTodosBox.put(repeatTodo.id, repeatTodo);
+            final restoredRepeatTodo =
+                RepeatTodoModel.fromJson(repeatTodo.toJson());
+            await _hiveService.repeatTodosBox.put(
+              restoredRepeatTodo.id,
+              restoredRepeatTodo,
+            );
+          }
+          for (final data in currentStatisticsData) {
+            final restoredData = StatisticsDataModel.fromJson(data.toJson());
+            await _hiveService.statisticsDataBox.put(
+              restoredData.id,
+              restoredData,
+            );
           }
         } catch (_) {}
 

@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 class FileService {
   static String generateBackupFileName() {
     final now = DateTime.now();
-    final formatter = DateFormat('yyyy-MM-dd_HH-mm-ss');
+    final formatter = DateFormat('yyyy-MM-dd_HH-mm-ss_SSS');
     return 'easy_todo_backup_${formatter.format(now)}.json';
   }
 

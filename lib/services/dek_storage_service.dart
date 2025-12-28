@@ -16,10 +16,12 @@ class DekStorageService {
 
   static final Map<String, List<int>> _webSessionDek = <String, List<int>>{};
 
-  final FlutterSecureStorage _storage;
+  final FlutterSecureStorage? _storageOverride;
+  late final FlutterSecureStorage _storage =
+      _storageOverride ?? const FlutterSecureStorage();
 
   DekStorageService({FlutterSecureStorage? storage})
-    : _storage = storage ?? const FlutterSecureStorage();
+    : _storageOverride = storage;
 
   Future<void> writeDek({required String dekId, required List<int> dek}) async {
     if (kIsWeb) {

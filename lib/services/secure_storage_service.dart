@@ -8,10 +8,12 @@ import 'web_session_storage_stub.dart'
 class SecureStorageService {
   static const String _aiApiKeyKey = 'ai_api_key';
 
-  final FlutterSecureStorage _storage;
+  final FlutterSecureStorage? _storageOverride;
+  late final FlutterSecureStorage _storage =
+      _storageOverride ?? const FlutterSecureStorage();
 
   SecureStorageService({FlutterSecureStorage? storage})
-    : _storage = storage ?? const FlutterSecureStorage();
+    : _storageOverride = storage;
 
   Future<String?> readAiApiKey() {
     if (kIsWeb) {

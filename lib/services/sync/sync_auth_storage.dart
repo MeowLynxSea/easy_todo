@@ -21,10 +21,12 @@ class SyncAuthStorage {
   static const _refreshTokenKey = 'sync_refresh_token';
   static const _expiresAtKey = 'sync_expires_at_ms_utc';
 
-  final FlutterSecureStorage _secureStorage;
+  final FlutterSecureStorage? _secureStorageOverride;
+  late final FlutterSecureStorage _secureStorage =
+      _secureStorageOverride ?? const FlutterSecureStorage();
 
   SyncAuthStorage({FlutterSecureStorage? secureStorage})
-    : _secureStorage = secureStorage ?? const FlutterSecureStorage();
+    : _secureStorageOverride = secureStorage;
 
   Future<SyncAuthTokens?> read() async {
     if (kIsWeb) {
@@ -66,7 +68,10 @@ class SyncAuthStorage {
       return;
     }
 
-    await _secureStorage.write(key: _accessTokenKey, value: tokens.accessToken);
+    await _secureStorage.write(
+      key: _accessTokenKey,
+      value: tokens.accessToken,
+    );
     if (tokens.refreshToken != null) {
       await _secureStorage.write(
         key: _refreshTokenKey,

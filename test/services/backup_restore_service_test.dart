@@ -15,76 +15,77 @@ import 'package:easy_todo/adapters/sync_state_adapter.dart';
 import 'package:easy_todo/models/sync_meta.dart';
 import 'package:easy_todo/models/sync_outbox_item.dart';
 import 'package:easy_todo/models/sync_state.dart';
+import 'package:easy_todo/services/sync_write_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 
 void main() {
+  late Directory tempDir;
+
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+
+    tempDir = await Directory.systemTemp.createTemp('easy_todo_hive_test_');
+    Hive.init(tempDir.path);
+
+    if (!Hive.isAdapterRegistered(RepeatTypeAdapter().typeId)) {
+      Hive.registerAdapter(RepeatTypeAdapter());
+    }
+    if (!Hive.isAdapterRegistered(StatisticsModeAdapter().typeId)) {
+      Hive.registerAdapter(StatisticsModeAdapter());
+    }
+    if (!Hive.isAdapterRegistered(0)) {
+      Hive.registerAdapter(TodoModelAdapter());
+    }
+    if (!Hive.isAdapterRegistered(1)) {
+      Hive.registerAdapter(StatisticsModelAdapter());
+    }
+    if (!Hive.isAdapterRegistered(4)) {
+      Hive.registerAdapter(PomodoroModelAdapter());
+    }
+    if (!Hive.isAdapterRegistered(5)) {
+      Hive.registerAdapter(RepeatTodoModelAdapter());
+    }
+    if (!Hive.isAdapterRegistered(6)) {
+      Hive.registerAdapter(StatisticsDataModelAdapter());
+    }
+    if (!Hive.isAdapterRegistered(SyncStateAdapter().typeId)) {
+      Hive.registerAdapter(SyncStateAdapter());
+    }
+    if (!Hive.isAdapterRegistered(SyncMetaAdapter().typeId)) {
+      Hive.registerAdapter(SyncMetaAdapter());
+    }
+    if (!Hive.isAdapterRegistered(SyncOutboxItemAdapter().typeId)) {
+      Hive.registerAdapter(SyncOutboxItemAdapter());
+    }
+
+    await Hive.openBox<TodoModel>('todos');
+    await Hive.openBox<StatisticsModel>('statistics');
+    await Hive.openBox<PomodoroModel>('pomodoro');
+    await Hive.openBox<RepeatTodoModel>('repeatTodos');
+    await Hive.openBox<StatisticsDataModel>('statisticsData');
+    await Hive.openBox<SyncState>('sync_state_box');
+    await Hive.openBox<SyncMeta>('sync_meta_box');
+    await Hive.openBox<SyncOutboxItem>('sync_outbox_box');
+  });
+
+  setUp(() async {
+    await Hive.box<TodoModel>('todos').clear();
+    await Hive.box<StatisticsModel>('statistics').clear();
+    await Hive.box<PomodoroModel>('pomodoro').clear();
+    await Hive.box<RepeatTodoModel>('repeatTodos').clear();
+    await Hive.box<StatisticsDataModel>('statisticsData').clear();
+    await Hive.box<SyncState>('sync_state_box').clear();
+    await Hive.box<SyncMeta>('sync_meta_box').clear();
+    await Hive.box<SyncOutboxItem>('sync_outbox_box').clear();
+  });
+
+  tearDownAll(() async {
+    await Hive.close();
+    await tempDir.delete(recursive: true);
+  });
+
   group('BackupRestoreService.restoreFromBackupJson', () {
-    late Directory tempDir;
-
-    setUpAll(() async {
-      TestWidgetsFlutterBinding.ensureInitialized();
-
-      tempDir = await Directory.systemTemp.createTemp('easy_todo_hive_test_');
-      Hive.init(tempDir.path);
-
-      if (!Hive.isAdapterRegistered(RepeatTypeAdapter().typeId)) {
-        Hive.registerAdapter(RepeatTypeAdapter());
-      }
-      if (!Hive.isAdapterRegistered(StatisticsModeAdapter().typeId)) {
-        Hive.registerAdapter(StatisticsModeAdapter());
-      }
-      if (!Hive.isAdapterRegistered(0)) {
-        Hive.registerAdapter(TodoModelAdapter());
-      }
-      if (!Hive.isAdapterRegistered(1)) {
-        Hive.registerAdapter(StatisticsModelAdapter());
-      }
-      if (!Hive.isAdapterRegistered(4)) {
-        Hive.registerAdapter(PomodoroModelAdapter());
-      }
-      if (!Hive.isAdapterRegistered(5)) {
-        Hive.registerAdapter(RepeatTodoModelAdapter());
-      }
-      if (!Hive.isAdapterRegistered(6)) {
-        Hive.registerAdapter(StatisticsDataModelAdapter());
-      }
-      if (!Hive.isAdapterRegistered(SyncStateAdapter().typeId)) {
-        Hive.registerAdapter(SyncStateAdapter());
-      }
-      if (!Hive.isAdapterRegistered(SyncMetaAdapter().typeId)) {
-        Hive.registerAdapter(SyncMetaAdapter());
-      }
-      if (!Hive.isAdapterRegistered(SyncOutboxItemAdapter().typeId)) {
-        Hive.registerAdapter(SyncOutboxItemAdapter());
-      }
-
-      await Hive.openBox<TodoModel>('todos');
-      await Hive.openBox<StatisticsModel>('statistics');
-      await Hive.openBox<PomodoroModel>('pomodoro');
-      await Hive.openBox<RepeatTodoModel>('repeatTodos');
-      await Hive.openBox<StatisticsDataModel>('statisticsData');
-      await Hive.openBox<SyncState>('sync_state_box');
-      await Hive.openBox<SyncMeta>('sync_meta_box');
-      await Hive.openBox<SyncOutboxItem>('sync_outbox_box');
-    });
-
-    setUp(() async {
-      await Hive.box<TodoModel>('todos').clear();
-      await Hive.box<StatisticsModel>('statistics').clear();
-      await Hive.box<PomodoroModel>('pomodoro').clear();
-      await Hive.box<RepeatTodoModel>('repeatTodos').clear();
-      await Hive.box<StatisticsDataModel>('statisticsData').clear();
-      await Hive.box<SyncState>('sync_state_box').clear();
-      await Hive.box<SyncMeta>('sync_meta_box').clear();
-      await Hive.box<SyncOutboxItem>('sync_outbox_box').clear();
-    });
-
-    tearDownAll(() async {
-      await Hive.close();
-      await tempDir.delete(recursive: true);
-    });
-
     test('rolls back all boxes on restore failure', () async {
       final todosBox = Hive.box<TodoModel>('todos');
       final statisticsBox = Hive.box<StatisticsModel>('statistics');
@@ -287,6 +288,36 @@ void main() {
       expect(restoredTodo.aiProcessed, repeatTodo.aiProcessed);
       expect(restoredTodo.startTime, generatedTodo.startTime);
       expect(restoredTodo.endTime, generatedTodo.endTime);
+    });
+  });
+
+  group('BackupRestoreService.getStorageStats', () {
+    test('ignores tombstoned todos', () async {
+      final todosBox = Hive.box<TodoModel>('todos');
+      final todo = TodoModel(
+        id: 't_1',
+        title: 'T',
+        description: 'd',
+        isCompleted: false,
+        createdAt: DateTime(2025, 1, 1, 9),
+        order: 0,
+        dataUnit: 'kg',
+      );
+      await todosBox.put(todo.id, todo);
+
+      final syncWrite = SyncWriteService();
+      await syncWrite.tombstoneRecord(
+        type: SyncTypes.todo,
+        recordId: todo.id,
+        schemaVersion: 1,
+      );
+
+      final service = BackupRestoreService();
+      final stats = await service.getStorageStats();
+      expect(stats['success'], true);
+      expect(stats['todos']['total'], 0);
+      expect(stats['todos']['completed'], 0);
+      expect(stats['todos']['pending'], 0);
     });
   });
 }

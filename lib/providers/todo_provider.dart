@@ -1539,30 +1539,38 @@ class TodoProvider extends ChangeNotifier {
       final pomodoroBox = _hiveService.pomodoroBox;
 
       debugPrint('Tombstoning todos...');
-      for (final todo in todosBox.values) {
+      for (final entry in todosBox.toMap().entries) {
+        final todo = entry.value;
         await _tombstoneTodo(todo.id);
+        await todosBox.delete(entry.key);
       }
 
       debugPrint('Clearing statistics box...');
       await statisticsBox.clear();
 
       debugPrint('Tombstoning repeat todos...');
-      for (final repeatTodo in repeatTodosBox.values) {
+      for (final entry in repeatTodosBox.toMap().entries) {
+        final repeatTodo = entry.value;
         await _tombstoneRepeatTodo(repeatTodo.id);
+        await repeatTodosBox.delete(entry.key);
       }
 
       debugPrint('Tombstoning statistics data...');
-      for (final statData in statisticsDataBox.values) {
+      for (final entry in statisticsDataBox.toMap().entries) {
+        final statData = entry.value;
         await _tombstoneStatisticsData(statData.id);
+        await statisticsDataBox.delete(entry.key);
       }
 
       debugPrint('Tombstoning pomodoro sessions...');
-      for (final session in pomodoroBox.values) {
+      for (final entry in pomodoroBox.toMap().entries) {
+        final session = entry.value;
         await _syncWriteService.tombstoneRecord(
           type: SyncTypes.pomodoro,
           recordId: session.id,
           schemaVersion: 1,
         );
+        await pomodoroBox.delete(entry.key);
       }
 
       debugPrint('Clearing in-memory lists...');

@@ -293,11 +293,32 @@ class BackupRestoreService {
 
   Future<Map<String, dynamic>> getStorageStats() async {
     try {
-      final todos = _hiveService.todosBox.values.toList();
+      final todos = _hiveService.todosBox.values
+          .where(
+            (t) => !_syncWriteService.isTombstonedSync(SyncTypes.todo, t.id),
+          )
+          .toList();
       final statistics = _hiveService.statisticsBox.values.toList();
-      final pomodoroSessions = _hiveService.pomodoroBox.values.toList();
-      final repeatTodos = _hiveService.repeatTodosBox.values.toList();
-      final statisticsData = _hiveService.statisticsDataBox.values.toList();
+      final pomodoroSessions = _hiveService.pomodoroBox.values
+          .where(
+            (s) =>
+                !_syncWriteService.isTombstonedSync(SyncTypes.pomodoro, s.id),
+          )
+          .toList();
+      final repeatTodos = _hiveService.repeatTodosBox.values
+          .where(
+            (t) =>
+                !_syncWriteService.isTombstonedSync(SyncTypes.repeatTodo, t.id),
+          )
+          .toList();
+      final statisticsData = _hiveService.statisticsDataBox.values
+          .where(
+            (d) => !_syncWriteService.isTombstonedSync(
+              SyncTypes.statisticsData,
+              d.id,
+            ),
+          )
+          .toList();
 
       var estimatedDataSize = 0;
       for (final todo in todos) {

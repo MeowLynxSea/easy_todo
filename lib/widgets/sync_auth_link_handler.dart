@@ -4,6 +4,7 @@ import 'package:app_links/app_links.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:easy_todo/providers/sync_provider.dart';
 import 'package:easy_todo/screens/sync_settings_screen.dart';
+import 'package:easy_todo/utils/responsive.dart';
 import 'package:easy_todo/services/web_url_utils_stub.dart'
     if (dart.library.html) 'package:easy_todo/services/web_url_utils_web.dart';
 import 'package:flutter/foundation.dart';
@@ -144,6 +145,32 @@ class _SyncAuthLinkHandlerState extends State<SyncAuthLinkHandler> {
     }
 
     if (!mounted) return;
+    if (isWebDesktop(context)) {
+      const inset = 24.0;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) {
+          final size = MediaQuery.sizeOf(dialogContext);
+          final width = (size.width - inset * 2).clamp(360.0, 720.0);
+          final height = (size.height - inset * 2).clamp(480.0, 860.0);
+
+          return Dialog(
+            insetPadding: const EdgeInsets.all(inset),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: SizedBox(
+              width: width,
+              height: height,
+              child: const SyncSettingsScreen(),
+            ),
+          );
+        },
+      );
+      return;
+    }
+
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (context) => const SyncSettingsScreen()));

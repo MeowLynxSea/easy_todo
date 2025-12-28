@@ -789,6 +789,38 @@ class SyncProvider extends ChangeNotifier {
           'backfillOutbox=${_state?.didBackfillOutboxFromMeta}',
         );
 
+        // Fresh sync state (e.g. switching accounts, first device, or after
+        // clearing sync state). If the server already has data, avoid pushing
+        // local defaults/outbox first which could overwrite server state
+        // (especially singleton settings).
+        final stateBefore = await _ensureStateLoaded();
+        if (_isFreshSyncState(stateBefore)) {
+          final probe = await client.pull(since: 0, limit: 1);
+          final serverHasData =
+              probe.records.isNotEmpty || probe.nextSince > 0;
+          if (serverHasData) {
+            _debugLog('fresh sync: server has data, adopting server state');
+            await _clearLocalBusinessDataForServerAdoption();
+            await _pullAndMerge(
+              client,
+              sinceBefore: 0,
+              allowRollback: allowRollback,
+            );
+            final afterPull = await _ensureStateLoaded();
+            final adopted = afterPull.copyWith(
+              didBootstrapLocalRecords: true,
+              didBootstrapSettings: true,
+              didBackfillOutboxFromMeta: true,
+            );
+            await _hiveService.syncStateBox.put(
+              SyncWriteService.stateKey,
+              adopted,
+            );
+            _state = adopted;
+            return;
+          }
+        }
+
         await _bootstrapLocalRecordsIfNeeded();
         await _bootstrapSettingsIfNeeded();
         await _backfillOutboxFromExistingMetaIfNeeded();
@@ -1171,6 +1203,35 @@ class SyncProvider extends ChangeNotifier {
     _lastErrorCode = code;
     _lastErrorDetail = detail;
     notifyListeners();
+  }
+
+  bool _isFreshSyncState(SyncState state) {
+    if (state.lastServerSeq != 0) return false;
+    if (state.didBootstrapLocalRecords) return false;
+    if (state.didBootstrapSettings) return false;
+    if (state.didBackfillOutboxFromMeta) return false;
+    if (_hiveService.syncMetaBox.isNotEmpty) return false;
+    if (_hiveService.syncOutboxBox.isNotEmpty) return false;
+    return true;
+  }
+
+  Future<void> _clearLocalBusinessDataForServerAdoption() async {
+    await _hiveService.todosBox.clear();
+    await _hiveService.repeatTodosBox.clear();
+    await _hiveService.statisticsDataBox.clear();
+    await _hiveService.pomodoroBox.clear();
+
+    // Local-only derived stats/history.
+    await _hiveService.statisticsBox.clear();
+
+    // Avoid pushing device-local preferences over existing server settings.
+    await _hiveService.userPreferencesBox.clear();
+    await _hiveService.aiSettingsBox.clear();
+    await _secureStorage.deleteAiApiKey();
+
+    // Ensure no stale sync state remains.
+    await _hiveService.syncOutboxBox.clear();
+    await _hiveService.syncMetaBox.clear();
   }
 
   Future<void> _withStatus(

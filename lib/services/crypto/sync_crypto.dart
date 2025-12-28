@@ -41,13 +41,16 @@ class SyncCrypto {
     required String passphrase,
     required List<int> salt,
     required ScryptParams params,
+    ValueChanged<double>? onProgress,
   }) async {
-    if (kIsWeb) {
+    if (kIsWeb || onProgress != null) {
       final derived = await const ScryptDartAsync().derive(
         passphrase: passphrase,
         salt: Uint8List.fromList(salt),
         params: params,
+        onProgress: onProgress,
       );
+      onProgress?.call(1);
       return SecretKey(derived);
     }
 
@@ -163,10 +166,11 @@ class SyncCrypto {
     );
   }
 
-  Future<KeyBundle> createKeyBundle({
+  Future<(KeyBundle bundle, List<int> dek)> createKeyBundleWithDek({
     required String dekId,
     required String passphrase,
     ScryptParams? params,
+    ValueChanged<double>? onKdfProgress,
   }) async {
     final nowMsUtc = DateTime.now().toUtc().millisecondsSinceEpoch;
     final salt = randomSalt();
@@ -176,6 +180,7 @@ class SyncCrypto {
       passphrase: passphrase,
       salt: salt,
       params: kdfParams,
+      onProgress: onKdfProgress,
     );
     final dek = await generateDek();
     final (wrapNonce, wrappedDek) = await wrapDek(
@@ -183,22 +188,41 @@ class SyncCrypto {
       dek: dek,
       dekId: dekId,
     );
-    return KeyBundle(
-      bundleVersion: 0,
-      dekId: dekId,
-      kdf: kdfName,
-      salt: base64UrlNoPadEncode(salt),
-      kdfParams: kdfParams,
-      wrapAlgo: aeadName,
-      wrappedDek: wrappedDek,
-      wrapNonce: wrapNonce,
-      updatedAtMsUtc: nowMsUtc,
+    return (
+      KeyBundle(
+        bundleVersion: 0,
+        dekId: dekId,
+        kdf: kdfName,
+        salt: base64UrlNoPadEncode(salt),
+        kdfParams: kdfParams,
+        wrapAlgo: aeadName,
+        wrappedDek: wrappedDek,
+        wrapNonce: wrapNonce,
+        updatedAtMsUtc: nowMsUtc,
+      ),
+      dek,
     );
+  }
+
+  Future<KeyBundle> createKeyBundle({
+    required String dekId,
+    required String passphrase,
+    ScryptParams? params,
+    ValueChanged<double>? onKdfProgress,
+  }) async {
+    final (bundle, _) = await createKeyBundleWithDek(
+      dekId: dekId,
+      passphrase: passphrase,
+      params: params,
+      onKdfProgress: onKdfProgress,
+    );
+    return bundle;
   }
 
   Future<List<int>> unlockDek({
     required KeyBundle bundle,
     required String passphrase,
+    ValueChanged<double>? onKdfProgress,
   }) async {
     if (bundle.kdf != kdfName) {
       throw UnsupportedError('Unsupported KDF: ${bundle.kdf}');
@@ -211,6 +235,7 @@ class SyncCrypto {
       passphrase: passphrase,
       salt: salt,
       params: bundle.kdfParams,
+      onProgress: onKdfProgress,
     );
     return unwrapDek(
       kek: kek,

@@ -24,6 +24,7 @@ import 'package:easy_todo/screens/statistics_screen.dart';
 import 'package:easy_todo/screens/preference_screen.dart';
 import 'package:easy_todo/screens/forced_update_page.dart';
 import 'package:easy_todo/widgets/auth_wrapper.dart';
+import 'package:easy_todo/widgets/sync_auth_link_handler.dart';
 import 'package:easy_todo/services/timezone_service.dart';
 import 'package:easy_todo/utils/app_scroll_behavior.dart';
 import 'package:easy_todo/utils/responsive.dart';
@@ -132,7 +133,7 @@ class MyApp extends StatelessWidget {
                 notificationService.setContext(materialAppContext);
 
                 return AuthWrapper(
-                  child: MainNavigationScreen(),
+                  child: SyncAuthLinkHandler(child: MainNavigationScreen()),
                   onAuthComplete: () {
                     // Connect AI provider and language provider to todo provider after auth
                     final todoProvider = Provider.of<TodoProvider>(

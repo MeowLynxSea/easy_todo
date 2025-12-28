@@ -2710,4 +2710,10 @@ class AppLocalizationsKo extends AppLocalizations {
   ) {
     return '완료된 $sessionType 세션을 위한 개인화된 알림을 만드세요.\n\n세션 세부 정보:\n- 작업: \"$taskTitle\"\n- 세션 유형: $sessionType\n- 지속 시간: $duration분\n- 완료됨: $isCompleted\n\n중요: 한국어로 응답하세요.\n\n제목과 메시지를 만드세요:\n1. 제목: 20자 미만, 주목을 끌고 축하하는 내용\n2. 메시지: 50자 미만, 세션 완료와 관련하여 격려가 되는 내용\n3. 집중 세션(작업 완료): 작업 성취를 강조하고 휴식 시간이라고 언급\n4. 휴식 세션(휴식 완료): 휴식 완료와 집중 작업으로 돌아갈 시간이라고 언급\n5. 참여를 위해 적절히 이모지 사용\n6. 개인적이고 동기 부여가 되게 만들기\n7. 지정된 형식으로 제목과 메시지만 응답하고 설명은 포함하지 마세요\n\n다음 형식으로 응답하세요:\nTITLE: [제목]\nMESSAGE: [메시지]';
   }
+
+  @override
+  String get cloudSyncAuthProcessingTitle => 'Signing in';
+
+  @override
+  String get cloudSyncAuthProcessingSubtitle => 'Processing login callback…';
 }

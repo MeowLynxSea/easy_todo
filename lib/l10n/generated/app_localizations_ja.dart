@@ -2708,4 +2708,10 @@ class AppLocalizationsJa extends AppLocalizations {
   ) {
     return '完了した$sessionTypeセッションのパーソナライズされた通知を作成してください。\n\nセッション詳細：\n- タスク：\"$taskTitle\"\n- セッションタイプ：$sessionType\n- 持続時間：$duration分\n- 完了：$isCompleted\n\n重要：日本語で返信してください。\n\nタイトルとメッセージを作成してください：\n1. タイトル：20文字未満、注目を集め、祝祭的なもの\n2. メッセージ：50文字未満、セッション完了に関連して励みになるもの\n3. フォーカスセッション（作業完了）：作業の達成を強調し、休憩の時間だと言及する\n4. 休憩セッション（休憩完了）：休憩の完了と集中作業に戻る時間だと言及する\n5. エンゲージメントのために適切に絵文字を使用する\n6. パーソナルで動機づけになるようにする\n7. 指定された形式でタイトルとメッセージのみを返信し、説明は含めないでください\n\n次の形式で返信してください：\nTITLE: [タイトル]\nMESSAGE: [メッセージ]';
   }
+
+  @override
+  String get cloudSyncAuthProcessingTitle => 'Signing in';
+
+  @override
+  String get cloudSyncAuthProcessingSubtitle => 'Processing login callback…';
 }

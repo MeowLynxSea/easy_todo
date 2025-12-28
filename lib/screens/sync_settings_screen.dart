@@ -456,6 +456,10 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                         l10n.cloudSyncOverviewSubtitle,
                         style: TextStyle(color: Theme.of(context).hintColor),
                       ),
+                      if (sync.kdfProgress != null) ...[
+                        const SizedBox(height: 12),
+                        LinearProgressIndicator(value: sync.kdfProgress),
+                      ],
                       const SizedBox(height: 8),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
@@ -703,15 +707,14 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                                             try {
                                               await sync.login();
                                               if (!context.mounted) return;
+                                              final message = sync.isLoggedIn
+                                                  ? l10n.cloudSyncLoggedInSnack
+                                                  : l10n.cloudSyncLoginRedirectedSnack;
                                               ScaffoldMessenger.of(
                                                 context,
                                               ).showSnackBar(
                                                 SnackBar(
-                                                  content: Text(
-                                                    kIsWeb
-                                                        ? l10n.cloudSyncLoginRedirectedSnack
-                                                        : l10n.cloudSyncLoggedInSnack,
-                                                  ),
+                                                  content: Text(message),
                                                 ),
                                               );
                                             } catch (_) {

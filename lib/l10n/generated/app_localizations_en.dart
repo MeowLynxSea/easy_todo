@@ -2785,4 +2785,10 @@ class AppLocalizationsEn extends AppLocalizations {
   ) {
     return 'Create a personalized notification for a completed $sessionType session.\n\nSession details:\n- Task: \"$taskTitle\"\n- Session type: $sessionType\n- Duration: $duration minutes\n- Completed: $isCompleted\n\nIMPORTANT: Respond in the same language as this prompt (English).\n\nCreate both a title and message:\n1. Title: Must be under 20 characters, attention-grabbing and celebratory\n2. Message: Must be under 50 characters, encouraging and relevant to the session completion\n3. For focus sessions (work completed): Emphasize work accomplishment and that it\'s time for a well-deserved break\n4. For break sessions (rest completed): Focus on rest completion and that it\'s time to get back to focused work\n5. Use emojis where appropriate for engagement\n6. Make it personal and motivating\n7. Respond with only the title and message in the specified format, no explanations\n\nFormat your response as:\nTITLE: [title]\nMESSAGE: [message]';
   }
+
+  @override
+  String get cloudSyncAuthProcessingTitle => 'Signing in';
+
+  @override
+  String get cloudSyncAuthProcessingSubtitle => 'Processing login callback…';
 }

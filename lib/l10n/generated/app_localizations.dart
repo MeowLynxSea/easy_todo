@@ -5242,6 +5242,18 @@ abstract class AppLocalizations {
     Object sessionType,
     Object taskTitle,
   );
+
+  /// No description provided for @cloudSyncAuthProcessingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing in'**
+  String get cloudSyncAuthProcessingTitle;
+
+  /// No description provided for @cloudSyncAuthProcessingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing login callback…'**
+  String get cloudSyncAuthProcessingSubtitle;
 }
 
 class _AppLocalizationsDelegate

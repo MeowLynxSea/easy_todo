@@ -10,6 +10,8 @@ import 'sync_server_auth_service.dart';
 class IoSyncServerAuthService implements SyncServerAuthService {
   final Dio _dio;
 
+  static const String _mobileAppRedirect = 'easy_todo://auth';
+
   IoSyncServerAuthService({Dio? dio})
     : _dio =
           dio ??
@@ -66,6 +68,26 @@ class IoSyncServerAuthService implements SyncServerAuthService {
     required String provider,
     required String client,
   }) async {
+    if (Platform.isAndroid || Platform.isIOS) {
+      final startUri = buildStartUri(
+        serverUrl: serverUrl,
+        provider: provider,
+        appRedirect: _mobileAppRedirect,
+        client: client,
+      );
+
+      final launched =
+          await launchUrl(startUri, mode: LaunchMode.externalApplication) ||
+          await launchUrl(startUri, mode: LaunchMode.inAppWebView);
+      if (!launched) {
+        throw StateError('failed to launch browser');
+      }
+
+      // On mobile, login completes via deep link back to the app
+      // (e.g. easy_todo://auth?ticket=...).
+      return null;
+    }
+
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     final redirectUri = Uri(
       scheme: 'http',

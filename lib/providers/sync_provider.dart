@@ -29,9 +29,6 @@ import 'package:easy_todo/utils/hlc_clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
-import 'package:easy_todo/services/web_url_utils_stub.dart'
-    if (dart.library.html) 'package:easy_todo/services/web_url_utils_web.dart';
-
 enum SyncStatus { idle, running, error }
 
 enum SyncErrorCode {
@@ -90,6 +87,7 @@ class SyncProvider extends ChangeNotifier {
   SyncErrorCode? _lastErrorCode;
   String? _lastErrorDetail;
   DateTime? _lastSyncAt;
+  double? _kdfProgress;
 
   Completer<void>? _syncMutex;
 
@@ -118,6 +116,7 @@ class SyncProvider extends ChangeNotifier {
   SyncErrorCode? get lastErrorCode => _lastErrorCode;
   String? get lastErrorDetail => _lastErrorDetail;
   DateTime? get lastSyncAt => _lastSyncAt;
+  double? get kdfProgress => _kdfProgress;
 
   bool get syncEnabled => _state?.syncEnabled ?? false;
   bool get isServerConfigured => (_state?.serverUrl.trim().isNotEmpty ?? false);
@@ -136,39 +135,6 @@ class SyncProvider extends ChangeNotifier {
   Future<void> _init() async {
     final state = await _ensureStateLoaded();
     _authTokens = await _authStorage.read();
-
-    if (kIsWeb) {
-      final ticket = currentWebUrl().queryParameters['ticket'];
-      final ticketFallback = currentWebUrl().queryParameters['amp;ticket'];
-      final ticketValue = (ticket ?? ticketFallback)?.trim();
-      if (ticketValue != null &&
-          ticketValue.isNotEmpty &&
-          state.serverUrl.trim().isNotEmpty) {
-        try {
-          final tokens = await _authService.exchange(
-            serverUrl: state.serverUrl,
-            ticket: ticketValue,
-          );
-          await _onAuthTokensUpdated(tokens);
-
-          final current = currentWebUrl();
-          final qp = Map<String, String>.from(current.queryParameters);
-          qp.remove('ticket');
-          qp.remove('amp;ticket');
-          replaceWebUrl(current.replace(queryParameters: qp));
-        } catch (e) {
-          _status = SyncStatus.error;
-          _lastErrorCode = SyncErrorCode.unauthorized;
-          _lastErrorDetail = e.toString();
-
-          final current = currentWebUrl();
-          final qp = Map<String, String>.from(current.queryParameters);
-          qp.remove('ticket');
-          qp.remove('amp;ticket');
-          replaceWebUrl(current.replace(queryParameters: qp));
-        }
-      }
-    }
 
     if (state.serverUrl.trim().isNotEmpty) {
       unawaited(refreshProviders());
@@ -265,6 +231,28 @@ class SyncProvider extends ChangeNotifier {
       if (tokens != null) {
         await _onAuthTokensUpdated(tokens);
       }
+    });
+  }
+
+  Future<void> exchangeAuthTicket(String ticket) async {
+    final normalized = ticket.trim();
+    if (normalized.isEmpty) {
+      _setError(SyncErrorCode.unauthorized, detail: 'missing ticket');
+      return;
+    }
+
+    final state = await _ensureStateLoaded();
+    if (state.serverUrl.trim().isEmpty) {
+      _setError(SyncErrorCode.notConfigured);
+      return;
+    }
+
+    await _withStatus(SyncStatus.running, () async {
+      final tokens = await _authService.exchange(
+        serverUrl: state.serverUrl,
+        ticket: normalized,
+      );
+      await _onAuthTokensUpdated(tokens);
     });
   }
 
@@ -428,32 +416,45 @@ class SyncProvider extends ChangeNotifier {
     await _withStatus(SyncStatus.running, () async {
       await _ensureStateLoaded();
       final client = _client();
-      final existing = await client.getKeyBundle();
-      if (existing == null) {
-        final dekId = const Uuid().v4();
-        final created = await _crypto.createKeyBundle(
-          dekId: dekId,
-          passphrase: passphrase,
-        );
-        _bundle = await client.putKeyBundle(
-          expectedBundleVersion: 0,
-          bundle: created,
-        );
-      } else {
-        _bundle = existing;
+      _clearKdfProgress();
+      try {
+        final existing = await client.getKeyBundle();
+        if (existing == null) {
+          final dekId = const Uuid().v4();
+          final (createdBundle, createdDek) = await _crypto
+              .createKeyBundleWithDek(
+                dekId: dekId,
+                passphrase: passphrase,
+                onKdfProgress: _updateKdfProgress,
+              );
+          _bundle = await client.putKeyBundle(
+            expectedBundleVersion: 0,
+            bundle: createdBundle,
+          );
+          _dek = createdDek;
+        } else {
+          _bundle = existing;
+        }
+
+        final bundle = _bundle!;
+        final cached = await _dekStorage.readDek(dekId: bundle.dekId);
+        _dek =
+            cached ??
+            _dek ??
+            await _crypto.unlockDek(
+              bundle: bundle,
+              passphrase: passphrase,
+              onKdfProgress: _updateKdfProgress,
+            );
+        await _dekStorage.writeDek(dekId: bundle.dekId, dek: _dek!);
+
+        final state = await _ensureStateLoaded();
+        final updated = state.copyWith(syncEnabled: true, dekId: bundle.dekId);
+        await _hiveService.syncStateBox.put(SyncWriteService.stateKey, updated);
+        _state = updated;
+      } finally {
+        _clearKdfProgress();
       }
-
-      final bundle = _bundle!;
-      final cached = await _dekStorage.readDek(dekId: bundle.dekId);
-      _dek =
-          cached ??
-          await _crypto.unlockDek(bundle: bundle, passphrase: passphrase);
-      await _dekStorage.writeDek(dekId: bundle.dekId, dek: _dek!);
-
-      final state = await _ensureStateLoaded();
-      final updated = state.copyWith(syncEnabled: true, dekId: bundle.dekId);
-      await _hiveService.syncStateBox.put(SyncWriteService.stateKey, updated);
-      _state = updated;
     });
   }
 
@@ -471,17 +472,45 @@ class SyncProvider extends ChangeNotifier {
         throw const SyncApiException('key bundle not found', statusCode: 404);
       }
       _bundle = bundle;
-      final cached = await _dekStorage.readDek(dekId: bundle.dekId);
-      _dek =
-          cached ??
-          await _crypto.unlockDek(bundle: bundle, passphrase: passphrase);
-      await _dekStorage.writeDek(dekId: bundle.dekId, dek: _dek!);
+      _clearKdfProgress();
+      try {
+        final cached = await _dekStorage.readDek(dekId: bundle.dekId);
+        _dek =
+            cached ??
+            await _crypto.unlockDek(
+              bundle: bundle,
+              passphrase: passphrase,
+              onKdfProgress: _updateKdfProgress,
+            );
+        await _dekStorage.writeDek(dekId: bundle.dekId, dek: _dek!);
 
-      final state = await _ensureStateLoaded();
-      final updated = state.copyWith(dekId: bundle.dekId);
-      await _hiveService.syncStateBox.put(SyncWriteService.stateKey, updated);
-      _state = updated;
+        final state = await _ensureStateLoaded();
+        final updated = state.copyWith(dekId: bundle.dekId);
+        await _hiveService.syncStateBox.put(SyncWriteService.stateKey, updated);
+        _state = updated;
+      } finally {
+        _clearKdfProgress();
+      }
     });
+  }
+
+  void _updateKdfProgress(double progress) {
+    final next = progress.clamp(0.0, 1.0);
+    final current = _kdfProgress;
+    if (current != null &&
+        (next - current).abs() < 0.01 &&
+        next != 0 &&
+        next != 1) {
+      return;
+    }
+    _kdfProgress = next;
+    notifyListeners();
+  }
+
+  void _clearKdfProgress() {
+    if (_kdfProgress == null) return;
+    _kdfProgress = null;
+    notifyListeners();
   }
 
   Future<void> syncNow({bool allowRollback = false}) async {

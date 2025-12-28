@@ -2797,4 +2797,10 @@ class AppLocalizationsEs extends AppLocalizations {
   ) {
     return 'Crea una notificación personalizada para una sesión de $sessionType completada.\n\nDetalles de la sesión:\n- Tarea: \"$taskTitle\"\n- Tipo de sesión: $sessionType\n- Duración: $duration minutos\n- Completada: $isCompleted\n\nIMPORTANTE: Responde en el mismo idioma que este mensaje (español).\n\nCrea un título y un mensaje:\n1. Título: Menos de 20 caracteres, llamativo y celebratorio\n2. Mensaje: Menos de 50 caracteres, alentador y relevante a la sesión completada\n3. Para sesiones de enfoque (trabajo completado): Enfatiza logros del trabajo y que es hora de un descanso merecido\n4. Para sesiones de descanso (descanso completado): Enfócate en la finalización del descanso y que es hora de volver al trabajo concentrado\n5. Usa emojis cuando sea apropiado para engagement\n6. Hazlo personal y motivador\n7. Responde solo con el título y mensaje en el formato especificado, sin explicaciones\n\nFormatea tu respuesta como:\nTITLE: [título]\nMESSAGE: [mensaje]';
   }
+
+  @override
+  String get cloudSyncAuthProcessingTitle => 'Signing in';
+
+  @override
+  String get cloudSyncAuthProcessingSubtitle => 'Processing login callback…';
 }

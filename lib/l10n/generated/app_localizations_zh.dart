@@ -2696,4 +2696,10 @@ class AppLocalizationsZh extends AppLocalizations {
   ) {
     return '为完成的$sessionType会话创建个性化通知。\n\n会话详情：\n- 任务：\"$taskTitle\"\n- 会话类型：$sessionType\n- 持续时间：$duration分钟\n- 已完成：$isCompleted\n\n重要提示：请用中文回复。\n\n创建标题和消息：\n1. 标题：少于20个字符，引人注目且具有庆祝性\n2. 消息：少于50个字符，具有鼓励性且与会话完成相关\n3. 对于专注会话（工作完成）：强调工作成就和该休息了\n4. 对于休息会话（休息完成）：强调休息完成和该回到专注工作了\n5. 适当使用表情符号增加参与度\n6. 使其个性化和激励性\n7. 只回复标题和消息，不要包含任何说明\n\n回复格式：\nTITLE: [标题]\nMESSAGE: [消息]';
   }
+
+  @override
+  String get cloudSyncAuthProcessingTitle => '正在登录';
+
+  @override
+  String get cloudSyncAuthProcessingSubtitle => '正在处理登录回调…';
 }

@@ -27,6 +27,7 @@ class ScryptDartAsync {
     required String passphrase,
     required Uint8List salt,
     required ScryptParams params,
+    void Function(double progress)? onProgress,
   }) async {
     final n = params.n;
     final r = params.r;
@@ -45,6 +46,16 @@ class ScryptDartAsync {
 
     final sliceStopwatch = Stopwatch()..start();
 
+    onProgress?.call(0);
+    final totalSteps = p * 2 * n;
+    var completedSteps = 0;
+    void reportSteps(int delta) {
+      if (onProgress == null) return;
+      completedSteps += delta;
+      final next = (completedSteps / totalSteps).clamp(0.0, 1.0);
+      onProgress(next);
+    }
+
     final pbkdf2B = Pbkdf2.hmacSha256(iterations: 1, bits: bLen * 8);
     final bKey = await pbkdf2B.deriveKeyFromPassword(
       password: passphrase,
@@ -58,7 +69,13 @@ class ScryptDartAsync {
       final end = start + blockSize;
       // IMPORTANT: must be a view into `bBytes`, not a copy; ROMix mutates in place.
       final chunk = Uint8List.sublistView(bBytes, start, end);
-      await _romixInPlace(chunk, n: n, r: r, sliceStopwatch: sliceStopwatch);
+      await _romixInPlace(
+        chunk,
+        n: n,
+        r: r,
+        sliceStopwatch: sliceStopwatch,
+        onProgressSteps: onProgress == null ? null : reportSteps,
+      );
 
       // Yield between parallel blocks as well.
       await Future<void>.delayed(Duration.zero);
@@ -69,6 +86,7 @@ class ScryptDartAsync {
       password: passphrase,
       nonce: bBytes,
     );
+    onProgress?.call(1);
     return Uint8List.fromList(await dkKey.extractBytes());
   }
 
@@ -77,27 +95,42 @@ class ScryptDartAsync {
     required int n,
     required int r,
     required Stopwatch sliceStopwatch,
+    void Function(int steps)? onProgressSteps,
   }) async {
     final xLen = 32 * r; // u32 words
     final x = _bytesToU32le(bBytes);
     final y = Uint32List(xLen);
     final v = Uint32List(n * xLen);
 
+    var lastReported = 0;
     for (var i = 0; i < n; i++) {
       v.setRange(i * xLen, (i + 1) * xLen, x);
       _blockMixSalsa8(x, y, r);
       if (i % yieldEvery == 0) {
+        final progressed = i + 1 - lastReported;
+        lastReported = i + 1;
+        onProgressSteps?.call(progressed);
         await _maybeYield(sliceStopwatch);
       }
     }
+    if (lastReported < n) {
+      onProgressSteps?.call(n - lastReported);
+    }
 
+    lastReported = 0;
     for (var i = 0; i < n; i++) {
       final j = _integerifyIndex(x, r, n);
       _xorWithV(x, v, j * xLen);
       _blockMixSalsa8(x, y, r);
       if (i % yieldEvery == 0) {
+        final progressed = i + 1 - lastReported;
+        lastReported = i + 1;
+        onProgressSteps?.call(progressed);
         await _maybeYield(sliceStopwatch);
       }
+    }
+    if (lastReported < n) {
+      onProgressSteps?.call(n - lastReported);
     }
 
     _u32leToBytesInPlace(x, bBytes);

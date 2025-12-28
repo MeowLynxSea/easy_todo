@@ -56,6 +56,7 @@ OAuth endpoints:
 
 - `GET /v1/auth/providers` (public; lists configured providers)
 - `GET /v1/auth/start?provider=your_provider_name&app_redirect=easy_todo://auth&client=easy_todo`
+- `GET /v1/auth/web/start?provider=your_provider_name&return_to=/dashboard` (OAuth login for server web dashboard)
 - `GET /v1/auth/callback?code=...&state=...` (returns minimal HTML “login success → return to app”)
 - `POST /v1/auth/exchange` `{ "ticket": "..." }` → `{ accessToken, expiresIn, refreshToken }`
 - `POST /v1/auth/refresh` `{ "refreshToken": "..." }` → rotated `{ accessToken, expiresIn, refreshToken }`
@@ -67,6 +68,18 @@ Sync endpoints (require `Authorization: Bearer <accessToken>`):
 - `PUT /v1/key-bundle`
 - `POST /v1/sync/push`
 - `GET /v1/sync/pull?since=<serverSeq>&limit=<n>`
+
+## Web UI
+
+- `GET /` renders a minimal home page with the configured `BASE_URL` to copy into the app’s sync server setting.
+- `GET /dashboard` renders a minimal dashboard (OAuth login required; uses HttpOnly cookies).
+- `GET /dashboard/login` provider picker for the dashboard.
+
+Notes:
+
+- Set `BASE_URL` to your actual public origin (scheme + host + optional port). If you deploy behind a proxy, make sure it matches what users see in the browser.
+- If `BASE_URL` is `https://...`, dashboard cookies are marked `Secure`.
+- Optional: set `SITE_CREATED_AT_MS_UTC=<unix_ms>` to show “service age” on the home page (otherwise it shows process uptime).
 
 ## Notes
 

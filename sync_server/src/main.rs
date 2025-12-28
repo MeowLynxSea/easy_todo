@@ -1,5 +1,6 @@
 use std::collections::{HashMap, VecDeque};
 use std::net::SocketAddr;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -10,6 +11,7 @@ use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
+use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::sqlite::SqlitePoolOptions;
 use sqlx::{Pool, Row, Sqlite, Transaction};
 use tower_http::cors::{Any, CorsLayer};
@@ -19,6 +21,7 @@ use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 mod auth;
+mod web;
 
 const MAX_RECORD_B64_LEN: usize = 512 * 1024; // per-field b64 string length cap
 const MAX_PULL_LIMIT: i64 = 500;
@@ -34,6 +37,8 @@ struct AppState {
     max_push_records: usize,
     max_records_per_user: Option<i64>,
     max_total_b64_per_user: Option<i64>,
+    started_at: Instant,
+    site_created_at_ms_utc: Option<i64>,
 }
 
 struct RateLimiter {
@@ -717,9 +722,19 @@ async fn main() -> anyhow::Result<()> {
         .ok()
         .and_then(|s| s.parse().ok());
 
+    let site_created_at_ms_utc: Option<i64> = std::env::var("SITE_CREATED_AT_MS_UTC")
+        .ok()
+        .and_then(|s| s.trim().parse().ok())
+        .filter(|ms: &i64| *ms > 0);
+
+    let connect_options = SqliteConnectOptions::from_str(&database_url)
+        .with_context(|| format!("parse DATABASE_URL: {database_url}"))?
+        .create_if_missing(true)
+        .foreign_keys(true);
+
     let pool = SqlitePoolOptions::new()
         .max_connections(10)
-        .connect(&database_url)
+        .connect_with(connect_options)
         .await
         .with_context(|| format!("connect db: {database_url}"))?;
 
@@ -744,9 +759,12 @@ async fn main() -> anyhow::Result<()> {
         max_push_records,
         max_records_per_user,
         max_total_b64_per_user,
+        started_at: Instant::now(),
+        site_created_at_ms_utc,
     };
 
     let app = Router::new()
+        .merge(web::web_router())
         .route("/v1/health", get(health))
         .nest("/v1/auth", auth::AuthService::auth_router())
         .route("/v1/key-bundle", get(get_key_bundle).put(put_key_bundle))

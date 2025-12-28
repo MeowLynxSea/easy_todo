@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use axum::extract::{ConnectInfo, FromRequestParts, Query, State};
 use axum::http::request::Parts;
 use axum::http::{header, HeaderMap, StatusCode};
-use axum::response::{Html, IntoResponse, Redirect};
+use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -20,6 +20,9 @@ use sqlx::{Pool, Row, Sqlite, Transaction};
 use url::Url;
 
 use crate::{json_error, now_ms_utc, AppState, ErrorBody, RateLimiter};
+
+pub(crate) const WEB_ACCESS_COOKIE: &str = "easy_todo_access";
+pub(crate) const WEB_REFRESH_COOKIE: &str = "easy_todo_refresh";
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct OAuthProviderConfig {
@@ -49,7 +52,7 @@ pub struct OAuthProviderConfig {
     pub extra_token_params: Option<HashMap<String, String>>,
     /// Token endpoint client authentication method.
     ///
-    /// - "basic" (default for Linux.do): send client_id/client_secret via HTTP Basic auth.
+    /// - "basic" (common default): send client_id/client_secret via HTTP Basic auth.
     /// - "post": send client_id/client_secret in the form body.
     #[serde(rename = "tokenAuthMethod")]
     pub token_auth_method: Option<String>,
@@ -218,8 +221,7 @@ impl AuthService {
                 let ok = if allowed_path.ends_with('/') {
                     app_path.starts_with(allowed_path)
                 } else {
-                    app_path == allowed_path
-                        || app_path.starts_with(&format!("{allowed_path}/"))
+                    app_path == allowed_path || app_path.starts_with(&format!("{allowed_path}/"))
                 };
                 if !ok {
                     continue;
@@ -305,6 +307,7 @@ impl AuthService {
         Router::new()
             .route("/providers", get(auth_providers))
             .route("/start", get(auth_start))
+            .route("/web/start", get(auth_web_start))
             .route("/callback", get(auth_callback))
             .route("/exchange", post(auth_exchange))
             .route("/refresh", post(auth_refresh))
@@ -596,6 +599,102 @@ impl AuthService {
         let sid = res.last_insert_rowid();
         Ok((sid, refresh_token))
     }
+
+    pub(crate) async fn issue_tokens_for_user(
+        &self,
+        tx: &mut Transaction<'_, Sqlite>,
+        user_id: i64,
+        rotated_from_id: Option<i64>,
+        now_ms: i64,
+    ) -> anyhow::Result<IssuedTokens> {
+        let (session_id, refresh_token) = self
+            .new_session(tx, user_id, rotated_from_id, now_ms)
+            .await
+            .context("new session")?;
+        let (access_token, expires_in) = self.sign_access_token(user_id, session_id)?;
+        Ok(IssuedTokens {
+            access_token,
+            expires_in,
+            refresh_token,
+        })
+    }
+
+    pub(crate) async fn rotate_refresh_token(
+        &self,
+        tx: &mut Transaction<'_, Sqlite>,
+        refresh_token: &str,
+        now_ms: i64,
+    ) -> anyhow::Result<(i64, IssuedTokens)> {
+        let token_hash = self.hash_token(refresh_token);
+
+        let row = sqlx::query(
+            r#"SELECT id, user_id, expires_at_ms_utc, revoked_at_ms_utc
+               FROM refresh_tokens WHERE token_hash = ?"#,
+        )
+        .bind(&token_hash)
+        .fetch_optional(&mut **tx)
+        .await
+        .context("load refresh token")?;
+
+        let Some(row) = row else {
+            anyhow::bail!("invalid refresh token");
+        };
+
+        let old_id: i64 = row.try_get("id").context("id")?;
+        let user_id: i64 = row.try_get("user_id").context("user_id")?;
+        let expires_at_ms_utc: i64 = row.try_get("expires_at_ms_utc").context("expires_at")?;
+        let revoked_at_ms_utc: Option<i64> =
+            row.try_get("revoked_at_ms_utc").context("revoked_at")?;
+
+        if revoked_at_ms_utc.is_some() || expires_at_ms_utc <= now_ms {
+            anyhow::bail!("refresh token expired");
+        }
+
+        sqlx::query(
+            r#"UPDATE refresh_tokens
+               SET revoked_at_ms_utc = ?, last_used_at_ms_utc = ?
+               WHERE id = ? AND revoked_at_ms_utc IS NULL"#,
+        )
+        .bind(now_ms)
+        .bind(now_ms)
+        .bind(old_id)
+        .execute(&mut **tx)
+        .await
+        .context("revoke old refresh token")?;
+
+        let tokens = self
+            .issue_tokens_for_user(tx, user_id, Some(old_id), now_ms)
+            .await?;
+
+        Ok((user_id, tokens))
+    }
+
+    pub(crate) async fn revoke_refresh_token(
+        &self,
+        pool: &Pool<Sqlite>,
+        refresh_token: &str,
+        now_ms: i64,
+    ) -> anyhow::Result<()> {
+        let token_hash = self.hash_token(refresh_token);
+        sqlx::query(
+            r#"UPDATE refresh_tokens
+               SET revoked_at_ms_utc = ?
+               WHERE token_hash = ? AND revoked_at_ms_utc IS NULL"#,
+        )
+        .bind(now_ms)
+        .bind(token_hash)
+        .execute(pool)
+        .await
+        .context("revoke refresh token")?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct IssuedTokens {
+    pub access_token: String,
+    pub expires_in: i64,
+    pub refresh_token: String,
 }
 
 #[derive(Debug, Clone)]
@@ -682,7 +781,7 @@ fn load_oauth_providers_from_env() -> anyhow::Result<HashMap<String, OAuthProvid
         Err(e) => {
             // A very common mistake when configuring env vars via shell/systemd is
             // forgetting to quote the entire JSON value, which strips all inner
-            // quotes and makes it invalid JSON (e.g. `[{name:linuxdo,...}]`).
+            // quotes and makes it invalid JSON (e.g. `[{name:my_provider,...}]`).
             let looks_shell_unquoted = json.contains("name:")
                 || json.contains("authorizeUrl:")
                 || json.contains("tokenUrl:")
@@ -691,7 +790,7 @@ fn load_oauth_providers_from_env() -> anyhow::Result<HashMap<String, OAuthProvid
                 || json.contains("clientSecret:");
 
             let hint = if looks_shell_unquoted {
-                "parse OAUTH_PROVIDERS_JSON (hint: wrap the whole JSON in single quotes, e.g. OAUTH_PROVIDERS_JSON='[{\"name\":\"linuxdo\",...}]')"
+                "parse OAUTH_PROVIDERS_JSON (hint: wrap the whole JSON in single quotes, e.g. OAUTH_PROVIDERS_JSON='[{\"name\":\"my_provider\",...}]')"
             } else {
                 "parse OAUTH_PROVIDERS_JSON"
             };
@@ -716,6 +815,12 @@ struct StartQuery {
     provider: String,
     app_redirect: String,
     client: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct WebStartQuery {
+    provider: String,
+    return_to: String,
 }
 
 async fn auth_start(
@@ -778,6 +883,76 @@ async fn auth_start(
     Ok(Redirect::temporary(&url))
 }
 
+fn is_allowed_web_return_to(return_to: &str) -> bool {
+    let s = return_to.trim();
+    if !s.starts_with('/') {
+        return false;
+    }
+    if s.starts_with("//") {
+        return false;
+    }
+    if s.contains("://") || s.contains('\\') {
+        return false;
+    }
+    true
+}
+
+async fn auth_web_start(
+    State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Query(q): Query<WebStartQuery>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorBody>)> {
+    {
+        let mut limiter = state.auth_limiter.lock().await;
+        if !limiter.check(&format!("auth_web_start:{}", addr.ip())) {
+            return Err(json_error(StatusCode::TOO_MANY_REQUESTS, "rate limited"));
+        }
+    }
+
+    let provider = q.provider.to_lowercase();
+    if !state.auth.config.providers.contains_key(&provider) {
+        return Err(json_error(
+            StatusCode::BAD_REQUEST,
+            "provider not configured",
+        ));
+    }
+
+    if !state.auth.config.enabled_providers.contains(&provider) {
+        return Err(json_error(StatusCode::BAD_REQUEST, "provider not enabled"));
+    }
+
+    if !is_allowed_web_return_to(&q.return_to) {
+        return Err(json_error(StatusCode::BAD_REQUEST, "return_to not allowed"));
+    }
+
+    let state_token = state.auth.random_token_b64(24);
+    let now_ms = now_ms_utc();
+    let expires_at_ms = now_ms + state.auth.config.login_attempt_ttl.as_millis() as i64;
+
+    sqlx::query(
+        r#"INSERT INTO auth_login_attempts
+           (state, provider, app_redirect, client, created_at_ms_utc, expires_at_ms_utc)
+           VALUES (?, ?, ?, ?, ?, ?)"#,
+    )
+    .bind(&state_token)
+    .bind(&provider)
+    .bind(&q.return_to)
+    .bind("web")
+    .bind(now_ms)
+    .bind(expires_at_ms)
+    .execute(&state.db)
+    .await
+    .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+    let url = state
+        .auth
+        .oauth_authorize_url(&provider, &state_token)
+        .await
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "oauth config error"))?;
+
+    Ok(Redirect::temporary(&url))
+}
+
 #[derive(Debug, Deserialize)]
 struct CallbackQuery {
     state: String,
@@ -790,7 +965,7 @@ async fn auth_callback(
     State(state): State<AppState>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Query(q): Query<CallbackQuery>,
-) -> Result<impl IntoResponse, (StatusCode, Json<ErrorBody>)> {
+) -> Result<Response, (StatusCode, Json<ErrorBody>)> {
     {
         let mut limiter = state.auth_limiter.lock().await;
         if !limiter.check(&format!("auth_callback:{}", addr.ip())) {
@@ -804,13 +979,15 @@ async fn auth_callback(
             .unwrap_or_else(|| "OAuth error".to_string());
         return Ok(state
             .auth
-            .html_result_page("Login failed", &format!("{err}: {desc}"), None));
+            .html_result_page("Login failed", &format!("{err}: {desc}"), None)
+            .into_response());
     }
 
     let Some(code) = q.code else {
         return Ok(state
             .auth
-            .html_result_page("Login failed", "missing code", None));
+            .html_result_page("Login failed", "missing code", None)
+            .into_response());
     };
 
     let mut tx = state
@@ -820,7 +997,7 @@ async fn auth_callback(
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
     let row = sqlx::query(
-        r#"SELECT provider, app_redirect, expires_at_ms_utc
+        r#"SELECT provider, app_redirect, client, expires_at_ms_utc
            FROM auth_login_attempts WHERE state = ?"#,
     )
     .bind(&q.state)
@@ -832,7 +1009,8 @@ async fn auth_callback(
         tx.rollback().await.ok();
         return Ok(state
             .auth
-            .html_result_page("Login failed", "invalid or expired state", None));
+            .html_result_page("Login failed", "invalid or expired state", None)
+            .into_response());
     };
 
     let provider: String = row
@@ -840,6 +1018,9 @@ async fn auth_callback(
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
     let app_redirect: String = row
         .try_get("app_redirect")
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+    let client: String = row
+        .try_get("client")
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
     let expires_at_ms_utc: i64 = row
         .try_get("expires_at_ms_utc")
@@ -855,7 +1036,8 @@ async fn auth_callback(
         tx.commit().await.ok();
         return Ok(state
             .auth
-            .html_result_page("Login failed", "state expired", None));
+            .html_result_page("Login failed", "state expired", None)
+            .into_response());
     }
 
     // One-time state.
@@ -872,11 +1054,10 @@ async fn auth_callback(
     let access_token = match state.auth.oauth_exchange_code(&provider, &code).await {
         Ok(t) => t,
         Err(_) => {
-            return Ok(state.auth.html_result_page(
-                "Login failed",
-                "OAuth code exchange failed",
-                None,
-            ))
+            return Ok(state
+                .auth
+                .html_result_page("Login failed", "OAuth code exchange failed", None)
+                .into_response())
         }
     };
 
@@ -889,7 +1070,8 @@ async fn auth_callback(
         Err(_) => {
             return Ok(state
                 .auth
-                .html_result_page("Login failed", "OAuth userinfo failed", None))
+                .html_result_page("Login failed", "OAuth userinfo failed", None)
+                .into_response())
         }
     };
 
@@ -901,6 +1083,64 @@ async fn auth_callback(
     let user_id = crate::ensure_user(&mut tx, &provider, &sub, now_ms)
         .await
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+    if client == "web" {
+        let tokens = state
+            .auth
+            .issue_tokens_for_user(&mut tx, user_id, None, now_ms)
+            .await
+            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+        tx.commit()
+            .await
+            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+        let mut return_to = app_redirect;
+        if !is_allowed_web_return_to(&return_to) {
+            return_to = "/dashboard".to_string();
+        }
+        let base = state.auth.config.base_url.trim_end_matches('/');
+        let redirect_to = format!("{base}{return_to}");
+
+        let secure = state
+            .auth
+            .config
+            .base_url
+            .trim_start()
+            .to_lowercase()
+            .starts_with("https://");
+        let refresh_max_age = state.auth.config.refresh_token_ttl.as_secs() as i64;
+
+        let access_cookie = format!(
+            "{name}={value}; Path=/; HttpOnly; SameSite=Lax; Max-Age={max_age}{secure}",
+            name = WEB_ACCESS_COOKIE,
+            value = tokens.access_token,
+            max_age = tokens.expires_in,
+            secure = if secure { "; Secure" } else { "" }
+        );
+        let refresh_cookie = format!(
+            "{name}={value}; Path=/; HttpOnly; SameSite=Lax; Max-Age={max_age}{secure}",
+            name = WEB_REFRESH_COOKIE,
+            value = tokens.refresh_token,
+            max_age = refresh_max_age,
+            secure = if secure { "; Secure" } else { "" }
+        );
+
+        let mut resp = Redirect::temporary(&redirect_to).into_response();
+        resp.headers_mut().append(
+            header::SET_COOKIE,
+            access_cookie
+                .parse()
+                .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "cookie error"))?,
+        );
+        resp.headers_mut().append(
+            header::SET_COOKIE,
+            refresh_cookie
+                .parse()
+                .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "cookie error"))?,
+        );
+        return Ok(resp);
+    }
 
     let ticket = state.auth.random_token_b64(32);
     let ticket_hash = state.auth.hash_token(&ticket);
@@ -924,11 +1164,14 @@ async fn auth_callback(
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
     let return_url = state.auth.append_ticket(&app_redirect, &ticket);
-    Ok(state.auth.html_result_page(
-        "Login succeeded",
-        "You can return to the app now.",
-        Some(&return_url),
-    ))
+    Ok(state
+        .auth
+        .html_result_page(
+            "Login succeeded",
+            "You can return to the app now.",
+            Some(&return_url),
+        )
+        .into_response())
 }
 
 #[derive(Debug, Deserialize)]
@@ -1014,25 +1257,20 @@ async fn auth_exchange(
         ));
     }
 
-    let (session_id, refresh_token) = state
+    let tokens = state
         .auth
-        .new_session(&mut tx, user_id, None, now_ms)
+        .issue_tokens_for_user(&mut tx, user_id, None, now_ms)
         .await
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
-
-    let (access_token, expires_in) = state
-        .auth
-        .sign_access_token(user_id, session_id)
-        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "token error"))?;
 
     tx.commit()
         .await
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
     Ok(Json(TokenResponse {
-        access_token,
-        expires_in,
-        refresh_token,
+        access_token: tokens.access_token,
+        expires_in: tokens.expires_in,
+        refresh_token: tokens.refresh_token,
     }))
 }
 
@@ -1054,85 +1292,27 @@ async fn auth_refresh(
         }
     }
 
-    let now_ms = now_ms_utc();
-    let token_hash = state.auth.hash_token(&req.refresh_token);
-
     let mut tx = state
         .db
         .begin()
         .await
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
-    let row = sqlx::query(
-        r#"SELECT id, user_id, expires_at_ms_utc, revoked_at_ms_utc
-           FROM refresh_tokens WHERE token_hash = ?"#,
-    )
-    .bind(&token_hash)
-    .fetch_optional(&mut *tx)
-    .await
-    .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
-
-    let Some(row) = row else {
-        tx.rollback().await.ok();
-        return Err(json_error(
-            StatusCode::UNAUTHORIZED,
-            "invalid refresh token",
-        ));
-    };
-
-    let old_id: i64 = row
-        .try_get("id")
-        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
-    let user_id: i64 = row
-        .try_get("user_id")
-        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
-    let expires_at_ms_utc: i64 = row
-        .try_get("expires_at_ms_utc")
-        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
-    let revoked_at_ms_utc: Option<i64> = row
-        .try_get("revoked_at_ms_utc")
-        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
-
-    if revoked_at_ms_utc.is_some() || expires_at_ms_utc <= now_ms {
-        tx.rollback().await.ok();
-        return Err(json_error(
-            StatusCode::UNAUTHORIZED,
-            "refresh token expired",
-        ));
-    }
-
-    // Rotation: revoke the old token and issue a new one.
-    sqlx::query(
-        r#"UPDATE refresh_tokens
-           SET revoked_at_ms_utc = ?, last_used_at_ms_utc = ?
-           WHERE id = ? AND revoked_at_ms_utc IS NULL"#,
-    )
-    .bind(now_ms)
-    .bind(now_ms)
-    .bind(old_id)
-    .execute(&mut *tx)
-    .await
-    .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
-
-    let (new_session_id, refresh_token) = state
+    let now_ms = now_ms_utc();
+    let (_user_id, tokens) = state
         .auth
-        .new_session(&mut tx, user_id, Some(old_id), now_ms)
+        .rotate_refresh_token(&mut tx, &req.refresh_token, now_ms)
         .await
-        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
-
-    let (access_token, expires_in) = state
-        .auth
-        .sign_access_token(user_id, new_session_id)
-        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "token error"))?;
+        .map_err(|_| json_error(StatusCode::UNAUTHORIZED, "refresh token expired"))?;
 
     tx.commit()
         .await
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
     Ok(Json(TokenResponse {
-        access_token,
-        expires_in,
-        refresh_token,
+        access_token: tokens.access_token,
+        expires_in: tokens.expires_in,
+        refresh_token: tokens.refresh_token,
     }))
 }
 
@@ -1160,18 +1340,11 @@ async fn auth_logout(
     }
 
     let now_ms = now_ms_utc();
-    let token_hash = state.auth.hash_token(&req.refresh_token);
-
-    sqlx::query(
-        r#"UPDATE refresh_tokens
-           SET revoked_at_ms_utc = ?
-           WHERE token_hash = ? AND revoked_at_ms_utc IS NULL"#,
-    )
-    .bind(now_ms)
-    .bind(token_hash)
-    .execute(&state.db)
-    .await
-    .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+    state
+        .auth
+        .revoke_refresh_token(&state.db, &req.refresh_token, now_ms)
+        .await
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
     Ok(Json(OkResponse { ok: true }))
 }

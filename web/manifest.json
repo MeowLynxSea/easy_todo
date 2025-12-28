@@ -1,11 +1,11 @@
 {
-    "name": "easy_todo",
-    "short_name": "easy_todo",
+    "name": "Easy Todo",
+    "short_name": "Easy Todo",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F9FAFB",
+    "theme_color": "#6366F1",
+    "description": "A clean, elegant todo list application with statistics and API integration",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

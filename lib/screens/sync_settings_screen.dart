@@ -8,6 +8,7 @@ import 'package:easy_todo/providers/theme_provider.dart';
 import 'package:easy_todo/providers/todo_provider.dart';
 import 'package:easy_todo/services/crypto/sync_crypto.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -289,6 +290,151 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     }
   }
 
+  Future<void> _changePassphrase() async {
+    final l10n = AppLocalizations.of(context)!;
+    final sync = context.read<SyncProvider>();
+
+    final currentController = TextEditingController();
+    final newController = TextEditingController();
+    final confirmController = TextEditingController();
+    var obscure = true;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        final requireCurrent = !sync.isUnlocked;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text(l10n.cloudSyncChangePassphraseDialogTitle),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l10n.cloudSyncChangePassphraseDialogHint,
+                    style: TextStyle(color: Theme.of(context).hintColor),
+                  ),
+                  const SizedBox(height: 12),
+                  if (requireCurrent) ...[
+                    TextField(
+                      controller: currentController,
+                      obscureText: obscure,
+                      decoration: InputDecoration(
+                        labelText: l10n.cloudSyncCurrentPassphrase,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  TextField(
+                    controller: newController,
+                    obscureText: obscure,
+                    decoration: InputDecoration(
+                      labelText: l10n.cloudSyncNewPassphrase,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: confirmController,
+                    obscureText: obscure,
+                    decoration: InputDecoration(
+                      labelText: l10n.cloudSyncConfirmPassphrase,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: !obscure,
+                        onChanged: (v) =>
+                            setState(() => obscure = !(v ?? false)),
+                      ),
+                      Text(l10n.cloudSyncShowPassphrase),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text(l10n.cancel),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: Text(l10n.save),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (ok != true) return;
+    if (!mounted) return;
+
+    unawaited(
+      showDialog<void>(
+        context: context,
+        useRootNavigator: true,
+        barrierDismissible: false,
+        builder: (context) {
+          return PopScope(
+            canPop: false,
+            child: AlertDialog(
+              title: Text(l10n.cloudSyncChangePassphraseDialogTitle),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 8),
+                  Consumer<SyncProvider>(
+                    builder: (context, sync, child) {
+                      final value = sync.kdfProgress;
+                      return LinearProgressIndicator(value: value);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    l10n.cloudSyncChangePassphraseDialogHint,
+                    style: TextStyle(color: Theme.of(context).hintColor),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    try {
+      await Future<void>.delayed(Duration.zero);
+      await sync.changePassphrase(
+        currentPassphrase: currentController.text,
+        newPassphrase: newController.text,
+        confirmNewPassphrase: confirmController.text,
+      );
+      if (!mounted) return;
+      if (Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.cloudSyncPassphraseChangedSnack)),
+      );
+    } on InvalidPassphraseException {
+      if (!mounted) return;
+      if (Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.cloudSyncInvalidPassphrase)));
+    } catch (_) {
+      if (!mounted) return;
+      if (Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+    }
+  }
+
   Future<void> _syncNow({bool showSuccessSnack = true}) async {
     final l10n = AppLocalizations.of(context)!;
     final sync = context.read<SyncProvider>();
@@ -336,6 +482,70 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(l10n.cloudSyncSyncedSnack)));
     }
+  }
+
+  Future<void> _editAutoSyncInterval() async {
+    final l10n = AppLocalizations.of(context)!;
+    final sync = context.read<SyncProvider>();
+
+    final controller = TextEditingController(
+      text: sync.autoSyncIntervalSeconds.toString(),
+    );
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(l10n.cloudSyncAutoSyncIntervalTitle),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l10n.cloudSyncAutoSyncIntervalHint,
+                style: TextStyle(color: Theme.of(context).hintColor),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: l10n.cloudSyncAutoSyncIntervalSecondsLabel,
+                  helperText: l10n.cloudSyncAutoSyncIntervalMinHint,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(l10n.save),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (ok != true) return;
+
+    final seconds = int.tryParse(controller.text.trim());
+    if (seconds == null) return;
+    await sync.setAutoSyncIntervalSeconds(seconds);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(l10n.cloudSyncAutoSyncIntervalSavedSnack)),
+    );
+  }
+
+  String _formatInterval(int seconds, AppLocalizations l10n) {
+    if (seconds < 60) return l10n.cloudSyncSecondsFormat(seconds);
+    if (seconds % 60 == 0) return l10n.cloudSyncMinutesFormat(seconds ~/ 60);
+    final m = seconds ~/ 60;
+    final s = seconds % 60;
+    return l10n.cloudSyncMinutesSecondsFormat(m, s);
   }
 
   Future<void> _refreshAppStateAfterSync() async {
@@ -792,6 +1002,37 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                                       : l10n.cloudSyncEnable,
                                 ),
                               ),
+                      ),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.key_outlined),
+                        title: Text(l10n.cloudSyncChangePassphraseTitle),
+                        subtitle: Text(l10n.cloudSyncChangePassphraseSubtitle),
+                        trailing: OutlinedButton(
+                          onPressed:
+                              sync.status == SyncStatus.running ||
+                                  !configured ||
+                                  !sync.syncEnabled
+                              ? null
+                              : _changePassphrase,
+                          child: Text(l10n.cloudSyncChangePassphraseAction),
+                        ),
+                      ),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.timer_outlined),
+                        title: Text(l10n.cloudSyncAutoSyncIntervalTitle),
+                        subtitle: Text(
+                          l10n.cloudSyncAutoSyncIntervalSubtitle(
+                            _formatInterval(sync.autoSyncIntervalSeconds, l10n),
+                          ),
+                        ),
+                        trailing: OutlinedButton(
+                          onPressed: sync.status == SyncStatus.running
+                              ? null
+                              : _editAutoSyncInterval,
+                          child: Text(l10n.edit),
+                        ),
                       ),
                       if (kIsWeb) ...[
                         const SizedBox(height: 8),

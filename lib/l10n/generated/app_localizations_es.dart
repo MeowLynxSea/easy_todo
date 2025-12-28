@@ -2803,4 +2803,80 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get cloudSyncAuthProcessingSubtitle => 'Processing login callback…';
+
+  @override
+  String get cloudSyncChangePassphraseTitle => 'Change passphrase';
+
+  @override
+  String get cloudSyncChangePassphraseSubtitle =>
+      'Re-wrap the DEK only (no re-upload of history)';
+
+  @override
+  String get cloudSyncChangePassphraseAction => 'Change';
+
+  @override
+  String get cloudSyncChangePassphraseDialogTitle => 'Change sync passphrase';
+
+  @override
+  String get cloudSyncChangePassphraseDialogHint =>
+      'This only updates the key bundle. Other devices may need to enter the new passphrase to unlock.';
+
+  @override
+  String get cloudSyncCurrentPassphrase => 'Current passphrase';
+
+  @override
+  String get cloudSyncNewPassphrase => 'New passphrase';
+
+  @override
+  String get cloudSyncPassphraseChangedSnack => 'Passphrase updated';
+
+  @override
+  String get syncAiApiKeyTitle => 'Sync API key (encrypted)';
+
+  @override
+  String get syncAiApiKeySubtitle =>
+      'Share your API key across devices via end-to-end encryption (optional)';
+
+  @override
+  String get syncAiApiKeyWarningTitle => 'Sync API key?';
+
+  @override
+  String get syncAiApiKeyWarningMessage =>
+      'Your API key will be uploaded as ciphertext and can be decrypted by devices with your sync passphrase. Enable only if you understand the risk.';
+
+  @override
+  String get cloudSyncAutoSyncIntervalTitle => 'Auto sync interval';
+
+  @override
+  String get cloudSyncAutoSyncIntervalHint =>
+      'Polling is device-specific. If there are pending local changes, they may sync sooner via the outbox trigger.';
+
+  @override
+  String get cloudSyncAutoSyncIntervalSecondsLabel => 'Seconds';
+
+  @override
+  String get cloudSyncAutoSyncIntervalMinHint => 'Minimum 30 seconds';
+
+  @override
+  String get cloudSyncAutoSyncIntervalSavedSnack => 'Auto sync interval saved';
+
+  @override
+  String cloudSyncAutoSyncIntervalSubtitle(Object interval) {
+    return 'Current: $interval';
+  }
+
+  @override
+  String cloudSyncSecondsFormat(Object count) {
+    return '${count}s';
+  }
+
+  @override
+  String cloudSyncMinutesFormat(Object count) {
+    return '${count}m';
+  }
+
+  @override
+  String cloudSyncMinutesSecondsFormat(Object minutes, Object seconds) {
+    return '${minutes}m ${seconds}s';
+  }
 }

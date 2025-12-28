@@ -25,6 +25,7 @@ class AISettingsModelAdapter extends TypeAdapter<AISettingsModel> {
       enablePrioritySorting: fields[5] == null ? true : fields[5] as bool,
       enableMotivationalMessages: fields[6] == null ? true : fields[6] as bool,
       enableSmartNotifications: fields[7] == null ? true : fields[7] as bool,
+      syncApiKey: fields[8] == null ? false : fields[8] as bool,
       temperature: fields[9] == null ? 1.0 : fields[9] as double,
       maxTokens: fields[10] == null ? 10000 : fields[10] as int,
       requestTimeout: fields[11] == null ? 60000 : fields[11] as int,
@@ -37,7 +38,7 @@ class AISettingsModelAdapter extends TypeAdapter<AISettingsModel> {
   @override
   void write(BinaryWriter writer, AISettingsModel obj) {
     writer
-      ..writeByte(14)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.enableAIFeatures)
       ..writeByte(1)
@@ -54,6 +55,8 @@ class AISettingsModelAdapter extends TypeAdapter<AISettingsModel> {
       ..write(obj.enableMotivationalMessages)
       ..writeByte(7)
       ..write(obj.enableSmartNotifications)
+      ..writeByte(8)
+      ..write(obj.syncApiKey)
       ..writeByte(9)
       ..write(obj.temperature)
       ..writeByte(10)

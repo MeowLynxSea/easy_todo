@@ -184,6 +184,25 @@ class PomodoroProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> reloadFromHiveReadOnly() async {
+    try {
+      final pomodoroBox = _hiveService.pomodoroBox;
+      _pomodoroSessions = pomodoroBox.values
+          .where(
+            (s) =>
+                !_syncWriteService.isTombstonedSync(SyncTypes.pomodoro, s.id),
+          )
+          .toList();
+      _pomodoroSessions.sort((a, b) => b.startTime.compareTo(a.startTime));
+      _completedSessionsCount = _pomodoroSessions
+          .where((session) => session.isCompleted && !session.isBreak)
+          .length;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('PomodoroProvider: Error reloading from hive (read-only): $e');
+    }
+  }
+
   Future<void> startPomodoro(String todoId, {bool isBreak = false}) async {
     // Stop any existing timer
     await stopTimer();

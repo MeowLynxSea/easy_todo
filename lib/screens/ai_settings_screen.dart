@@ -78,6 +78,7 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
       enableMotivationalMessages:
           aiProvider.settings.enableMotivationalMessages,
       enableSmartNotifications: aiProvider.settings.enableSmartNotifications,
+      syncApiKey: aiProvider.settings.syncApiKey,
       temperature: double.tryParse(_temperatureController.text) ?? 1.0,
       maxTokens: int.tryParse(_maxTokensController.text) ?? 10000,
       requestTimeout: int.tryParse(_timeoutController.text) ?? 60000,
@@ -128,6 +129,7 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
       apiEndpoint: _apiEndpointController.text.trim(),
       apiKey: _apiKeyController.text.trim(),
       modelName: _modelNameController.text.trim(),
+      syncApiKey: aiProvider.settings.syncApiKey,
       temperature: double.tryParse(_temperatureController.text) ?? 1.0,
       maxTokens: int.tryParse(_maxTokensController.text) ?? 10000,
       requestTimeout: int.tryParse(_timeoutController.text) ?? 60000,
@@ -282,6 +284,59 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
                                     },
                                   )
                                 : null,
+                          ),
+                          const SizedBox(height: 8),
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(l10n.syncAiApiKeyTitle),
+                            subtitle: Text(l10n.syncAiApiKeySubtitle),
+                            value: aiProvider.settings.syncApiKey,
+                            onChanged: aiProvider.settings.apiFormat == 'ollama'
+                                ? null
+                                : (value) async {
+                                    if (value &&
+                                        !aiProvider.settings.syncApiKey) {
+                                      final confirmed =
+                                          (await showDialog<bool>(
+                                            context: context,
+                                            builder: (context) {
+                                              return AlertDialog(
+                                                title: Text(
+                                                  l10n.syncAiApiKeyWarningTitle,
+                                                ),
+                                                content: Text(
+                                                  l10n.syncAiApiKeyWarningMessage,
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop(false),
+                                                    child: Text(l10n.cancel),
+                                                  ),
+                                                  FilledButton(
+                                                    onPressed: () =>
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop(true),
+                                                    child: Text(l10n.ok),
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          )) ??
+                                          false;
+                                      if (!confirmed) return;
+                                    }
+
+                                    HapticFeedback.lightImpact();
+                                    aiProvider.updateSettings(
+                                      aiProvider.settings.copyWith(
+                                        syncApiKey: value,
+                                      ),
+                                    );
+                                  },
                           ),
                           const SizedBox(height: 16),
                           _buildTextField(
@@ -704,6 +759,7 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
       enableMotivationalMessages:
           aiProvider.settings.enableMotivationalMessages,
       enableSmartNotifications: aiProvider.settings.enableSmartNotifications,
+      syncApiKey: aiProvider.settings.syncApiKey,
       temperature: double.tryParse(_temperatureController.text) ?? 1.0,
       maxTokens: int.tryParse(_maxTokensController.text) ?? 10000,
       requestTimeout: int.tryParse(_timeoutController.text) ?? 60000,

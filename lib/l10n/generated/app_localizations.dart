@@ -5254,6 +5254,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Processing login callback…'**
   String get cloudSyncAuthProcessingSubtitle;
+
+  /// No description provided for @cloudSyncChangePassphraseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Change passphrase'**
+  String get cloudSyncChangePassphraseTitle;
+
+  /// No description provided for @cloudSyncChangePassphraseSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-wrap the DEK only (no re-upload of history)'**
+  String get cloudSyncChangePassphraseSubtitle;
+
+  /// No description provided for @cloudSyncChangePassphraseAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get cloudSyncChangePassphraseAction;
+
+  /// No description provided for @cloudSyncChangePassphraseDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Change sync passphrase'**
+  String get cloudSyncChangePassphraseDialogTitle;
+
+  /// No description provided for @cloudSyncChangePassphraseDialogHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This only updates the key bundle. Other devices may need to enter the new passphrase to unlock.'**
+  String get cloudSyncChangePassphraseDialogHint;
+
+  /// No description provided for @cloudSyncCurrentPassphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Current passphrase'**
+  String get cloudSyncCurrentPassphrase;
+
+  /// No description provided for @cloudSyncNewPassphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'New passphrase'**
+  String get cloudSyncNewPassphrase;
+
+  /// No description provided for @cloudSyncPassphraseChangedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Passphrase updated'**
+  String get cloudSyncPassphraseChangedSnack;
+
+  /// No description provided for @syncAiApiKeyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync API key (encrypted)'**
+  String get syncAiApiKeyTitle;
+
+  /// No description provided for @syncAiApiKeySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share your API key across devices via end-to-end encryption (optional)'**
+  String get syncAiApiKeySubtitle;
+
+  /// No description provided for @syncAiApiKeyWarningTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync API key?'**
+  String get syncAiApiKeyWarningTitle;
+
+  /// No description provided for @syncAiApiKeyWarningMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your API key will be uploaded as ciphertext and can be decrypted by devices with your sync passphrase. Enable only if you understand the risk.'**
+  String get syncAiApiKeyWarningMessage;
+
+  /// No description provided for @cloudSyncAutoSyncIntervalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto sync interval'**
+  String get cloudSyncAutoSyncIntervalTitle;
+
+  /// No description provided for @cloudSyncAutoSyncIntervalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Polling is device-specific. If there are pending local changes, they may sync sooner via the outbox trigger.'**
+  String get cloudSyncAutoSyncIntervalHint;
+
+  /// No description provided for @cloudSyncAutoSyncIntervalSecondsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Seconds'**
+  String get cloudSyncAutoSyncIntervalSecondsLabel;
+
+  /// No description provided for @cloudSyncAutoSyncIntervalMinHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum 30 seconds'**
+  String get cloudSyncAutoSyncIntervalMinHint;
+
+  /// No description provided for @cloudSyncAutoSyncIntervalSavedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto sync interval saved'**
+  String get cloudSyncAutoSyncIntervalSavedSnack;
+
+  /// No description provided for @cloudSyncAutoSyncIntervalSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Current: {interval}'**
+  String cloudSyncAutoSyncIntervalSubtitle(Object interval);
+
+  /// No description provided for @cloudSyncSecondsFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}s'**
+  String cloudSyncSecondsFormat(Object count);
+
+  /// No description provided for @cloudSyncMinutesFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}m'**
+  String cloudSyncMinutesFormat(Object count);
+
+  /// No description provided for @cloudSyncMinutesSecondsFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes}m {seconds}s'**
+  String cloudSyncMinutesSecondsFormat(Object minutes, Object seconds);
 }
 
 class _AppLocalizationsDelegate

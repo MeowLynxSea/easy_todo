@@ -61,52 +61,68 @@ class UserPreferencesRepository {
     final prefs = await SharedPreferences.getInstance();
 
     var next = current;
+    final defaults = UserPreferencesModel.create();
 
     final legacyLanguageCode = prefs.getString('app_language');
-    if ((next.languageCode).isEmpty ||
-        (next.languageCode == UserPreferencesModel.create().languageCode)) {
-      if (legacyLanguageCode != null && legacyLanguageCode.isNotEmpty) {
-        next = next.copyWith(languageCode: legacyLanguageCode);
+    if (legacyLanguageCode != null && legacyLanguageCode.isNotEmpty) {
+      if ((next.languageCode).isEmpty ||
+          (next.languageCode == defaults.languageCode)) {
+        if (legacyLanguageCode != next.languageCode) {
+          next = next.copyWith(languageCode: legacyLanguageCode);
+        }
       }
     }
 
     final legacyThemeModeIndex = prefs.getInt('app_theme');
-    if (next.themeModeIndex == UserPreferencesModel.create().themeModeIndex) {
-      if (legacyThemeModeIndex != null) {
-        next = next.copyWith(themeModeIndex: legacyThemeModeIndex);
+    if (legacyThemeModeIndex != null) {
+      if (next.themeModeIndex == defaults.themeModeIndex) {
+        if (legacyThemeModeIndex != next.themeModeIndex) {
+          next = next.copyWith(themeModeIndex: legacyThemeModeIndex);
+        }
       }
     }
 
     final legacyThemeColors = prefs.getString('theme_colors');
-    if (next.themeColorsString.isEmpty && legacyThemeColors != null) {
-      next = next.copyWith(themeColorsString: legacyThemeColors);
+    if (legacyThemeColors != null && legacyThemeColors.isNotEmpty) {
+      if (next.themeColorsString.isEmpty &&
+          legacyThemeColors != next.themeColorsString) {
+        next = next.copyWith(themeColorsString: legacyThemeColors);
+      }
     }
 
     final legacyCustomThemeColors = prefs.getString('custom_theme');
     if (next.customThemeColorsString.isEmpty &&
-        legacyCustomThemeColors != null) {
-      next = next.copyWith(customThemeColorsString: legacyCustomThemeColors);
+        legacyCustomThemeColors != null &&
+        legacyCustomThemeColors.isNotEmpty) {
+      if (legacyCustomThemeColors != next.customThemeColorsString) {
+        next = next.copyWith(customThemeColorsString: legacyCustomThemeColors);
+      }
     }
 
     final legacyStatusFilter = prefs.getInt('todo_status_filter');
-    if (next.statusFilterIndex ==
-        UserPreferencesModel.create().statusFilterIndex) {
-      if (legacyStatusFilter != null) {
-        next = next.copyWith(statusFilterIndex: legacyStatusFilter);
+    if (legacyStatusFilter != null) {
+      if (next.statusFilterIndex == defaults.statusFilterIndex) {
+        if (legacyStatusFilter != next.statusFilterIndex) {
+          next = next.copyWith(statusFilterIndex: legacyStatusFilter);
+        }
       }
     }
 
     final legacyTimeFilter = prefs.getInt('todo_time_filter');
-    if (next.timeFilterIndex == UserPreferencesModel.create().timeFilterIndex) {
-      if (legacyTimeFilter != null) {
-        next = next.copyWith(timeFilterIndex: legacyTimeFilter);
+    if (legacyTimeFilter != null) {
+      if (next.timeFilterIndex == defaults.timeFilterIndex) {
+        if (legacyTimeFilter != next.timeFilterIndex) {
+          next = next.copyWith(timeFilterIndex: legacyTimeFilter);
+        }
       }
     }
 
     final legacySortOrder = prefs.getInt('todo_sort_order');
-    if (next.sortOrderIndex == UserPreferencesModel.create().sortOrderIndex) {
-      if (legacySortOrder != null) {
-        next = next.copyWith(sortOrderIndex: legacySortOrder);
+    if (legacySortOrder != null) {
+      if (next.sortOrderIndex == defaults.sortOrderIndex) {
+        if (legacySortOrder != next.sortOrderIndex) {
+          next = next.copyWith(sortOrderIndex: legacySortOrder);
+        }
       }
     }
 
@@ -116,9 +132,14 @@ class UserPreferencesRepository {
     if (next.selectedCategories.isEmpty &&
         legacySelectedCategories != null &&
         legacySelectedCategories.isNotEmpty) {
-      next = next.copyWith(
-        selectedCategories: legacySelectedCategories.split(','),
-      );
+      final parsed = legacySelectedCategories
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList(growable: false);
+      if (parsed.isNotEmpty) {
+        next = next.copyWith(selectedCategories: parsed);
+      }
     }
 
     return next;

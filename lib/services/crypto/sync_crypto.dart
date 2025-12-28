@@ -251,6 +251,7 @@ class SyncCrypto {
     required String newPassphrase,
     required int expectedBundleVersion,
     ScryptParams? params,
+    ValueChanged<double>? onKdfProgress,
   }) async {
     final nowMsUtc = DateTime.now().toUtc().millisecondsSinceEpoch;
     final salt = randomSalt();
@@ -260,6 +261,7 @@ class SyncCrypto {
       passphrase: newPassphrase,
       salt: salt,
       params: kdfParams,
+      onProgress: onKdfProgress,
     );
     final (wrapNonce, wrappedDek) = await wrapDek(
       kek: kek,

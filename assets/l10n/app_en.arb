@@ -930,5 +930,28 @@
   "aiPromptDailySummary": "Create a daily summary notification for pending todos.\n\nPending tasks count: {pendingCount}\nCategories: {categories}\nAverage priority: {avgPriority}/100\n\nCreate a personalized summary with:\n1. A catchy title (first line)\n2. An encouraging message that MUST include the count of unfinished todos ({pendingCount})\n3. Keep the message content under 50 characters. Make it motivating and actionable.\n4. Respond ONLY in this exact format:\nTITLE: [your title]\nMESSAGE: [your message]\n5. No explanations, no markdown formatting, just the two lines in the specified format",
   "aiPromptPomodoro": "Create a personalized notification for a completed {sessionType} session.\n\nSession details:\n- Task: \"{taskTitle}\"\n- Session type: {sessionType}\n- Duration: {duration} minutes\n- Completed: {isCompleted}\n\nIMPORTANT: Respond in the same language as this prompt (English).\n\nCreate both a title and message:\n1. Title: Must be under 20 characters, attention-grabbing and celebratory\n2. Message: Must be under 50 characters, encouraging and relevant to the session completion\n3. For focus sessions (work completed): Emphasize work accomplishment and that it's time for a well-deserved break\n4. For break sessions (rest completed): Focus on rest completion and that it's time to get back to focused work\n5. Use emojis where appropriate for engagement\n6. Make it personal and motivating\n7. Respond with only the title and message in the specified format, no explanations\n\nFormat your response as:\nTITLE: [title]\nMESSAGE: [message]",
   "cloudSyncAuthProcessingTitle": "Signing in",
-  "cloudSyncAuthProcessingSubtitle": "Processing login callback…"
+  "cloudSyncAuthProcessingSubtitle": "Processing login callback…",
+
+  "cloudSyncChangePassphraseTitle": "Change passphrase",
+  "cloudSyncChangePassphraseSubtitle": "Re-wrap the DEK only (no re-upload of history)",
+  "cloudSyncChangePassphraseAction": "Change",
+  "cloudSyncChangePassphraseDialogTitle": "Change sync passphrase",
+  "cloudSyncChangePassphraseDialogHint": "This only updates the key bundle. Other devices may need to enter the new passphrase to unlock.",
+  "cloudSyncCurrentPassphrase": "Current passphrase",
+  "cloudSyncNewPassphrase": "New passphrase",
+  "cloudSyncPassphraseChangedSnack": "Passphrase updated",
+
+  "syncAiApiKeyTitle": "Sync API key (encrypted)",
+  "syncAiApiKeySubtitle": "Share your API key across devices via end-to-end encryption (optional)",
+  "syncAiApiKeyWarningTitle": "Sync API key?",
+  "syncAiApiKeyWarningMessage": "Your API key will be uploaded as ciphertext and can be decrypted by devices with your sync passphrase. Enable only if you understand the risk.",
+  "cloudSyncAutoSyncIntervalTitle": "Auto sync interval",
+  "cloudSyncAutoSyncIntervalHint": "Polling is device-specific. If there are pending local changes, they may sync sooner via the outbox trigger.",
+  "cloudSyncAutoSyncIntervalSecondsLabel": "Seconds",
+  "cloudSyncAutoSyncIntervalMinHint": "Minimum 30 seconds",
+  "cloudSyncAutoSyncIntervalSavedSnack": "Auto sync interval saved",
+  "cloudSyncAutoSyncIntervalSubtitle": "Current: {interval}",
+  "cloudSyncSecondsFormat": "{count}s",
+  "cloudSyncMinutesFormat": "{count}m",
+  "cloudSyncMinutesSecondsFormat": "{minutes}m {seconds}s"
 }

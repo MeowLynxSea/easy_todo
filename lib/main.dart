@@ -25,6 +25,7 @@ import 'package:easy_todo/screens/preference_screen.dart';
 import 'package:easy_todo/screens/forced_update_page.dart';
 import 'package:easy_todo/widgets/auth_wrapper.dart';
 import 'package:easy_todo/widgets/sync_auth_link_handler.dart';
+import 'package:easy_todo/widgets/sync_auto_refresh_handler.dart';
 import 'package:easy_todo/services/timezone_service.dart';
 import 'package:easy_todo/utils/app_scroll_behavior.dart';
 import 'package:easy_todo/utils/responsive.dart';
@@ -112,8 +113,34 @@ class MyApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             scrollBehavior: const AppScrollBehavior(),
             builder: (context, child) {
+              final content = child ?? const SizedBox.shrink();
               return ResponsiveWebFrame(
-                child: child ?? const SizedBox.shrink(),
+                child: Stack(
+                  children: [
+                    content,
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: IgnorePointer(
+                        child: SafeArea(
+                          bottom: false,
+                          child: Consumer<SyncProvider>(
+                            builder: (context, sync, child) {
+                              final visible = sync.isAutoSyncInProgress;
+                              return AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 180),
+                                child: visible
+                                    ? const _AutoSyncIndicator()
+                                    : const SizedBox.shrink(),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               );
             },
             navigatorKey: navigatorKey,
@@ -133,7 +160,9 @@ class MyApp extends StatelessWidget {
                 notificationService.setContext(materialAppContext);
 
                 return AuthWrapper(
-                  child: SyncAuthLinkHandler(child: MainNavigationScreen()),
+                  child: SyncAutoRefreshHandler(
+                    child: SyncAuthLinkHandler(child: MainNavigationScreen()),
+                  ),
                   onAuthComplete: () {
                     // Connect AI provider and language provider to todo provider after auth
                     final todoProvider = Provider.of<TodoProvider>(
@@ -186,6 +215,80 @@ class _GoToTabIntent extends Intent {
   final int index;
 
   const _GoToTabIntent(this.index);
+}
+
+class _AutoSyncIndicator extends StatelessWidget {
+  const _AutoSyncIndicator();
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          LinearProgressIndicator(
+            minHeight: 2,
+            color: Theme.of(context).colorScheme.primary,
+            backgroundColor: Colors.transparent,
+          ),
+          Align(
+            alignment: Alignment.topRight,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 6, right: 12),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surface.withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.outlineVariant.withValues(alpha: 0.4),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.shadow.withValues(alpha: 0.12),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.cloud_sync_outlined,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen>
@@ -355,9 +458,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
             _checkRepeatTodosOnResume();
           }
         });
+        // Trigger background auto-sync when returning to foreground.
+        Future.delayed(const Duration(milliseconds: 1200), () {
+          if (!mounted) return;
+          Provider.of<SyncProvider>(context, listen: false).onAppResumed();
+        });
         break;
       case AppLifecycleState.paused:
         // 应用进入后台时可以做一些清理工作
+        Provider.of<SyncProvider>(context, listen: false).onAppPaused();
         break;
       case AppLifecycleState.detached:
         // 应用被终止时移除观察者

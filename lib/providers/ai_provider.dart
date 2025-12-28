@@ -101,6 +101,33 @@ class AIProvider extends ChangeNotifier {
     await _loadSettings();
   }
 
+  Future<void> reloadFromHiveReadOnly() async {
+    try {
+      final box = HiveService().aiSettingsBox;
+      final savedSettings =
+          box.get(AISettingsRepository.hiveKey) ?? AISettingsModel.create();
+
+      final apiKeyFromHive = savedSettings.apiKey;
+      final apiKeyFromSecureStorage = await _secureStorageService
+          .readAiApiKey();
+      final resolvedApiKey = (apiKeyFromSecureStorage ?? '').isNotEmpty
+          ? apiKeyFromSecureStorage!
+          : apiKeyFromHive;
+
+      final next = savedSettings.copyWith(apiKey: resolvedApiKey);
+      _settings = next;
+
+      if (_settings.isValid) {
+        _aiService = AIService(_settings);
+      } else {
+        _aiService = null;
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('AIProvider: Error loading settings (read-only): $e');
+    }
+  }
+
   Future<void> _clearCorruptedSettings() async {
     try {
       final box = HiveService().aiSettingsBox;

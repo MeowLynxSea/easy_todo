@@ -931,5 +931,29 @@
   "aiPromptDailySummary": "为待办事项创建每日总结通知。\n\n待办任务数量：{pendingCount}\n类别：{categories}\n平均优先级：{avgPriority}/100\n\n创建个性化总结，包含：\n1. 一个吸引人的标题（第一行）\n2. 一条鼓励性消息，必须包含未完成的待办数量（{pendingCount}）\n3. 消息内容保持在50字符以内。使其具有激励性和可操作性。\n4. 严格按照以下格式回复，不要使用markdown或其他格式：\nTITLE: [你的标题]\nMESSAGE: [你的消息]\n5. 只返回这两行内容，不要包含任何说明文字",
   "aiPromptPomodoro": "为完成的{sessionType}会话创建个性化通知。\n\n会话详情：\n- 任务：\"{taskTitle}\"\n- 会话类型：{sessionType}\n- 持续时间：{duration}分钟\n- 已完成：{isCompleted}\n\n重要提示：请用中文回复。\n\n创建标题和消息：\n1. 标题：少于20个字符，引人注目且具有庆祝性\n2. 消息：少于50个字符，具有鼓励性且与会话完成相关\n3. 对于专注会话（工作完成）：强调工作成就和该休息了\n4. 对于休息会话（休息完成）：强调休息完成和该回到专注工作了\n5. 适当使用表情符号增加参与度\n6. 使其个性化和激励性\n7. 只回复标题和消息，不要包含任何说明\n\n回复格式：\nTITLE: [标题]\nMESSAGE: [消息]",
   "cloudSyncAuthProcessingTitle": "正在登录",
-  "cloudSyncAuthProcessingSubtitle": "正在处理登录回调…"
+  "cloudSyncAuthProcessingSubtitle": "正在处理登录回调…",
+
+  "cloudSyncChangePassphraseTitle": "更改同步口令",
+  "cloudSyncChangePassphraseSubtitle": "仅重包 DEK，不重传历史数据",
+  "cloudSyncChangePassphraseAction": "更改",
+  "cloudSyncChangePassphraseDialogTitle": "更改同步口令",
+  "cloudSyncChangePassphraseDialogHint": "该操作只会更新 keyBundle。其他设备可能需要输入新口令才能解锁。",
+  "cloudSyncCurrentPassphrase": "当前同步口令",
+  "cloudSyncNewPassphrase": "新同步口令",
+  "cloudSyncPassphraseChangedSnack": "同步口令已更新",
+
+  "syncAiApiKeyTitle": "同步 API 密钥（加密）",
+  "syncAiApiKeySubtitle": "通过端到端加密在多端共享 API 密钥（可选）",
+  "syncAiApiKeyWarningTitle": "要同步 API 密钥吗？",
+  "syncAiApiKeyWarningMessage": "你的 API 密钥会以密文上传，拥有同步口令的设备可解密获取。仅在了解风险后开启。",
+
+  "cloudSyncAutoSyncIntervalTitle": "自动同步间隔",
+  "cloudSyncAutoSyncIntervalHint": "轮询为设备独立设置。如本地有待推送变更，可能会通过 outbox 触发更快同步。",
+  "cloudSyncAutoSyncIntervalSecondsLabel": "秒",
+  "cloudSyncAutoSyncIntervalMinHint": "最小 30 秒",
+  "cloudSyncAutoSyncIntervalSavedSnack": "自动同步间隔已保存",
+  "cloudSyncAutoSyncIntervalSubtitle": "当前：{interval}",
+  "cloudSyncSecondsFormat": "{count} 秒",
+  "cloudSyncMinutesFormat": "{count} 分钟",
+  "cloudSyncMinutesSecondsFormat": "{minutes} 分 {seconds} 秒"
 }

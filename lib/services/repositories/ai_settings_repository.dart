@@ -3,7 +3,7 @@ import 'package:easy_todo/services/hive_service.dart';
 import 'package:easy_todo/services/sync_write_service.dart';
 
 class AISettingsRepository {
-  static const int schemaVersion = 1;
+  static const int schemaVersion = 2;
   static const String hiveKey = 'settings';
 
   final HiveService _hiveService;

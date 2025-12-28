@@ -935,6 +935,51 @@ class TodoProvider extends ChangeNotifier {
     await loadStatisticsData();
   }
 
+  Future<void> reloadFromHiveReadOnly({FilterProvider? filterProvider}) async {
+    try {
+      if (filterProvider != null) {
+        syncWithFilterProvider(filterProvider);
+      }
+
+      final todosBox = _hiveService.todosBox;
+      final repeatBox = _hiveService.repeatTodosBox;
+      final statsBox = _hiveService.statisticsBox;
+      final statsDataBox = _hiveService.statisticsDataBox;
+
+      _todos = todosBox.values
+          .where(
+            (t) => !_syncWriteService.isTombstonedSync(SyncTypes.todo, t.id),
+          )
+          .toList();
+      _todos.sort((a, b) => a.order.compareTo(b.order));
+
+      _repeatTodos = repeatBox.values
+          .where(
+            (t) =>
+                !_syncWriteService.isTombstonedSync(SyncTypes.repeatTodo, t.id),
+          )
+          .toList();
+      _repeatTodos.sort((a, b) => a.order.compareTo(b.order));
+
+      _statistics = statsBox.values.toList();
+
+      _statisticsData = statsDataBox.values
+          .where(
+            (d) => !_syncWriteService.isTombstonedSync(
+              SyncTypes.statisticsData,
+              d.id,
+            ),
+          )
+          .toList();
+      _statisticsData.sort((a, b) => b.date.compareTo(a.date));
+
+      _applyFilters();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('TodoProvider: Error reloading from hive (read-only): $e');
+    }
+  }
+
   Future<void> addTodo(
     String title, {
     String? description,

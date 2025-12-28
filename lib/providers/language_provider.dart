@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:easy_todo/services/repositories/user_preferences_repository.dart';
+import 'package:easy_todo/services/hive_service.dart';
+import 'package:easy_todo/models/user_preferences_model.dart';
 
 class LanguageProvider extends ChangeNotifier {
   Locale _locale = const Locale('zh');
@@ -49,6 +51,23 @@ class LanguageProvider extends ChangeNotifier {
 
   Future<void> reloadFromPreferences() async {
     await _loadLanguage();
+  }
+
+  Future<void> reloadFromHiveReadOnly() async {
+    final box = HiveService().userPreferencesBox;
+    final prefs =
+        box.get(UserPreferencesRepository.hiveKey) ??
+        UserPreferencesModel.create();
+    final languageCode = prefs.languageCode.isNotEmpty
+        ? prefs.languageCode
+        : 'zh';
+    final previous = _locale;
+    _locale = Locale(languageCode);
+    notifyListeners();
+    if (previous.languageCode != _locale.languageCode &&
+        onLanguageChanged != null) {
+      onLanguageChanged!();
+    }
   }
 
   static const List<Locale> supportedLocales = [

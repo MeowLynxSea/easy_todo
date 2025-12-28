@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:easy_todo/theme/app_theme.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:easy_todo/services/repositories/user_preferences_repository.dart';
+import 'package:easy_todo/services/hive_service.dart';
+import 'package:easy_todo/models/user_preferences_model.dart';
 
 class ThemeProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
@@ -211,6 +213,60 @@ class ThemeProvider extends ChangeNotifier {
 
   Future<void> reloadFromPreferences() async {
     await _loadFromUserPreferences();
+  }
+
+  Future<void> reloadFromHiveReadOnly() async {
+    final box = HiveService().userPreferencesBox;
+    final prefs =
+        box.get(UserPreferencesRepository.hiveKey) ??
+        UserPreferencesModel.create();
+
+    final prevMode = _themeMode;
+    final prevThemeColors = _themeColors;
+    final prevCustom = _customThemeColors;
+
+    final index = prefs.themeModeIndex;
+    if (index >= 0 && index < ThemeMode.values.length) {
+      _themeMode = ThemeMode.values[index];
+    } else {
+      _themeMode = ThemeMode.system;
+    }
+
+    var nextThemeColors = _themeColors;
+    if (prefs.themeColorsString.isNotEmpty) {
+      try {
+        final parsed = _parseColorsFromString(prefs.themeColorsString);
+        if (parsed.isNotEmpty) {
+          nextThemeColors = parsed;
+        }
+      } catch (e) {
+        debugPrint('Error parsing theme colors: $e');
+      }
+    }
+    _themeColors = nextThemeColors;
+
+    Map<String, Color>? nextCustom;
+    if (prefs.customThemeColorsString.isNotEmpty) {
+      try {
+        final parsed = _parseColorsFromString(prefs.customThemeColorsString);
+        nextCustom = parsed.isNotEmpty ? parsed : null;
+      } catch (e) {
+        debugPrint('Error parsing custom theme colors: $e');
+        nextCustom = null;
+      }
+    } else {
+      nextCustom = null;
+    }
+    _customThemeColors = nextCustom;
+
+    final changed =
+        prevMode != _themeMode ||
+        prevThemeColors.toString() != _themeColors.toString() ||
+        prevCustom.toString() != _customThemeColors.toString();
+    if (changed) {
+      _themeVersion++;
+    }
+    notifyListeners();
   }
 
   String _colorsToString(Map<String, Color> colors) {

@@ -2702,4 +2702,78 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cloudSyncAuthProcessingSubtitle => '正在处理登录回调…';
+
+  @override
+  String get cloudSyncChangePassphraseTitle => '更改同步口令';
+
+  @override
+  String get cloudSyncChangePassphraseSubtitle => '仅重包 DEK，不重传历史数据';
+
+  @override
+  String get cloudSyncChangePassphraseAction => '更改';
+
+  @override
+  String get cloudSyncChangePassphraseDialogTitle => '更改同步口令';
+
+  @override
+  String get cloudSyncChangePassphraseDialogHint =>
+      '该操作只会更新 keyBundle。其他设备可能需要输入新口令才能解锁。';
+
+  @override
+  String get cloudSyncCurrentPassphrase => '当前同步口令';
+
+  @override
+  String get cloudSyncNewPassphrase => '新同步口令';
+
+  @override
+  String get cloudSyncPassphraseChangedSnack => '同步口令已更新';
+
+  @override
+  String get syncAiApiKeyTitle => '同步 API 密钥（加密）';
+
+  @override
+  String get syncAiApiKeySubtitle => '通过端到端加密在多端共享 API 密钥（可选）';
+
+  @override
+  String get syncAiApiKeyWarningTitle => '要同步 API 密钥吗？';
+
+  @override
+  String get syncAiApiKeyWarningMessage =>
+      '你的 API 密钥会以密文上传，拥有同步口令的设备可解密获取。仅在了解风险后开启。';
+
+  @override
+  String get cloudSyncAutoSyncIntervalTitle => '自动同步间隔';
+
+  @override
+  String get cloudSyncAutoSyncIntervalHint =>
+      '轮询为设备独立设置。如本地有待推送变更，可能会通过 outbox 触发更快同步。';
+
+  @override
+  String get cloudSyncAutoSyncIntervalSecondsLabel => '秒';
+
+  @override
+  String get cloudSyncAutoSyncIntervalMinHint => '最小 30 秒';
+
+  @override
+  String get cloudSyncAutoSyncIntervalSavedSnack => '自动同步间隔已保存';
+
+  @override
+  String cloudSyncAutoSyncIntervalSubtitle(Object interval) {
+    return '当前：$interval';
+  }
+
+  @override
+  String cloudSyncSecondsFormat(Object count) {
+    return '$count 秒';
+  }
+
+  @override
+  String cloudSyncMinutesFormat(Object count) {
+    return '$count 分钟';
+  }
+
+  @override
+  String cloudSyncMinutesSecondsFormat(Object minutes, Object seconds) {
+    return '$minutes 分 $seconds 秒';
+  }
 }

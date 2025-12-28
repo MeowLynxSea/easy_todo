@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:easy_todo/providers/todo_provider.dart';
 import 'package:easy_todo/services/repositories/user_preferences_repository.dart';
+import 'package:easy_todo/models/user_preferences_model.dart';
+import 'package:easy_todo/services/hive_service.dart';
 
 class FilterProvider extends ChangeNotifier {
   TodoFilter _statusFilter = TodoFilter.active;
@@ -82,6 +84,18 @@ class FilterProvider extends ChangeNotifier {
 
   Future<void> reloadFromPreferences() async {
     await _loadPreferences();
+  }
+
+  Future<void> reloadFromHiveReadOnly() async {
+    final box = HiveService().userPreferencesBox;
+    final prefs =
+        box.get(UserPreferencesRepository.hiveKey) ??
+        UserPreferencesModel.create();
+    _statusFilter = TodoFilter.values[prefs.statusFilterIndex];
+    _timeFilter = TimeFilter.values[prefs.timeFilterIndex];
+    _sortOrder = SortOrder.values[prefs.sortOrderIndex];
+    _selectedCategories = prefs.selectedCategories.toSet();
+    notifyListeners();
   }
 
   void resetToDefaults() {

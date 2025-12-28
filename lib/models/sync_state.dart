@@ -1,4 +1,7 @@
 class SyncState {
+  static const int defaultAutoSyncIntervalSeconds = 300;
+  static const int minAutoSyncIntervalSeconds = 30;
+
   final String deviceId;
   final int lastHlcWallMsUtc;
   final int lastHlcCounter;
@@ -24,6 +27,7 @@ class SyncState {
   /// Device-local sync configuration/state.
   final bool syncEnabled;
   final String serverUrl;
+  final int autoSyncIntervalSeconds;
 
   /// Current logged-in sync user id (derived from access token sub).
   ///
@@ -49,6 +53,7 @@ class SyncState {
     required this.didBackfillOutboxFromMeta,
     required this.syncEnabled,
     required this.serverUrl,
+    required this.autoSyncIntervalSeconds,
     required this.authUserId,
     required this.authProvider,
     required this.dekId,
@@ -64,6 +69,7 @@ class SyncState {
     bool? didBackfillOutboxFromMeta,
     bool? syncEnabled,
     String? serverUrl,
+    int? autoSyncIntervalSeconds,
     String? authUserId,
     String? authProvider,
     Object? dekId = _unset,
@@ -80,6 +86,8 @@ class SyncState {
           didBackfillOutboxFromMeta ?? this.didBackfillOutboxFromMeta,
       syncEnabled: syncEnabled ?? this.syncEnabled,
       serverUrl: serverUrl ?? this.serverUrl,
+      autoSyncIntervalSeconds:
+          autoSyncIntervalSeconds ?? this.autoSyncIntervalSeconds,
       authUserId: authUserId ?? this.authUserId,
       authProvider: authProvider ?? this.authProvider,
       dekId: identical(dekId, _unset) ? this.dekId : dekId as String?,
@@ -97,6 +105,7 @@ class SyncState {
       didBackfillOutboxFromMeta: false,
       syncEnabled: false,
       serverUrl: '',
+      autoSyncIntervalSeconds: defaultAutoSyncIntervalSeconds,
       authUserId: '',
       authProvider: '',
       dekId: null,

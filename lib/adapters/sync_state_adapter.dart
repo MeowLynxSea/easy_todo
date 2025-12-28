@@ -24,13 +24,15 @@ class SyncStateAdapter extends TypeAdapter<SyncState> {
       didBackfillOutboxFromMeta: (fields[10] as bool?) ?? false,
       authProvider: (fields[11] as String?) ?? '',
       authUserId: (fields[12] as String?) ?? '',
+      autoSyncIntervalSeconds:
+          (fields[13] as int?) ?? SyncState.defaultAutoSyncIntervalSeconds,
     );
   }
 
   @override
   void write(BinaryWriter writer, SyncState obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.deviceId)
       ..writeByte(1)
@@ -54,6 +56,8 @@ class SyncStateAdapter extends TypeAdapter<SyncState> {
       ..writeByte(11)
       ..write(obj.authProvider)
       ..writeByte(12)
-      ..write(obj.authUserId);
+      ..write(obj.authUserId)
+      ..writeByte(13)
+      ..write(obj.autoSyncIntervalSeconds);
   }
 }

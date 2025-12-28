@@ -28,6 +28,9 @@ class AISettingsModel extends HiveObject {
   @HiveField(7, defaultValue: true)
   bool enableSmartNotifications;
 
+  @HiveField(8, defaultValue: false)
+  bool syncApiKey;
+
   @HiveField(9, defaultValue: 1.0)
   double temperature;
 
@@ -55,6 +58,7 @@ class AISettingsModel extends HiveObject {
     this.enablePrioritySorting = true,
     this.enableMotivationalMessages = true,
     this.enableSmartNotifications = true,
+    this.syncApiKey = false,
     this.temperature = 1.0,
     this.maxTokens = 10000,
     this.requestTimeout = 60000,
@@ -72,6 +76,7 @@ class AISettingsModel extends HiveObject {
     bool? enablePrioritySorting,
     bool? enableMotivationalMessages,
     bool? enableSmartNotifications,
+    bool? syncApiKey,
     double? temperature,
     int? maxTokens,
     int? requestTimeout,
@@ -92,6 +97,7 @@ class AISettingsModel extends HiveObject {
           enableMotivationalMessages ?? this.enableMotivationalMessages,
       enableSmartNotifications:
           enableSmartNotifications ?? this.enableSmartNotifications,
+      syncApiKey: syncApiKey ?? this.syncApiKey,
       temperature: temperature ?? this.temperature,
       maxTokens: maxTokens ?? this.maxTokens,
       requestTimeout: requestTimeout ?? this.requestTimeout,
@@ -121,6 +127,7 @@ class AISettingsModel extends HiveObject {
       'enablePrioritySorting': enablePrioritySorting,
       'enableMotivationalMessages': enableMotivationalMessages,
       'enableSmartNotifications': enableSmartNotifications,
+      'syncApiKey': syncApiKey,
       'temperature': temperature,
       'maxTokens': maxTokens,
       'requestTimeout': requestTimeout,
@@ -150,6 +157,7 @@ class AISettingsModel extends HiveObject {
       enableSmartNotifications:
           (json['enableSmartNotifications'] as bool?) ??
           defaults.enableSmartNotifications,
+      syncApiKey: (json['syncApiKey'] as bool?) ?? defaults.syncApiKey,
       temperature:
           (json['temperature'] as num?)?.toDouble() ?? defaults.temperature,
       maxTokens: (json['maxTokens'] as num?)?.toInt() ?? defaults.maxTokens,

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:easy_todo/models/ai_settings_model.dart';
 import 'package:easy_todo/models/pomodoro_model.dart';
@@ -15,6 +16,7 @@ import 'package:easy_todo/models/user_preferences_model.dart';
 import 'package:easy_todo/services/crypto/sync_crypto.dart';
 import 'package:easy_todo/services/dek_storage_service.dart';
 import 'package:easy_todo/services/hive_service.dart';
+import 'package:easy_todo/services/secure_storage_service.dart';
 import 'package:easy_todo/services/repositories/pomodoro_repository.dart';
 import 'package:easy_todo/services/repositories/ai_settings_repository.dart';
 import 'package:easy_todo/services/repositories/repeat_todo_repository.dart';
@@ -30,6 +32,8 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 enum SyncStatus { idle, running, error }
+
+enum SyncRunTrigger { manual, auto }
 
 enum SyncErrorCode {
   passphraseMismatch,
@@ -70,10 +74,20 @@ class SyncProvider extends ChangeNotifier {
   static const int _pullPageLimit = 200;
   static const int _pushBatchLimit = 50;
 
+  static const Duration _autoSyncIndicatorMinVisible = Duration(
+    milliseconds: 800,
+  );
+  static const Duration _autoSyncDebounceWindow = Duration(seconds: 2);
+  static const Duration _autoSyncRetryBaseDelay = Duration(seconds: 5);
+  static const Duration _autoSyncMaxBackoff = Duration(minutes: 5);
+
+  static final Random _jitterRandom = Random.secure();
+
   final HiveService _hiveService;
   final SyncWriteService _syncWriteService;
   final SyncCrypto _crypto;
   final DekStorageService _dekStorage;
+  final SecureStorageService _secureStorage;
   final SyncAuthStorage _authStorage;
   final SyncServerAuthService _authService;
 
@@ -88,8 +102,18 @@ class SyncProvider extends ChangeNotifier {
   String? _lastErrorDetail;
   DateTime? _lastSyncAt;
   double? _kdfProgress;
+  int _autoSyncCompletedRevision = 0;
 
   Completer<void>? _syncMutex;
+  bool _autoSyncInProgress = false;
+  int? _autoSyncIndicatorStartMs;
+  Timer? _autoSyncIndicatorHideTimer;
+
+  StreamSubscription? _outboxSub;
+  Timer? _autoSyncTimer;
+  Timer? _autoSyncDebounceTimer;
+  int _autoSyncFailureCount = 0;
+  bool _appActive = true;
 
   void _debugLog(String message) {
     if (!kDebugMode) return;
@@ -101,12 +125,14 @@ class SyncProvider extends ChangeNotifier {
     SyncWriteService? syncWriteService,
     SyncCrypto? crypto,
     DekStorageService? dekStorage,
+    SecureStorageService? secureStorage,
     SyncAuthStorage? authStorage,
     SyncServerAuthService? authService,
   }) : _hiveService = hiveService ?? HiveService(),
        _syncWriteService = syncWriteService ?? SyncWriteService(),
        _crypto = crypto ?? SyncCrypto(),
        _dekStorage = dekStorage ?? DekStorageService(),
+       _secureStorage = secureStorage ?? SecureStorageService(),
        _authStorage = authStorage ?? SyncAuthStorage(),
        _authService = authService ?? createSyncServerAuthService() {
     unawaited(_init());
@@ -117,6 +143,8 @@ class SyncProvider extends ChangeNotifier {
   String? get lastErrorDetail => _lastErrorDetail;
   DateTime? get lastSyncAt => _lastSyncAt;
   double? get kdfProgress => _kdfProgress;
+  bool get isAutoSyncInProgress => _autoSyncInProgress;
+  int get autoSyncCompletedRevision => _autoSyncCompletedRevision;
 
   bool get syncEnabled => _state?.syncEnabled ?? false;
   bool get isServerConfigured => (_state?.serverUrl.trim().isNotEmpty ?? false);
@@ -131,6 +159,9 @@ class SyncProvider extends ChangeNotifier {
   String? get dekId => _state?.dekId;
   int get lastServerSeq => _state?.lastServerSeq ?? 0;
   String get deviceId => _state?.deviceId ?? '';
+  int get autoSyncIntervalSeconds =>
+      _state?.autoSyncIntervalSeconds ??
+      SyncState.defaultAutoSyncIntervalSeconds;
 
   Future<void> _init() async {
     final state = await _ensureStateLoaded();
@@ -146,6 +177,118 @@ class SyncProvider extends ChangeNotifier {
         _dek = cached;
       }
     }
+
+    _startAutoSync();
+    notifyListeners();
+  }
+
+  void onAppResumed() {
+    _appActive = true;
+    _scheduleDebouncedAutoSync(reason: 'resume');
+  }
+
+  void onAppPaused() {
+    _appActive = false;
+  }
+
+  void _startAutoSync() {
+    _outboxSub ??= _hiveService.syncOutboxBox.watch().listen((_) {
+      if (!_appActive) return;
+      if (_hiveService.syncOutboxBox.isEmpty) return;
+      _scheduleDebouncedAutoSync(reason: 'outbox');
+    });
+
+    _scheduleNextAutoSync(after: const Duration(seconds: 2));
+  }
+
+  void _scheduleDebouncedAutoSync({required String reason}) {
+    _autoSyncDebounceTimer?.cancel();
+    _autoSyncDebounceTimer = Timer(_autoSyncDebounceWindow, () {
+      unawaited(_attemptAutoSync(reason: reason));
+    });
+  }
+
+  void _scheduleNextAutoSync({required Duration after}) {
+    _autoSyncTimer?.cancel();
+    _autoSyncTimer = Timer(_withJitter(after), () {
+      unawaited(_attemptAutoSync(reason: 'timer'));
+    });
+  }
+
+  Duration _withJitter(Duration base) {
+    final jitterMs = _jitterRandom.nextInt(700);
+    return base + Duration(milliseconds: jitterMs);
+  }
+
+  Duration _computeBackoffDelay() {
+    final exp = _autoSyncFailureCount.clamp(0, 6);
+    final multiplier = 1 << exp;
+    final candidateMs = _autoSyncRetryBaseDelay.inMilliseconds * multiplier;
+    final cappedMs = min(candidateMs, _autoSyncMaxBackoff.inMilliseconds);
+    return Duration(milliseconds: cappedMs);
+  }
+
+  bool _canAutoSync() {
+    if (!_appActive) return false;
+    if (!syncEnabled) return false;
+    if (!isConfigured) return false;
+    if (!isUnlocked) return false;
+    if (status == SyncStatus.running) return false;
+    return true;
+  }
+
+  Future<void> _attemptAutoSync({required String reason}) async {
+    if (!_canAutoSync()) {
+      _scheduleNextAutoSync(after: _autoSyncInterval());
+      return;
+    }
+
+    // Avoid hammering when logged out/expired: let user re-login explicitly.
+    if (!isLoggedIn) {
+      _scheduleNextAutoSync(after: _autoSyncInterval());
+      return;
+    }
+
+    try {
+      _debugLog(
+        'autoSync attempt reason=$reason outbox=${_hiveService.syncOutboxBox.length}',
+      );
+      await syncNow(trigger: SyncRunTrigger.auto);
+      _autoSyncFailureCount = 0;
+      _scheduleNextAutoSync(after: _autoSyncInterval());
+    } catch (e) {
+      // Surface error state via SyncProvider, but keep auto-sync resilient.
+      if (e is SyncApiException) {
+        final statusCode = e.statusCode;
+        if (statusCode == 401 || statusCode == 403) {
+          _autoSyncFailureCount = 0;
+          _scheduleNextAutoSync(after: _autoSyncInterval());
+          return;
+        }
+      }
+
+      _autoSyncFailureCount++;
+      _scheduleNextAutoSync(after: _computeBackoffDelay());
+    }
+  }
+
+  Duration _autoSyncInterval() {
+    final seconds = autoSyncIntervalSeconds.clamp(
+      SyncState.minAutoSyncIntervalSeconds,
+      24 * 60 * 60,
+    );
+    return Duration(seconds: seconds);
+  }
+
+  Future<void> setAutoSyncIntervalSeconds(int seconds) async {
+    final state = await _ensureStateLoaded();
+    final normalized = seconds < SyncState.minAutoSyncIntervalSeconds
+        ? SyncState.minAutoSyncIntervalSeconds
+        : seconds;
+    final updated = state.copyWith(autoSyncIntervalSeconds: normalized);
+    await _hiveService.syncStateBox.put(SyncWriteService.stateKey, updated);
+    _state = updated;
+    _scheduleNextAutoSync(after: _autoSyncInterval());
     notifyListeners();
   }
 
@@ -279,6 +422,15 @@ class SyncProvider extends ChangeNotifier {
     await _hiveService.syncStateBox.put(SyncWriteService.stateKey, updated);
     _state = updated;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    unawaited(_outboxSub?.cancel());
+    _autoSyncTimer?.cancel();
+    _autoSyncDebounceTimer?.cancel();
+    _autoSyncIndicatorHideTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _onAuthTokensUpdated(SyncAuthTokens tokens) async {
@@ -494,6 +646,80 @@ class SyncProvider extends ChangeNotifier {
     });
   }
 
+  Future<void> changePassphrase({
+    required String newPassphrase,
+    String? confirmNewPassphrase,
+    String? currentPassphrase,
+  }) async {
+    if (confirmNewPassphrase != null && newPassphrase != confirmNewPassphrase) {
+      _setError(SyncErrorCode.passphraseMismatch);
+      return;
+    }
+    if (!isConfigured) {
+      _setError(SyncErrorCode.notConfigured);
+      return;
+    }
+
+    await _withStatus(SyncStatus.running, () async {
+      await _ensureStateLoaded();
+      final client = _client();
+      final bundle = await client.getKeyBundle();
+      if (bundle == null) {
+        throw const SyncApiException('key bundle not found', statusCode: 404);
+      }
+      _bundle = bundle;
+
+      var dek = _dek;
+      dek ??= await _dekStorage.readDek(dekId: bundle.dekId);
+
+      if (dek == null) {
+        final current = (currentPassphrase ?? '').trim();
+        if (current.isEmpty) {
+          throw const InvalidPassphraseException('Missing current passphrase');
+        }
+        _clearKdfProgress();
+        try {
+          dek = await _crypto.unlockDek(
+            bundle: bundle,
+            passphrase: current,
+            onKdfProgress: _updateKdfProgress,
+          );
+        } finally {
+          _clearKdfProgress();
+        }
+      }
+
+      _clearKdfProgress();
+      try {
+        final nextBundle = await _crypto.rewrapKeyBundle(
+          current: bundle,
+          dek: dek,
+          newPassphrase: newPassphrase,
+          expectedBundleVersion: bundle.bundleVersion,
+          onKdfProgress: _updateKdfProgress,
+        );
+        final updated = await client.putKeyBundle(
+          expectedBundleVersion: bundle.bundleVersion,
+          bundle: nextBundle,
+        );
+
+        _bundle = updated;
+        _dek = dek;
+        await _dekStorage.writeDek(dekId: updated.dekId, dek: dek);
+
+        final state = await _ensureStateLoaded();
+        final updatedState = state.copyWith(dekId: updated.dekId);
+        await _hiveService.syncStateBox.put(
+          SyncWriteService.stateKey,
+          updatedState,
+        );
+        _state = updatedState;
+      } finally {
+        _clearKdfProgress();
+      }
+    });
+  }
+
   void _updateKdfProgress(double progress) {
     final next = progress.clamp(0.0, 1.0);
     final current = _kdfProgress;
@@ -513,7 +739,10 @@ class SyncProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> syncNow({bool allowRollback = false}) async {
+  Future<void> syncNow({
+    bool allowRollback = false,
+    SyncRunTrigger trigger = SyncRunTrigger.manual,
+  }) async {
     await _ensureStateLoaded();
     if (!syncEnabled) {
       _setError(SyncErrorCode.disabled);
@@ -532,9 +761,16 @@ class SyncProvider extends ChangeNotifier {
     }
 
     if (_syncMutex != null) return _syncMutex!.future;
+    if (trigger == SyncRunTrigger.auto) {
+      _autoSyncIndicatorHideTimer?.cancel();
+      _autoSyncInProgress = true;
+      _autoSyncIndicatorStartMs = DateTime.now().millisecondsSinceEpoch;
+      notifyListeners();
+    }
     final mutex = Completer<void>();
     _syncMutex = mutex;
 
+    var succeeded = false;
     try {
       await _withStatus(SyncStatus.running, () async {
         final client = _client();
@@ -570,9 +806,38 @@ class SyncProvider extends ChangeNotifier {
         _lastSyncAt = DateTime.now();
         _debugLog('syncNow end lastSeq=${_state?.lastServerSeq ?? 0}');
       });
+      succeeded = true;
     } finally {
       if (!mutex.isCompleted) mutex.complete();
       _syncMutex = null;
+      if (trigger == SyncRunTrigger.auto && _autoSyncInProgress) {
+        final startedAt = _autoSyncIndicatorStartMs;
+        final nowMs = DateTime.now().millisecondsSinceEpoch;
+        final elapsedMs = startedAt == null ? 0 : (nowMs - startedAt);
+        final remainingMs =
+            _autoSyncIndicatorMinVisible.inMilliseconds - elapsedMs;
+
+        if (remainingMs > 0) {
+          _autoSyncIndicatorHideTimer?.cancel();
+          _autoSyncIndicatorHideTimer = Timer(
+            Duration(milliseconds: remainingMs),
+            () {
+              _autoSyncInProgress = false;
+              _autoSyncIndicatorStartMs = null;
+              notifyListeners();
+            },
+          );
+        } else {
+          _autoSyncInProgress = false;
+          _autoSyncIndicatorStartMs = null;
+          notifyListeners();
+        }
+      }
+
+      if (trigger == SyncRunTrigger.auto && succeeded) {
+        _autoSyncCompletedRevision++;
+        notifyListeners();
+      }
     }
   }
 
@@ -1138,7 +1403,14 @@ class SyncProvider extends ChangeNotifier {
         final settings = _hiveService.aiSettingsBox.get(
           AISettingsRepository.hiveKey,
         );
-        return settings?.toJson(includeApiKey: false);
+        if (settings == null) return null;
+        if (!settings.syncApiKey) {
+          return settings.toJson(includeApiKey: false);
+        }
+        final apiKey = await _secureStorage.readAiApiKey();
+        return settings
+            .copyWith(apiKey: apiKey ?? '')
+            .toJson(includeApiKey: true);
       default:
         return null;
     }
@@ -1296,9 +1568,19 @@ class SyncProvider extends ChangeNotifier {
         );
         return;
       case SyncTypes.aiSettings:
+        final decoded = AISettingsModel.fromJson(payload);
+        final apiKey = decoded.apiKey.trim();
+        if (decoded.syncApiKey) {
+          if (apiKey.isNotEmpty) {
+            await _secureStorage.writeAiApiKey(apiKey);
+          }
+        } else {
+          // When apiKey syncing is disabled, do not keep any synced key on disk.
+          await _secureStorage.deleteAiApiKey();
+        }
         await _hiveService.aiSettingsBox.put(
           AISettingsRepository.hiveKey,
-          AISettingsModel.fromJson(payload),
+          decoded.copyWith(apiKey: ''),
         );
         return;
       default:

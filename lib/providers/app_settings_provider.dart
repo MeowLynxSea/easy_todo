@@ -131,6 +131,37 @@ class AppSettingsProvider extends ChangeNotifier {
     await _loadSettings();
   }
 
+  Future<void> reloadFromHiveReadOnly() async {
+    final deviceBox = _hiveService.deviceSettingsBox;
+    final prefsBox = _hiveService.userPreferencesBox;
+
+    final savedDevice = deviceBox.get('deviceSettings');
+    if (savedDevice != null) {
+      _deviceSettings = savedDevice;
+    } else {
+      _deviceSettings = DeviceSettingsModel.create();
+    }
+
+    final prefs =
+        prefsBox.get(UserPreferencesRepository.hiveKey) ??
+        UserPreferencesModel.create();
+    _preferences = prefs;
+
+    if (kIsWeb) {
+      final needsDisable =
+          _deviceSettings.autoUpdateEnabled ||
+          _deviceSettings.biometricLockEnabled;
+      if (needsDisable) {
+        _deviceSettings = _deviceSettings.copyWith(
+          autoUpdateEnabled: false,
+          biometricLockEnabled: false,
+        );
+      }
+    }
+
+    notifyListeners();
+  }
+
   Future<void> _saveDeviceSettings() async {
     try {
       final deviceBox = _hiveService.deviceSettingsBox;

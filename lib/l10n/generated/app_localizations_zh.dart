@@ -48,7 +48,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cloudSync => '云同步';
 
   @override
-  String get cloudSyncSubtitle => '端到端加密同步（手动）';
+  String get cloudSyncSubtitle => '端到端加密同步';
 
   @override
   String get cloudSyncOverviewTitle => '手动端到端加密同步';
@@ -72,7 +72,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cloudSyncEnableSwitchTitle => '启用云同步';
 
   @override
-  String get cloudSyncEnableSwitchSubtitle => '引导式设置：服务器 + 同步口令';
+  String get cloudSyncEnableSwitchSubtitle => '在您的各个设备之间同步数据';
 
   @override
   String get cloudSyncServerSection => '服务器';
@@ -261,7 +261,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cloudSyncContinue => '继续';
 
   @override
-  String get cloudSyncWebDekNote => 'Web 端默认仅会话缓存 DEK，刷新页面后需要重新输入口令解锁。';
+  String get cloudSyncWebDekNote => 'Web 端密钥存储至浏览器关闭，重启浏览器后需要重新输入口令解锁。';
 
   @override
   String get cloudSyncStatusIdle => '空闲';

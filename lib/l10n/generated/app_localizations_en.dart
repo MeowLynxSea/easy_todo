@@ -49,7 +49,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cloudSync => 'Cloud Sync';
 
   @override
-  String get cloudSyncSubtitle => 'End-to-end encrypted sync (manual)';
+  String get cloudSyncSubtitle => 'End-to-end encrypted sync';
 
   @override
   String get cloudSyncOverviewTitle => 'Manual E2EE sync';
@@ -75,7 +75,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cloudSyncEnableSwitchSubtitle =>
-      'Guided setup: server + passphrase';
+      'Sync your data across your devices';
 
   @override
   String get cloudSyncServerSection => 'Server';
@@ -270,7 +270,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cloudSyncWebDekNote =>
-      'Web uses session-only DEK caching. Refreshing the page requires unlocking again.';
+      'Web stores the key until the browser is closed. Restarting the browser requires unlocking again.';
 
   @override
   String get cloudSyncStatusIdle => 'idle';

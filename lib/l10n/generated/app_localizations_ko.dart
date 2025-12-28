@@ -303,8 +303,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get cloudSyncErrorConflict => '충돌(bundleVersion 불일치)';
 
   @override
-  String get cloudSyncErrorQuotaExceeded =>
-      'Server quota exceeded (some records were rejected)';
+  String get cloudSyncErrorQuotaExceeded => '서버 할당량 초과(일부 레코드가 거부됨)';
 
   @override
   String get cloudSyncErrorUnknown => '알 수 없는 오류';
@@ -713,7 +712,7 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get webBackupHint => 'Web: backups use download/upload.';
+  String get webBackupHint => '웹: 백업은 다운로드/업로드를 사용합니다.';
 
   @override
   String restoreWarning(Object fileName) {
@@ -2712,84 +2711,82 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get cloudSyncAuthProcessingTitle => 'Signing in';
+  String get cloudSyncAuthProcessingTitle => '로그인 중';
 
   @override
-  String get cloudSyncAuthProcessingSubtitle => 'Processing login callback…';
+  String get cloudSyncAuthProcessingSubtitle => '로그인 콜백 처리 중…';
 
   @override
-  String get cloudSyncChangePassphraseTitle => 'Change passphrase';
+  String get cloudSyncChangePassphraseTitle => '패스프레이즈 변경';
 
   @override
-  String get cloudSyncChangePassphraseSubtitle =>
-      'Re-wrap the DEK only (no re-upload of history)';
+  String get cloudSyncChangePassphraseSubtitle => 'DEK만 다시 래핑(기록 재업로드 없음)';
 
   @override
-  String get cloudSyncChangePassphraseAction => 'Change';
+  String get cloudSyncChangePassphraseAction => '변경';
 
   @override
-  String get cloudSyncChangePassphraseDialogTitle => 'Change sync passphrase';
+  String get cloudSyncChangePassphraseDialogTitle => '동기화 패스프레이즈 변경';
 
   @override
   String get cloudSyncChangePassphraseDialogHint =>
-      'This only updates the key bundle. Other devices may need to enter the new passphrase to unlock.';
+      '키 번들만 업데이트합니다. 다른 기기에서는 잠금을 해제하려면 새 패스프레이즈를 입력해야 할 수 있습니다.';
 
   @override
-  String get cloudSyncCurrentPassphrase => 'Current passphrase';
+  String get cloudSyncCurrentPassphrase => '현재 패스프레이즈';
 
   @override
-  String get cloudSyncNewPassphrase => 'New passphrase';
+  String get cloudSyncNewPassphrase => '새 패스프레이즈';
 
   @override
-  String get cloudSyncPassphraseChangedSnack => 'Passphrase updated';
+  String get cloudSyncPassphraseChangedSnack => '패스프레이즈가 업데이트됨';
 
   @override
-  String get syncAiApiKeyTitle => 'Sync API key (encrypted)';
+  String get syncAiApiKeyTitle => 'API 키 동기화(암호화)';
 
   @override
-  String get syncAiApiKeySubtitle =>
-      'Share your API key across devices via end-to-end encryption (optional)';
+  String get syncAiApiKeySubtitle => '종단간 암호화로 기기 간 API 키를 공유합니다(선택 사항)';
 
   @override
-  String get syncAiApiKeyWarningTitle => 'Sync API key?';
+  String get syncAiApiKeyWarningTitle => 'API 키를 동기화할까요?';
 
   @override
   String get syncAiApiKeyWarningMessage =>
-      'Your API key will be uploaded as ciphertext and can be decrypted by devices with your sync passphrase. Enable only if you understand the risk.';
+      'API 키는 암호문으로 업로드되며 동기화 패스프레이즈가 있는 기기에서 복호화할 수 있습니다. 위험을 이해하는 경우에만 활성화하세요.';
 
   @override
-  String get cloudSyncAutoSyncIntervalTitle => 'Auto sync interval';
+  String get cloudSyncAutoSyncIntervalTitle => '자동 동기화 간격';
 
   @override
   String get cloudSyncAutoSyncIntervalHint =>
-      'Polling is device-specific. If there are pending local changes, they may sync sooner via the outbox trigger.';
+      '폴링은 기기별 설정입니다. 로컬에 대기 중인 변경이 있으면 outbox 트리거로 더 빨리 동기화될 수 있습니다.';
 
   @override
-  String get cloudSyncAutoSyncIntervalSecondsLabel => 'Seconds';
+  String get cloudSyncAutoSyncIntervalSecondsLabel => '초';
 
   @override
-  String get cloudSyncAutoSyncIntervalMinHint => 'Minimum 30 seconds';
+  String get cloudSyncAutoSyncIntervalMinHint => '최소 30초';
 
   @override
-  String get cloudSyncAutoSyncIntervalSavedSnack => 'Auto sync interval saved';
+  String get cloudSyncAutoSyncIntervalSavedSnack => '자동 동기화 간격이 저장됨';
 
   @override
   String cloudSyncAutoSyncIntervalSubtitle(Object interval) {
-    return 'Current: $interval';
+    return '현재: $interval';
   }
 
   @override
   String cloudSyncSecondsFormat(Object count) {
-    return '${count}s';
+    return '$count초';
   }
 
   @override
   String cloudSyncMinutesFormat(Object count) {
-    return '${count}m';
+    return '$count분';
   }
 
   @override
   String cloudSyncMinutesSecondsFormat(Object minutes, Object seconds) {
-    return '${minutes}m ${seconds}s';
+    return '$minutes분 $seconds초';
   }
 }

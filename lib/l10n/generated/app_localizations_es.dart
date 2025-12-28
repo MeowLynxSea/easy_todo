@@ -311,7 +311,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get cloudSyncErrorQuotaExceeded =>
-      'Server quota exceeded (some records were rejected)';
+      'Cuota del servidor excedida (algunos registros fueron rechazados)';
 
   @override
   String get cloudSyncErrorUnknown => 'Error desconocido';
@@ -726,7 +726,8 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get webBackupHint => 'Web: backups use download/upload.';
+  String get webBackupHint =>
+      'Web: las copias de seguridad usan descarga/carga.';
 
   @override
   String restoreWarning(Object fileName) {
@@ -2799,70 +2800,74 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get cloudSyncAuthProcessingTitle => 'Signing in';
+  String get cloudSyncAuthProcessingTitle => 'Iniciando sesión';
 
   @override
-  String get cloudSyncAuthProcessingSubtitle => 'Processing login callback…';
+  String get cloudSyncAuthProcessingSubtitle =>
+      'Procesando devolución de llamada de inicio de sesión…';
 
   @override
-  String get cloudSyncChangePassphraseTitle => 'Change passphrase';
+  String get cloudSyncChangePassphraseTitle => 'Cambiar frase de paso';
 
   @override
   String get cloudSyncChangePassphraseSubtitle =>
-      'Re-wrap the DEK only (no re-upload of history)';
+      'Solo reenvolver el DEK (sin volver a subir el historial)';
 
   @override
-  String get cloudSyncChangePassphraseAction => 'Change';
+  String get cloudSyncChangePassphraseAction => 'Cambiar';
 
   @override
-  String get cloudSyncChangePassphraseDialogTitle => 'Change sync passphrase';
+  String get cloudSyncChangePassphraseDialogTitle =>
+      'Cambiar frase de paso de sincronización';
 
   @override
   String get cloudSyncChangePassphraseDialogHint =>
-      'This only updates the key bundle. Other devices may need to enter the new passphrase to unlock.';
+      'Esto solo actualiza el paquete de claves. Es posible que otros dispositivos deban introducir la nueva frase de paso para desbloquear.';
 
   @override
-  String get cloudSyncCurrentPassphrase => 'Current passphrase';
+  String get cloudSyncCurrentPassphrase => 'Frase de paso actual';
 
   @override
-  String get cloudSyncNewPassphrase => 'New passphrase';
+  String get cloudSyncNewPassphrase => 'Nueva frase de paso';
 
   @override
-  String get cloudSyncPassphraseChangedSnack => 'Passphrase updated';
+  String get cloudSyncPassphraseChangedSnack => 'Frase de paso actualizada';
 
   @override
-  String get syncAiApiKeyTitle => 'Sync API key (encrypted)';
+  String get syncAiApiKeyTitle => 'Sincronizar clave API (cifrada)';
 
   @override
   String get syncAiApiKeySubtitle =>
-      'Share your API key across devices via end-to-end encryption (optional)';
+      'Comparte tu clave API entre dispositivos mediante cifrado de extremo a extremo (opcional)';
 
   @override
-  String get syncAiApiKeyWarningTitle => 'Sync API key?';
+  String get syncAiApiKeyWarningTitle => '¿Sincronizar clave API?';
 
   @override
   String get syncAiApiKeyWarningMessage =>
-      'Your API key will be uploaded as ciphertext and can be decrypted by devices with your sync passphrase. Enable only if you understand the risk.';
+      'Tu clave API se subirá como texto cifrado y puede ser descifrada por dispositivos con tu frase de paso de sincronización. Actívalo solo si entiendes el riesgo.';
 
   @override
-  String get cloudSyncAutoSyncIntervalTitle => 'Auto sync interval';
+  String get cloudSyncAutoSyncIntervalTitle =>
+      'Intervalo de sincronización automática';
 
   @override
   String get cloudSyncAutoSyncIntervalHint =>
-      'Polling is device-specific. If there are pending local changes, they may sync sooner via the outbox trigger.';
+      'El sondeo es específico del dispositivo. Si hay cambios locales pendientes, podrían sincronizarse antes mediante el disparador del buzón de salida.';
 
   @override
-  String get cloudSyncAutoSyncIntervalSecondsLabel => 'Seconds';
+  String get cloudSyncAutoSyncIntervalSecondsLabel => 'Segundos';
 
   @override
-  String get cloudSyncAutoSyncIntervalMinHint => 'Minimum 30 seconds';
+  String get cloudSyncAutoSyncIntervalMinHint => 'Mínimo 30 segundos';
 
   @override
-  String get cloudSyncAutoSyncIntervalSavedSnack => 'Auto sync interval saved';
+  String get cloudSyncAutoSyncIntervalSavedSnack =>
+      'Intervalo de sincronización automática guardado';
 
   @override
   String cloudSyncAutoSyncIntervalSubtitle(Object interval) {
-    return 'Current: $interval';
+    return 'Actual: $interval';
   }
 
   @override

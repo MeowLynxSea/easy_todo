@@ -189,7 +189,7 @@ abstract class AppLocalizations {
   /// No description provided for @cloudSyncSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'End-to-end encrypted sync (manual)'**
+  /// **'End-to-end encrypted sync'**
   String get cloudSyncSubtitle;
 
   /// No description provided for @cloudSyncOverviewTitle.
@@ -237,7 +237,7 @@ abstract class AppLocalizations {
   /// No description provided for @cloudSyncEnableSwitchSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Guided setup: server + passphrase'**
+  /// **'Sync your data across your devices'**
   String get cloudSyncEnableSwitchSubtitle;
 
   /// No description provided for @cloudSyncServerSection.
@@ -615,7 +615,7 @@ abstract class AppLocalizations {
   /// No description provided for @cloudSyncWebDekNote.
   ///
   /// In en, this message translates to:
-  /// **'Web uses session-only DEK caching. Refreshing the page requires unlocking again.'**
+  /// **'Web stores the key until the browser is closed. Restarting the browser requires unlocking again.'**
   String get cloudSyncWebDekNote;
 
   /// No description provided for @cloudSyncStatusIdle.

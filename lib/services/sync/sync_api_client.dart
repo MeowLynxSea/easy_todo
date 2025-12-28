@@ -220,7 +220,12 @@ class SyncApiClient {
       if (!mutex.isCompleted) mutex.complete(tokens);
       return tokens;
     } catch (e) {
-      await storage.clear();
+      final status = e is DioException ? e.response?.statusCode : null;
+      final shouldClear =
+          status == 401 || status == 403; // refresh token invalid/expired
+      if (shouldClear) {
+        await storage.clear();
+      }
       if (!mutex.isCompleted) mutex.completeError(e);
       rethrow;
     } finally {

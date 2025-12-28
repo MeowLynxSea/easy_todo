@@ -751,9 +751,7 @@ class SyncProvider extends ChangeNotifier {
       _setError(SyncErrorCode.disabled);
       return;
     }
-    if (!isLoggedIn) {
-      _authTokens = await _authStorage.read();
-    }
+    _authTokens = await _authStorage.read();
     if (!isConfigured) {
       _setError(SyncErrorCode.notConfigured);
       return;

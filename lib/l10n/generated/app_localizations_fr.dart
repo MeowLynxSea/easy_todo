@@ -86,7 +86,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get cloudSyncSetupSubtitle =>
-      'Définissez l’URL et le jeton, puis vérifiez la connexion.';
+      'Définissez l’URL du serveur, choisissez un provider et connectez-vous.';
 
   @override
   String get cloudSyncSetupDialogTitle => 'Configuration du serveur';
@@ -98,19 +98,44 @@ class AppLocalizationsFr extends AppLocalizations {
   String get cloudSyncServerUrlHint => 'http://127.0.0.1:8787';
 
   @override
-  String get cloudSyncBearerToken => 'Jeton Bearer (dev)';
+  String get cloudSyncAuthProvider => 'Provider OAuth';
 
   @override
-  String get cloudSyncShowToken => 'Afficher le jeton';
+  String get cloudSyncAuthProviderHint => 'linuxdo';
 
   @override
-  String get cloudSyncHideToken => 'Masquer le jeton';
+  String get cloudSyncAuthMode => 'Authentification';
+
+  @override
+  String get cloudSyncAuthModeLoggedIn => 'Connecté';
+
+  @override
+  String get cloudSyncAuthModeLoggedOut => 'Non connecté';
 
   @override
   String get cloudSyncCheckServer => 'Vérifier le serveur';
 
   @override
   String get cloudSyncEditServerConfig => 'Modifier';
+
+  @override
+  String get cloudSyncLogin => 'Se connecter';
+
+  @override
+  String get cloudSyncLogout => 'Se déconnecter';
+
+  @override
+  String get cloudSyncLoggedInSnack => 'Connecté';
+
+  @override
+  String get cloudSyncLoggedOutSnack => 'Déconnecté';
+
+  @override
+  String get cloudSyncLoginRedirectedSnack =>
+      'Continuez la connexion dans le navigateur';
+
+  @override
+  String get cloudSyncLoginFailedSnack => 'Échec de la connexion';
 
   @override
   String get cloudSyncNotSet => 'Non défini';
@@ -284,6 +309,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get cloudSyncErrorConflict => 'Conflit (version du bundle)';
+
+  @override
+  String get cloudSyncErrorQuotaExceeded =>
+      'Server quota exceeded (some records were rejected)';
 
   @override
   String get cloudSyncErrorUnknown => 'Erreur inconnue';

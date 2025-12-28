@@ -16,11 +16,9 @@ void main() {
     final salt = Uint8List.fromList(List<int>.generate(16, (i) => i));
     const params = ScryptParams(n: 1024, r: 8, p: 1, dkLen: 32);
 
-    final asyncOut = await const ScryptDartAsync(yieldEvery: 16).derive(
-      passphrase: passphrase,
-      salt: salt,
-      params: params,
-    );
+    final asyncOut = await const ScryptDartAsync(
+      yieldEvery: 16,
+    ).derive(passphrase: passphrase, salt: salt, params: params);
 
     // PBKDF2 step should also match (sanity check).
     final bLen = 128 * params.r * params.p;
@@ -32,15 +30,11 @@ void main() {
 
     final derivator = pc.Scrypt()
       ..init(
-        pc.ScryptParameters(
-          params.n,
-          params.r,
-          params.p,
-          params.dkLen,
-          salt,
-        ),
+        pc.ScryptParameters(params.n, params.r, params.p, params.dkLen, salt),
       );
-    final expected = derivator.process(Uint8List.fromList(utf8.encode(passphrase)));
+    final expected = derivator.process(
+      Uint8List.fromList(utf8.encode(passphrase)),
+    );
 
     expect(asyncOut, expected);
   });

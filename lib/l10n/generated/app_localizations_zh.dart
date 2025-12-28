@@ -81,7 +81,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cloudSyncSetupTitle => '1）配置服务器';
 
   @override
-  String get cloudSyncSetupSubtitle => '填写服务器地址与 token，并先检测连通性。';
+  String get cloudSyncSetupSubtitle => '填写服务器地址，然后选择 Provider 并登录。';
 
   @override
   String get cloudSyncSetupDialogTitle => '服务器配置';
@@ -93,19 +93,43 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cloudSyncServerUrlHint => 'http://127.0.0.1:8787';
 
   @override
-  String get cloudSyncBearerToken => 'Bearer Token（开发联调）';
+  String get cloudSyncAuthProvider => 'OAuth Provider';
 
   @override
-  String get cloudSyncShowToken => '显示 token';
+  String get cloudSyncAuthProviderHint => 'linuxdo';
 
   @override
-  String get cloudSyncHideToken => '隐藏 token';
+  String get cloudSyncAuthMode => '鉴权';
+
+  @override
+  String get cloudSyncAuthModeLoggedIn => '已登录';
+
+  @override
+  String get cloudSyncAuthModeLoggedOut => '未登录';
 
   @override
   String get cloudSyncCheckServer => '检测服务器';
 
   @override
   String get cloudSyncEditServerConfig => '编辑配置';
+
+  @override
+  String get cloudSyncLogin => '登录';
+
+  @override
+  String get cloudSyncLogout => '退出登录';
+
+  @override
+  String get cloudSyncLoggedInSnack => '已登录';
+
+  @override
+  String get cloudSyncLoggedOutSnack => '已退出登录';
+
+  @override
+  String get cloudSyncLoginRedirectedSnack => '请在浏览器中继续完成登录';
+
+  @override
+  String get cloudSyncLoginFailedSnack => '登录失败';
 
   @override
   String get cloudSyncNotSet => '未设置';
@@ -271,6 +295,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cloudSyncErrorConflict => '冲突（bundleVersion 不匹配）';
+
+  @override
+  String get cloudSyncErrorQuotaExceeded => '服务器配额不足（部分记录被拒绝）';
 
   @override
   String get cloudSyncErrorUnknown => '未知错误';

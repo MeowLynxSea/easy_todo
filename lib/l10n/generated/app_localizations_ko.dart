@@ -83,7 +83,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get cloudSyncSetupTitle => '1) 서버 설정';
 
   @override
-  String get cloudSyncSetupSubtitle => '서버 URL과 토큰을 설정한 뒤 연결을 확인하세요.';
+  String get cloudSyncSetupSubtitle => '서버 URL을 설정한 뒤 Provider를 선택하고 로그인하세요.';
 
   @override
   String get cloudSyncSetupDialogTitle => '서버 설정';
@@ -95,19 +95,43 @@ class AppLocalizationsKo extends AppLocalizations {
   String get cloudSyncServerUrlHint => 'http://127.0.0.1:8787';
 
   @override
-  String get cloudSyncBearerToken => 'Bearer 토큰(개발용)';
+  String get cloudSyncAuthProvider => 'OAuth Provider';
 
   @override
-  String get cloudSyncShowToken => '토큰 표시';
+  String get cloudSyncAuthProviderHint => 'linuxdo';
 
   @override
-  String get cloudSyncHideToken => '토큰 숨기기';
+  String get cloudSyncAuthMode => '인증';
+
+  @override
+  String get cloudSyncAuthModeLoggedIn => '로그인됨';
+
+  @override
+  String get cloudSyncAuthModeLoggedOut => '로그인 안 됨';
 
   @override
   String get cloudSyncCheckServer => '서버 확인';
 
   @override
   String get cloudSyncEditServerConfig => '편집';
+
+  @override
+  String get cloudSyncLogin => '로그인';
+
+  @override
+  String get cloudSyncLogout => '로그아웃';
+
+  @override
+  String get cloudSyncLoggedInSnack => '로그인됨';
+
+  @override
+  String get cloudSyncLoggedOutSnack => '로그아웃됨';
+
+  @override
+  String get cloudSyncLoginRedirectedSnack => '브라우저에서 로그인을 계속하세요';
+
+  @override
+  String get cloudSyncLoginFailedSnack => '로그인 실패';
 
   @override
   String get cloudSyncNotSet => '설정 안 됨';
@@ -277,6 +301,10 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get cloudSyncErrorConflict => '충돌(bundleVersion 불일치)';
+
+  @override
+  String get cloudSyncErrorQuotaExceeded =>
+      'Server quota exceeded (some records were rejected)';
 
   @override
   String get cloudSyncErrorUnknown => '알 수 없는 오류';

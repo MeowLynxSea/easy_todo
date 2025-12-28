@@ -146,7 +146,8 @@ class UserPreferencesModel {
           (json['statusFilterIndex'] as num?)?.toInt() ??
           defaults.statusFilterIndex,
       timeFilterIndex:
-          (json['timeFilterIndex'] as num?)?.toInt() ?? defaults.timeFilterIndex,
+          (json['timeFilterIndex'] as num?)?.toInt() ??
+          defaults.timeFilterIndex,
       sortOrderIndex:
           (json['sortOrderIndex'] as num?)?.toInt() ?? defaults.sortOrderIndex,
       selectedCategories:

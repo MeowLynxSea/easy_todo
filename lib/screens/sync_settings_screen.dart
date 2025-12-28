@@ -20,7 +20,6 @@ class SyncSettingsScreen extends StatefulWidget {
 }
 
 class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
-  bool _showToken = false;
   bool _isEnabling = false;
 
   @override
@@ -34,9 +33,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     try {
       await sync.checkServerHealth();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.cloudSyncServerOkSnack)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.cloudSyncServerOkSnack)));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -49,7 +48,6 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     final l10n = AppLocalizations.of(context)!;
     final sync = context.read<SyncProvider>();
     final serverUrlController = TextEditingController(text: sync.serverUrl);
-    final tokenController = TextEditingController(text: sync.authToken);
 
     return (await showDialog<bool>(
           context: context,
@@ -68,27 +66,6 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                     ),
                     textInputAction: TextInputAction.next,
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: tokenController,
-                    obscureText: !_showToken,
-                    decoration: InputDecoration(
-                      labelText: l10n.cloudSyncBearerToken,
-                      prefixIcon: const Icon(Icons.key_outlined),
-                      suffixIcon: IconButton(
-                        tooltip: _showToken
-                            ? l10n.cloudSyncHideToken
-                            : l10n.cloudSyncShowToken,
-                        onPressed: () =>
-                            setState(() => _showToken = !_showToken),
-                        icon: Icon(
-                          _showToken
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
               actions: [
@@ -99,10 +76,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                 FilledButton(
                   onPressed: () async {
                     Navigator.of(context).pop(true);
-                    await sync.configure(
-                      serverUrl: serverUrlController.text,
-                      authToken: tokenController.text,
-                    );
+                    await sync.configure(serverUrl: serverUrlController.text);
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text(l10n.cloudSyncConfigSaved)),
@@ -122,10 +96,29 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     final sync = context.read<SyncProvider>();
     if (sync.status == SyncStatus.running) return;
 
-    if (!sync.isConfigured) {
+    if (!sync.isServerConfigured) {
       final ok = await _showServerConfigDialog();
       if (!ok) return;
       if (!mounted) return;
+    }
+
+    if (!sync.isLoggedIn) {
+      try {
+        await sync.login();
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.cloudSyncLoginFailedSnack)));
+      }
+      if (kIsWeb) return;
+      if (!sync.isLoggedIn) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.cloudSyncAuthModeLoggedOut)),
+        );
+        return;
+      }
     }
 
     if (!mounted) return;
@@ -201,11 +194,16 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         passphrase: passphraseController.text,
         confirmPassphrase: confirmController.text,
       );
+      try {
+        await _syncNow(showSuccessSnack: false);
+      } catch (_) {
+        // Enabling sync should succeed even if the initial sync attempt fails.
+      }
     } on InvalidPassphraseException {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.cloudSyncInvalidPassphrase)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.cloudSyncInvalidPassphrase)));
       return;
     } catch (_) {
       if (!mounted) return;
@@ -216,9 +214,10 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     }
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l10n.cloudSyncEnabledSnack)),
-    );
+    if (!sync.syncEnabled) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(l10n.cloudSyncEnabledSnack)));
   }
 
   Future<void> _unlock() async {
@@ -239,14 +238,17 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                   TextField(
                     controller: controller,
                     obscureText: obscure,
-                    decoration: InputDecoration(labelText: l10n.cloudSyncPassphrase),
+                    decoration: InputDecoration(
+                      labelText: l10n.cloudSyncPassphrase,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
                       Checkbox(
                         value: !obscure,
-                        onChanged: (v) => setState(() => obscure = !(v ?? false)),
+                        onChanged: (v) =>
+                            setState(() => obscure = !(v ?? false)),
                       ),
                       Text(l10n.cloudSyncShowPassphrase),
                     ],
@@ -276,18 +278,18 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     try {
       await sync.unlock(passphrase: controller.text);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.cloudSyncUnlockedSnack)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.cloudSyncUnlockedSnack)));
     } on InvalidPassphraseException {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.cloudSyncInvalidPassphrase)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.cloudSyncInvalidPassphrase)));
     }
   }
 
-  Future<void> _syncNow() async {
+  Future<void> _syncNow({bool showSuccessSnack = true}) async {
     final l10n = AppLocalizations.of(context)!;
     final sync = context.read<SyncProvider>();
     try {
@@ -302,7 +304,8 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
             content: Text(l10n.cloudSyncRollbackMessage),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(_RollbackChoice.stop),
+                onPressed: () =>
+                    Navigator.of(context).pop(_RollbackChoice.stop),
                 child: Text(l10n.cloudSyncStopSync),
               ),
               FilledButton(
@@ -328,9 +331,11 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     if (!mounted) return;
     await _refreshAppStateAfterSync();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l10n.cloudSyncSyncedSnack)),
-    );
+    if (showSuccessSnack) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.cloudSyncSyncedSnack)));
+    }
   }
 
   Future<void> _refreshAppStateAfterSync() async {
@@ -385,7 +390,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       SyncErrorCode.keyBundleNotFound => l10n.cloudSyncErrorKeyBundleNotFound,
       SyncErrorCode.network => l10n.cloudSyncErrorNetwork,
       SyncErrorCode.conflict => l10n.cloudSyncErrorConflict,
-      SyncErrorCode.unknown => sync.lastErrorDetail ?? l10n.cloudSyncErrorUnknown,
+      SyncErrorCode.quotaExceeded => l10n.cloudSyncErrorQuotaExceeded,
+      SyncErrorCode.unknown =>
+        sync.lastErrorDetail ?? l10n.cloudSyncErrorUnknown,
     };
   }
 
@@ -404,6 +411,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
           final errorText = _resolveErrorMessage(sync, l10n);
           final statusColor = _statusColor(context, sync.status);
           final configured = sync.isConfigured;
+          final serverConfigured = sync.isServerConfigured;
           final canSyncNow =
               configured &&
               sync.syncEnabled &&
@@ -422,10 +430,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                     children: [
                       Row(
                         children: [
-                          Icon(
-                            Icons.cloud_sync_outlined,
-                            color: statusColor,
-                          ),
+                          Icon(Icons.cloud_sync_outlined, color: statusColor),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -474,7 +479,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                                   if (!context.mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text(l10n.cloudSyncDisabledSnack),
+                                      content: Text(
+                                        l10n.cloudSyncDisabledSnack,
+                                      ),
                                     ),
                                   );
                                 }
@@ -530,10 +537,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .errorContainer
-                                .withValues(alpha: 0.7),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.errorContainer.withValues(alpha: 0.7),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
@@ -548,9 +554,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                                 child: Text(
                                   errorText,
                                   style: TextStyle(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onErrorContainer,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onErrorContainer,
                                   ),
                                 ),
                               ),
@@ -594,58 +600,136 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                       ),
                       ListTile(
                         contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.key_outlined),
-                        title: Text(l10n.cloudSyncBearerToken),
-                        subtitle: Text(
-                          (sync.authToken.trim().isEmpty)
-                              ? l10n.cloudSyncNotSet
-                              : l10n.cloudSyncTokenSet,
+                        leading: const Icon(Icons.account_circle_outlined),
+                        title: Text(l10n.cloudSyncAuthProvider),
+                        subtitle: sync.availableProviders.isEmpty
+                            ? Text(l10n.cloudSyncNotSet)
+                            : DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: sync.authProvider.trim().isEmpty
+                                      ? null
+                                      : sync.authProvider.trim(),
+                                  isExpanded: true,
+                                  items: sync.availableProviders
+                                      .map(
+                                        (p) => DropdownMenuItem<String>(
+                                          value: p,
+                                          child: Text(p),
+                                        ),
+                                      )
+                                      .toList(growable: false),
+                                  onChanged: sync.status == SyncStatus.running
+                                      ? null
+                                      : (v) async {
+                                          if (v == null) return;
+                                          await sync.setAuthProvider(v);
+                                        },
+                                ),
+                              ),
+                      ),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          sync.isLoggedIn
+                              ? Icons.verified_user_outlined
+                              : Icons.person_outline,
                         ),
-                        trailing: IconButton(
-                          tooltip: _showToken
-                              ? l10n.cloudSyncHideToken
-                              : l10n.cloudSyncShowToken,
-                          onPressed: () => setState(() => _showToken = !_showToken),
-                          icon: Icon(
-                            _showToken
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                          ),
+                        title: Text(l10n.cloudSyncAuthMode),
+                        subtitle: Text(
+                          sync.isLoggedIn
+                              ? l10n.cloudSyncAuthModeLoggedIn
+                              : l10n.cloudSyncAuthModeLoggedOut,
                         ),
                       ),
-                      if (_showToken && sync.authToken.trim().isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: SelectableText(sync.authToken.trim()),
-                        )
-                      else
-                        const SizedBox(height: 12),
-                      Row(
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
                         children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed:
-                                  sync.status == SyncStatus.running
-                                      ? null
-                                      : () async {
-                                          final ok =
-                                              await _showServerConfigDialog();
-                                          if (!ok) return;
-                                          if (!context.mounted) return;
-                                        },
-                              child: Text(l10n.cloudSyncEditServerConfig),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
+                          SizedBox(
+                            width: 160,
                             child: OutlinedButton(
                               onPressed: sync.status == SyncStatus.running
                                   ? null
-                                  : configured
+                                  : () async {
+                                      final ok =
+                                          await _showServerConfigDialog();
+                                      if (!ok) return;
+                                      if (!context.mounted) return;
+                                    },
+                              child: Text(l10n.cloudSyncEditServerConfig),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 160,
+                            child: OutlinedButton(
+                              onPressed: sync.status == SyncStatus.running
+                                  ? null
+                                  : serverConfigured
                                   ? _checkServer
                                   : null,
                               child: Text(l10n.cloudSyncCheckServer),
                             ),
+                          ),
+                          SizedBox(
+                            width: 160,
+                            child: sync.isLoggedIn
+                                ? OutlinedButton(
+                                    onPressed: sync.status == SyncStatus.running
+                                        ? null
+                                        : () async {
+                                            await sync.logout();
+                                            if (!context.mounted) return;
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  l10n.cloudSyncLoggedOutSnack,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                    child: Text(l10n.cloudSyncLogout),
+                                  )
+                                : FilledButton(
+                                    onPressed: sync.status == SyncStatus.running
+                                        ? null
+                                        : serverConfigured &&
+                                              sync.authProvider
+                                                  .trim()
+                                                  .isNotEmpty
+                                        ? () async {
+                                            try {
+                                              await sync.login();
+                                              if (!context.mounted) return;
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    kIsWeb
+                                                        ? l10n.cloudSyncLoginRedirectedSnack
+                                                        : l10n.cloudSyncLoggedInSnack,
+                                                  ),
+                                                ),
+                                              );
+                                            } catch (_) {
+                                              if (!context.mounted) return;
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    l10n.cloudSyncLoginFailedSnack,
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          }
+                                        : null,
+                                    child: Text(l10n.cloudSyncLogin),
+                                  ),
                           ),
                         ],
                       ),
@@ -695,7 +779,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                                 onPressed: sync.status == SyncStatus.running
                                     ? null
                                     : configured
-                                    ? (sync.syncEnabled ? _unlock : _guidedEnableFlow)
+                                    ? (sync.syncEnabled
+                                          ? _unlock
+                                          : _guidedEnableFlow)
                                     : null,
                                 child: Text(
                                   sync.syncEnabled
@@ -754,7 +840,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                                   ? () async {
                                       await sync.disableSync();
                                       if (!context.mounted) return;
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         SnackBar(
                                           content: Text(
                                             l10n.cloudSyncDisabledSnack,
@@ -783,7 +871,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                   SelectableText(
                     '${l10n.cloudSyncLastServerSeq}: ${sync.lastServerSeq}',
                   ),
-                  SelectableText('${l10n.cloudSyncDekId}: ${sync.dekId ?? "-"}'),
+                  SelectableText(
+                    '${l10n.cloudSyncDekId}: ${sync.dekId ?? "-"}',
+                  ),
                   SelectableText(
                     '${l10n.cloudSyncLastSyncAt}: ${sync.lastSyncAt?.toIso8601String() ?? "-"}',
                   ),

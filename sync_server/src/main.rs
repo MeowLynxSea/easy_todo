@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::Context;
 use axum::extract::{Query, State};
-use axum::http::{header, HeaderMap, Method, StatusCode};
+use axum::http::{Method, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -18,14 +18,22 @@ use tower_http::trace::TraceLayer;
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
+mod auth;
+
 const MAX_RECORD_B64_LEN: usize = 512 * 1024; // per-field b64 string length cap
 const MAX_PULL_LIMIT: i64 = 500;
 const BODY_LIMIT_BYTES: usize = 5 * 1024 * 1024;
+const DEFAULT_MAX_PUSH_RECORDS: usize = 500;
 
 #[derive(Clone)]
 struct AppState {
     db: Pool<Sqlite>,
     limiter: Arc<tokio::sync::Mutex<RateLimiter>>,
+    auth_limiter: Arc<tokio::sync::Mutex<RateLimiter>>,
+    auth: Arc<auth::AuthService>,
+    max_push_records: usize,
+    max_records_per_user: Option<i64>,
+    max_total_b64_per_user: Option<i64>,
 }
 
 struct RateLimiter {
@@ -62,11 +70,6 @@ impl RateLimiter {
     }
 }
 
-#[derive(Debug, Clone)]
-struct AuthedUser {
-    user_id: i64,
-}
-
 #[derive(Serialize)]
 struct ErrorBody {
     error: String,
@@ -76,58 +79,18 @@ fn json_error(status: StatusCode, msg: impl Into<String>) -> (StatusCode, Json<E
     (status, Json(ErrorBody { error: msg.into() }))
 }
 
-async fn dev_auth(
-    state: &AppState,
-    headers: &HeaderMap,
-) -> Result<AuthedUser, (StatusCode, Json<ErrorBody>)> {
-    let auth = headers
-        .get(header::AUTHORIZATION)
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("");
-
-    let token = auth.strip_prefix("Bearer ").unwrap_or("").trim();
-    if token.is_empty() {
-        return Err(json_error(StatusCode::UNAUTHORIZED, "missing bearer token"));
-    }
-
-    {
-        let mut limiter = state.limiter.lock().await;
-        if !limiter.check(token) {
-            return Err(json_error(StatusCode::TOO_MANY_REQUESTS, "rate limited"));
-        }
-    }
-
-    let now_ms = now_ms_utc();
-    let mut tx = state
-        .db
-        .begin()
-        .await
-        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
-
-    let user_id = ensure_user(&mut tx, "dev", token, now_ms)
-        .await
-        .map_err(|e| {
-            error!(error = %e, "ensure_user failed");
-            json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error")
-        })?;
-
-    tx.commit()
-        .await
-        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
-
-    Ok(AuthedUser { user_id })
-}
-
 async fn ensure_user(
     tx: &mut Transaction<'_, Sqlite>,
     oauth_provider: &str,
     oauth_sub: &str,
     now_ms_utc: i64,
 ) -> anyhow::Result<i64> {
-    let existing: Option<i64> = sqlx::query_scalar(r#"SELECT id FROM users WHERE oauth_sub = ?"#)
-        .bind(oauth_sub)
-        .fetch_optional(&mut **tx)
-        .await?;
+    let existing: Option<i64> =
+        sqlx::query_scalar(r#"SELECT id FROM users WHERE oauth_provider = ? AND oauth_sub = ?"#)
+            .bind(oauth_provider)
+            .bind(oauth_sub)
+            .fetch_optional(&mut **tx)
+            .await?;
     if let Some(id) = existing {
         return Ok(id);
     }
@@ -192,10 +155,8 @@ struct PutKeyBundleRequest {
 
 async fn get_key_bundle(
     State(state): State<AppState>,
-    headers: HeaderMap,
+    user: auth::AuthedUser,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorBody>)> {
-    let user = dev_auth(&state, &headers).await?;
-
     let row = sqlx::query(
         r#"SELECT bundle_version, bundle_json
        FROM key_bundles WHERE user_id = ?"#,
@@ -225,10 +186,9 @@ async fn get_key_bundle(
 
 async fn put_key_bundle(
     State(state): State<AppState>,
-    headers: HeaderMap,
+    user: auth::AuthedUser,
     Json(req): Json<PutKeyBundleRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorBody>)> {
-    let user = dev_auth(&state, &headers).await?;
     let now_ms = now_ms_utc();
 
     let mut tx = state
@@ -363,10 +323,12 @@ async fn alloc_server_seq(tx: &mut Transaction<'_, Sqlite>, user_id: i64) -> any
 
 async fn push_sync(
     State(state): State<AppState>,
-    headers: HeaderMap,
+    user: auth::AuthedUser,
     Json(req): Json<PushRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorBody>)> {
-    let user = dev_auth(&state, &headers).await?;
+    if req.records.len() > state.max_push_records {
+        return Err(json_error(StatusCode::BAD_REQUEST, "too many records"));
+    }
 
     let mut accepted = Vec::new();
     let mut rejected = Vec::new();
@@ -376,6 +338,21 @@ async fn push_sync(
         .begin()
         .await
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+    let mut record_count: i64 =
+        sqlx::query_scalar(r#"SELECT COUNT(*) FROM records WHERE user_id = ?"#)
+            .bind(user.user_id)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+    let mut total_b64: i64 = sqlx::query_scalar(
+        r#"SELECT IFNULL(SUM(LENGTH(nonce) + LENGTH(ciphertext)), 0) FROM records WHERE user_id = ?"#,
+    )
+    .bind(user.user_id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
     for r in req.records {
         if r.nonce.len() > MAX_RECORD_B64_LEN || r.ciphertext.len() > MAX_RECORD_B64_LEN {
@@ -388,7 +365,10 @@ async fn push_sync(
         }
 
         let existing = sqlx::query(
-            r#"SELECT hlc_wall_ms_utc, hlc_counter, hlc_device_id
+            r#"SELECT
+                 hlc_wall_ms_utc, hlc_counter, hlc_device_id,
+                 LENGTH(nonce) AS nonce_len,
+                 LENGTH(ciphertext) AS ciphertext_len
          FROM records
          WHERE user_id = ? AND type = ? AND record_id = ?"#,
         )
@@ -399,7 +379,7 @@ async fn push_sync(
         .await
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
-        let should_accept = match existing {
+        let should_accept = match &existing {
             None => true,
             Some(row) => {
                 let stored = Hlc {
@@ -424,6 +404,40 @@ async fn push_sync(
                 reason: "older_hlc".to_string(),
             });
             continue;
+        }
+
+        let existing_size: i64 = existing
+            .as_ref()
+            .and_then(|row| {
+                let nonce_len: i64 = row.try_get("nonce_len").ok()?;
+                let ciphertext_len: i64 = row.try_get("ciphertext_len").ok()?;
+                Some(nonce_len + ciphertext_len)
+            })
+            .unwrap_or(0);
+        let new_size: i64 = (r.nonce.len() + r.ciphertext.len()) as i64;
+
+        let new_total_b64 = total_b64 + (new_size - existing_size);
+        let new_record_count = record_count + if existing.is_none() { 1 } else { 0 };
+
+        if let Some(max) = state.max_records_per_user {
+            if new_record_count > max {
+                rejected.push(PushRejected {
+                    r#type: r.r#type,
+                    record_id: r.record_id,
+                    reason: "quota_exceeded".to_string(),
+                });
+                continue;
+            }
+        }
+        if let Some(max) = state.max_total_b64_per_user {
+            if new_total_b64 > max {
+                rejected.push(PushRejected {
+                    r#type: r.r#type,
+                    record_id: r.record_id,
+                    reason: "quota_exceeded".to_string(),
+                });
+                continue;
+            }
         }
 
         let server_seq = alloc_server_seq(&mut tx, user.user_id).await.map_err(|e| {
@@ -477,6 +491,9 @@ async fn push_sync(
             record_id: r.record_id,
             server_seq,
         });
+
+        total_b64 = new_total_b64;
+        record_count = new_record_count;
     }
 
     tx.commit()
@@ -501,11 +518,9 @@ struct PullResponse {
 
 async fn pull_sync(
     State(state): State<AppState>,
-    headers: HeaderMap,
+    user: auth::AuthedUser,
     Query(q): Query<PullQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorBody>)> {
-    let user = dev_auth(&state, &headers).await?;
-
     let since = q.since.unwrap_or(0).max(0);
     let limit = q.limit.unwrap_or(200).clamp(1, MAX_PULL_LIMIT) as i64;
 
@@ -534,6 +549,26 @@ async fn pull_sync(
     .fetch_all(&state.db)
     .await
     .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+    // `nextSince` should help clients detect server rollbacks / DB resets.
+    //
+    // If we return `nextSince = since` on an empty page, a client with a cursor
+    // ahead of the current server head (e.g. server DB reset) will never detect
+    // the rollback and will appear "stuck" at a higher `lastServerSeq`.
+    if rows.is_empty() {
+        let head: i64 = sqlx::query_scalar(
+            r#"SELECT COALESCE(MAX(server_seq), 0) FROM records WHERE user_id = ?"#,
+        )
+        .bind(user.user_id)
+        .fetch_one(&state.db)
+        .await
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+        return Ok(Json(PullResponse {
+            records: Vec::new(),
+            next_since: head,
+        }));
+    }
 
     let mut next_since = since;
     let mut records = Vec::with_capacity(rows.len());
@@ -595,6 +630,8 @@ async fn health() -> impl IntoResponse {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    dotenvy::dotenv().ok();
+
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env().add_directive("info".parse()?))
         .init();
@@ -607,6 +644,28 @@ async fn main() -> anyhow::Result<()> {
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(8787);
+
+    let auth_config = auth::AuthConfig::load_from_env().context("load auth config")?;
+    info!(
+        base_url = %auth_config.base_url,
+        enabled_providers = ?auth_config.enabled_providers,
+        configured_providers = ?auth_config.providers.keys().collect::<Vec<_>>(),
+        "auth config loaded"
+    );
+    let auth_service = Arc::new(auth::AuthService::new(auth_config).context("init auth")?);
+
+    let max_push_records: usize = std::env::var("MAX_PUSH_RECORDS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(DEFAULT_MAX_PUSH_RECORDS);
+
+    let max_records_per_user: Option<i64> = std::env::var("MAX_RECORDS_PER_USER")
+        .ok()
+        .and_then(|s| s.parse().ok());
+
+    let max_total_b64_per_user: Option<i64> = std::env::var("MAX_TOTAL_B64_PER_USER")
+        .ok()
+        .and_then(|s| s.parse().ok());
 
     let pool = SqlitePoolOptions::new()
         .max_connections(10)
@@ -625,10 +684,19 @@ async fn main() -> anyhow::Result<()> {
             Duration::from_secs(1),
             50,
         ))),
+        auth_limiter: Arc::new(tokio::sync::Mutex::new(RateLimiter::new(
+            Duration::from_secs(1),
+            10,
+        ))),
+        auth: auth_service,
+        max_push_records,
+        max_records_per_user,
+        max_total_b64_per_user,
     };
 
     let app = Router::new()
         .route("/v1/health", get(health))
+        .nest("/v1/auth", auth::AuthService::auth_router())
         .route("/v1/key-bundle", get(get_key_bundle).put(put_key_bundle))
         .route("/v1/sync/push", post(push_sync))
         .route("/v1/sync/pull", get(pull_sync))
@@ -641,13 +709,25 @@ async fn main() -> anyhow::Result<()> {
                 .allow_headers(Any),
         )
         .layer(RequestBodyLimitLayer::new(BODY_LIMIT_BYTES))
-        .layer(TraceLayer::new_for_http())
+        .layer(
+            TraceLayer::new_for_http().make_span_with(|req: &axum::http::Request<_>| {
+                tracing::info_span!(
+                    "http_request",
+                    method = %req.method(),
+                    path = %req.uri().path()
+                )
+            }),
+        )
         .with_state(state);
 
     let addr: SocketAddr = format!("{host}:{port}").parse().context("parse addr")?;
     info!(%addr, "sync server listening");
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, app).await?;
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await?;
     Ok(())
 }

@@ -150,12 +150,13 @@ class AISettingsModel extends HiveObject {
       enableSmartNotifications:
           (json['enableSmartNotifications'] as bool?) ??
           defaults.enableSmartNotifications,
-      temperature: (json['temperature'] as num?)?.toDouble() ??
-          defaults.temperature,
+      temperature:
+          (json['temperature'] as num?)?.toDouble() ?? defaults.temperature,
       maxTokens: (json['maxTokens'] as num?)?.toInt() ?? defaults.maxTokens,
       requestTimeout:
           (json['requestTimeout'] as num?)?.toInt() ?? defaults.requestTimeout,
-      maxRequestsPerMinute: (json['maxRequestsPerMinute'] as num?)?.toInt() ??
+      maxRequestsPerMinute:
+          (json['maxRequestsPerMinute'] as num?)?.toInt() ??
           defaults.maxRequestsPerMinute,
       customPersonaPrompt:
           (json['customPersonaPrompt'] as String?) ??

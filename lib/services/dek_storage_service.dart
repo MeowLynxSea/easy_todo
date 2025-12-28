@@ -4,7 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'web_session_storage_stub.dart'
-    if (dart.library.html) 'web_session_storage_html.dart' as web_session;
+    if (dart.library.html) 'web_session_storage_html.dart'
+    as web_session;
 
 /// Stores DEK bytes for automatic unlock on mobile/desktop.
 ///

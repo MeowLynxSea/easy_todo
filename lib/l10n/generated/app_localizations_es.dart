@@ -86,7 +86,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get cloudSyncSetupSubtitle =>
-      'Defina URL y token, y verifique la conexión.';
+      'Defina la URL del servidor, elija un proveedor e inicie sesión.';
 
   @override
   String get cloudSyncSetupDialogTitle => 'Configuración del servidor';
@@ -98,19 +98,44 @@ class AppLocalizationsEs extends AppLocalizations {
   String get cloudSyncServerUrlHint => 'http://127.0.0.1:8787';
 
   @override
-  String get cloudSyncBearerToken => 'Token Bearer (dev)';
+  String get cloudSyncAuthProvider => 'Proveedor OAuth';
 
   @override
-  String get cloudSyncShowToken => 'Mostrar token';
+  String get cloudSyncAuthProviderHint => 'linuxdo';
 
   @override
-  String get cloudSyncHideToken => 'Ocultar token';
+  String get cloudSyncAuthMode => 'Autenticación';
+
+  @override
+  String get cloudSyncAuthModeLoggedIn => 'Con sesión';
+
+  @override
+  String get cloudSyncAuthModeLoggedOut => 'Sin sesión';
 
   @override
   String get cloudSyncCheckServer => 'Verificar servidor';
 
   @override
   String get cloudSyncEditServerConfig => 'Editar';
+
+  @override
+  String get cloudSyncLogin => 'Iniciar sesión';
+
+  @override
+  String get cloudSyncLogout => 'Cerrar sesión';
+
+  @override
+  String get cloudSyncLoggedInSnack => 'Sesión iniciada';
+
+  @override
+  String get cloudSyncLoggedOutSnack => 'Sesión cerrada';
+
+  @override
+  String get cloudSyncLoginRedirectedSnack =>
+      'Continúe el inicio de sesión en el navegador';
+
+  @override
+  String get cloudSyncLoginFailedSnack => 'Falló el inicio de sesión';
 
   @override
   String get cloudSyncNotSet => 'No configurado';
@@ -283,6 +308,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get cloudSyncErrorConflict => 'Conflicto (versiones no coinciden)';
+
+  @override
+  String get cloudSyncErrorQuotaExceeded =>
+      'Server quota exceeded (some records were rejected)';
 
   @override
   String get cloudSyncErrorUnknown => 'Error desconocido';

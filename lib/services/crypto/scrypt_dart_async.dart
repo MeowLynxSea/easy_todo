@@ -58,12 +58,7 @@ class ScryptDartAsync {
       final end = start + blockSize;
       // IMPORTANT: must be a view into `bBytes`, not a copy; ROMix mutates in place.
       final chunk = Uint8List.sublistView(bBytes, start, end);
-      await _romixInPlace(
-        chunk,
-        n: n,
-        r: r,
-        sliceStopwatch: sliceStopwatch,
-      );
+      await _romixInPlace(chunk, n: n, r: r, sliceStopwatch: sliceStopwatch);
 
       // Yield between parallel blocks as well.
       await Future<void>.delayed(Duration.zero);

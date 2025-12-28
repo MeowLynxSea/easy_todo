@@ -86,7 +86,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get cloudSyncSetupSubtitle =>
-      'Server-URL und Token festlegen, dann Verbindung prüfen.';
+      'Server-URL festlegen, dann Provider wählen und anmelden.';
 
   @override
   String get cloudSyncSetupDialogTitle => 'Server-Konfiguration';
@@ -98,19 +98,44 @@ class AppLocalizationsDe extends AppLocalizations {
   String get cloudSyncServerUrlHint => 'http://127.0.0.1:8787';
 
   @override
-  String get cloudSyncBearerToken => 'Bearer-Token (Dev)';
+  String get cloudSyncAuthProvider => 'OAuth-Provider';
 
   @override
-  String get cloudSyncShowToken => 'Token anzeigen';
+  String get cloudSyncAuthProviderHint => 'linuxdo';
 
   @override
-  String get cloudSyncHideToken => 'Token ausblenden';
+  String get cloudSyncAuthMode => 'Anmeldung';
+
+  @override
+  String get cloudSyncAuthModeLoggedIn => 'Angemeldet';
+
+  @override
+  String get cloudSyncAuthModeLoggedOut => 'Nicht angemeldet';
 
   @override
   String get cloudSyncCheckServer => 'Server prüfen';
 
   @override
   String get cloudSyncEditServerConfig => 'Bearbeiten';
+
+  @override
+  String get cloudSyncLogin => 'Anmelden';
+
+  @override
+  String get cloudSyncLogout => 'Abmelden';
+
+  @override
+  String get cloudSyncLoggedInSnack => 'Angemeldet';
+
+  @override
+  String get cloudSyncLoggedOutSnack => 'Abgemeldet';
+
+  @override
+  String get cloudSyncLoginRedirectedSnack =>
+      'Bitte im Browser weiter anmelden';
+
+  @override
+  String get cloudSyncLoginFailedSnack => 'Anmeldung fehlgeschlagen';
 
   @override
   String get cloudSyncNotSet => 'Nicht festgelegt';
@@ -284,6 +309,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get cloudSyncErrorConflict =>
       'Konflikt (Bundle-Version stimmt nicht überein)';
+
+  @override
+  String get cloudSyncErrorQuotaExceeded =>
+      'Server quota exceeded (some records were rejected)';
 
   @override
   String get cloudSyncErrorUnknown => 'Unbekannter Fehler';

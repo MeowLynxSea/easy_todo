@@ -22,10 +22,15 @@ import 'package:easy_todo/services/repositories/statistics_data_repository.dart'
 import 'package:easy_todo/services/repositories/todo_repository.dart';
 import 'package:easy_todo/services/repositories/user_preferences_repository.dart';
 import 'package:easy_todo/services/sync/sync_api_client.dart';
+import 'package:easy_todo/services/sync/sync_auth_storage.dart';
+import 'package:easy_todo/services/sync/sync_server_auth_service.dart';
 import 'package:easy_todo/services/sync_write_service.dart';
 import 'package:easy_todo/utils/hlc_clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
+
+import 'package:easy_todo/services/web_url_utils_stub.dart'
+    if (dart.library.html) 'package:easy_todo/services/web_url_utils_web.dart';
 
 enum SyncStatus { idle, running, error }
 
@@ -39,6 +44,7 @@ enum SyncErrorCode {
   keyBundleNotFound,
   network,
   conflict,
+  quotaExceeded,
   unknown,
 }
 
@@ -55,6 +61,14 @@ class SyncRollbackDetectedException implements Exception {
       'SyncRollbackDetectedException(last=$lastServerSeq,next=$serverNextSince)';
 }
 
+class SyncPushRejectedException implements Exception {
+  final Map<String, int> rejectedByReason;
+  const SyncPushRejectedException(this.rejectedByReason);
+
+  @override
+  String toString() => 'SyncPushRejectedException($rejectedByReason)';
+}
+
 class SyncProvider extends ChangeNotifier {
   static const int _pullPageLimit = 200;
   static const int _pushBatchLimit = 50;
@@ -63,10 +77,14 @@ class SyncProvider extends ChangeNotifier {
   final SyncWriteService _syncWriteService;
   final SyncCrypto _crypto;
   final DekStorageService _dekStorage;
+  final SyncAuthStorage _authStorage;
+  final SyncServerAuthService _authService;
 
   SyncState? _state;
   KeyBundle? _bundle;
   List<int>? _dek;
+  SyncAuthTokens? _authTokens;
+  List<String> _availableProviders = const [];
 
   SyncStatus _status = SyncStatus.idle;
   SyncErrorCode? _lastErrorCode;
@@ -75,15 +93,24 @@ class SyncProvider extends ChangeNotifier {
 
   Completer<void>? _syncMutex;
 
+  void _debugLog(String message) {
+    if (!kDebugMode) return;
+    debugPrint('[Sync] $message');
+  }
+
   SyncProvider({
     HiveService? hiveService,
     SyncWriteService? syncWriteService,
     SyncCrypto? crypto,
     DekStorageService? dekStorage,
+    SyncAuthStorage? authStorage,
+    SyncServerAuthService? authService,
   }) : _hiveService = hiveService ?? HiveService(),
        _syncWriteService = syncWriteService ?? SyncWriteService(),
        _crypto = crypto ?? SyncCrypto(),
-       _dekStorage = dekStorage ?? DekStorageService() {
+       _dekStorage = dekStorage ?? DekStorageService(),
+       _authStorage = authStorage ?? SyncAuthStorage(),
+       _authService = authService ?? createSyncServerAuthService() {
     unawaited(_init());
   }
 
@@ -93,19 +120,60 @@ class SyncProvider extends ChangeNotifier {
   DateTime? get lastSyncAt => _lastSyncAt;
 
   bool get syncEnabled => _state?.syncEnabled ?? false;
-  bool get isConfigured =>
-      (_state?.serverUrl.trim().isNotEmpty ?? false) &&
-      (_state?.authToken.trim().isNotEmpty ?? false);
+  bool get isServerConfigured => (_state?.serverUrl.trim().isNotEmpty ?? false);
+  bool get isConfigured => isServerConfigured && isLoggedIn;
   bool get isUnlocked => _dek != null;
+  bool get isLoggedIn => (_authTokens?.accessToken.trim().isNotEmpty ?? false);
+  List<String> get availableProviders => _availableProviders;
+  String get authUserId => _state?.authUserId ?? '';
 
   String get serverUrl => _state?.serverUrl ?? '';
-  String get authToken => _state?.authToken ?? '';
+  String get authProvider => _state?.authProvider ?? '';
   String? get dekId => _state?.dekId;
   int get lastServerSeq => _state?.lastServerSeq ?? 0;
   String get deviceId => _state?.deviceId ?? '';
 
   Future<void> _init() async {
     final state = await _ensureStateLoaded();
+    _authTokens = await _authStorage.read();
+
+    if (kIsWeb) {
+      final ticket = currentWebUrl().queryParameters['ticket'];
+      final ticketFallback = currentWebUrl().queryParameters['amp;ticket'];
+      final ticketValue = (ticket ?? ticketFallback)?.trim();
+      if (ticketValue != null &&
+          ticketValue.isNotEmpty &&
+          state.serverUrl.trim().isNotEmpty) {
+        try {
+          final tokens = await _authService.exchange(
+            serverUrl: state.serverUrl,
+            ticket: ticketValue,
+          );
+          await _onAuthTokensUpdated(tokens);
+
+          final current = currentWebUrl();
+          final qp = Map<String, String>.from(current.queryParameters);
+          qp.remove('ticket');
+          qp.remove('amp;ticket');
+          replaceWebUrl(current.replace(queryParameters: qp));
+        } catch (e) {
+          _status = SyncStatus.error;
+          _lastErrorCode = SyncErrorCode.unauthorized;
+          _lastErrorDetail = e.toString();
+
+          final current = currentWebUrl();
+          final qp = Map<String, String>.from(current.queryParameters);
+          qp.remove('ticket');
+          qp.remove('amp;ticket');
+          replaceWebUrl(current.replace(queryParameters: qp));
+        }
+      }
+    }
+
+    if (state.serverUrl.trim().isNotEmpty) {
+      unawaited(refreshProviders());
+    }
+
     if (state.syncEnabled && state.dekId != null) {
       final cached = await _dekStorage.readDek(dekId: state.dekId!);
       if (cached != null) {
@@ -121,18 +189,213 @@ class SyncProvider extends ChangeNotifier {
     return loaded;
   }
 
-  Future<void> configure({
-    required String serverUrl,
-    required String authToken,
-  }) async {
+  Future<void> configure({required String serverUrl}) async {
     final state = await _ensureStateLoaded();
-    final updated = state.copyWith(
-      serverUrl: serverUrl.trim(),
-      authToken: authToken.trim(),
-    );
+    final nextUrl = serverUrl.trim();
+    final prevUrl = state.serverUrl.trim();
+    final normalizedPrev = prevUrl.endsWith('/')
+        ? prevUrl.substring(0, prevUrl.length - 1)
+        : prevUrl;
+    final normalizedNext = nextUrl.endsWith('/')
+        ? nextUrl.substring(0, nextUrl.length - 1)
+        : nextUrl;
+
+    if (normalizedPrev.isNotEmpty && normalizedPrev != normalizedNext) {
+      await _resetForNewSyncServer(state: state);
+    }
+
+    final updated = state.copyWith(serverUrl: nextUrl);
+    await _hiveService.syncStateBox.put(SyncWriteService.stateKey, updated);
+    _state = updated;
+    await _authStorage.clear();
+    _authTokens = null;
+    _availableProviders = const [];
+    notifyListeners();
+    unawaited(refreshProviders());
+  }
+
+  Future<void> setAuthProvider(String provider) async {
+    final state = await _ensureStateLoaded();
+    final updated = state.copyWith(authProvider: provider.trim());
     await _hiveService.syncStateBox.put(SyncWriteService.stateKey, updated);
     _state = updated;
     notifyListeners();
+  }
+
+  Future<void> refreshProviders() async {
+    final state = await _ensureStateLoaded();
+    if (state.serverUrl.trim().isEmpty) {
+      _availableProviders = const [];
+      notifyListeners();
+      return;
+    }
+    try {
+      final providers = await _authService.listProviders(
+        serverUrl: state.serverUrl,
+      );
+      _availableProviders = providers;
+      if (_availableProviders.isNotEmpty && state.authProvider.trim().isEmpty) {
+        await setAuthProvider(_availableProviders.first);
+      } else {
+        notifyListeners();
+      }
+    } catch (_) {
+      _availableProviders = const [];
+      notifyListeners();
+    }
+  }
+
+  Future<void> login({String client = 'easy_todo'}) async {
+    if (!isServerConfigured) {
+      _setError(SyncErrorCode.notConfigured);
+      return;
+    }
+    if (authProvider.trim().isEmpty) {
+      _setError(SyncErrorCode.notConfigured, detail: 'missing authProvider');
+      return;
+    }
+
+    await _withStatus(SyncStatus.running, () async {
+      final state = await _ensureStateLoaded();
+      final tokens = await _authService.login(
+        serverUrl: state.serverUrl,
+        provider: state.authProvider,
+        client: client,
+      );
+      if (tokens != null) {
+        await _onAuthTokensUpdated(tokens);
+      }
+    });
+  }
+
+  Future<void> logout() async {
+    final state = await _ensureStateLoaded();
+    final tokens = await _authStorage.read();
+    final refreshToken = tokens?.refreshToken;
+    if (refreshToken != null && refreshToken.trim().isNotEmpty) {
+      try {
+        await _authService.logout(
+          serverUrl: state.serverUrl,
+          refreshToken: refreshToken,
+        );
+      } catch (_) {}
+    }
+    await _authStorage.clear();
+    _authTokens = null;
+    _bundle = null;
+    _dek = null;
+    if (state.dekId != null) {
+      await _dekStorage.deleteDek(dekId: state.dekId!);
+    }
+    final updated = state.copyWith(syncEnabled: false, dekId: null);
+    await _hiveService.syncStateBox.put(SyncWriteService.stateKey, updated);
+    _state = updated;
+    notifyListeners();
+  }
+
+  Future<void> _onAuthTokensUpdated(SyncAuthTokens tokens) async {
+    await _authStorage.write(tokens);
+    _authTokens = tokens;
+
+    final newUserId = _tryParseJwtSub(tokens.accessToken)?.trim();
+    if (newUserId == null || newUserId.isEmpty) {
+      _debugLog('Auth tokens updated but failed to parse userId from JWT sub');
+      notifyListeners();
+      return;
+    }
+
+    final state = await _ensureStateLoaded();
+    final prevUserId = state.authUserId.trim();
+
+    if (prevUserId.isNotEmpty && prevUserId != newUserId) {
+      await _resetForAccountChange(state: state, newUserId: newUserId);
+      notifyListeners();
+      return;
+    }
+
+    final updated = state.copyWith(authUserId: newUserId);
+    await _hiveService.syncStateBox.put(SyncWriteService.stateKey, updated);
+    _state = updated;
+    if (prevUserId != newUserId) {
+      _debugLog('Auth userId set: $newUserId');
+    }
+    notifyListeners();
+  }
+
+  Future<void> _resetForAccountChange({
+    required SyncState state,
+    required String newUserId,
+  }) async {
+    _debugLog('Reset for account change: ${state.authUserId} -> $newUserId');
+    final prevDekId = state.dekId;
+
+    await _hiveService.syncOutboxBox.clear();
+    await _hiveService.syncMetaBox.clear();
+
+    if (prevDekId != null) {
+      await _dekStorage.deleteDek(dekId: prevDekId);
+    }
+
+    _bundle = null;
+    _dek = null;
+
+    final updated = state.copyWith(
+      authUserId: newUserId,
+      syncEnabled: false,
+      lastServerSeq: 0,
+      didBootstrapLocalRecords: false,
+      didBootstrapSettings: false,
+      didBackfillOutboxFromMeta: false,
+      dekId: null,
+    );
+    await _hiveService.syncStateBox.put(SyncWriteService.stateKey, updated);
+    _state = updated;
+  }
+
+  Future<void> _resetForNewSyncServer({required SyncState state}) async {
+    _debugLog('Reset for new sync server: ${state.serverUrl}');
+    final prevDekId = state.dekId;
+
+    await _hiveService.syncOutboxBox.clear();
+    await _hiveService.syncMetaBox.clear();
+
+    if (prevDekId != null) {
+      await _dekStorage.deleteDek(dekId: prevDekId);
+    }
+
+    _bundle = null;
+    _dek = null;
+
+    final updated = state.copyWith(
+      authProvider: '',
+      authUserId: '',
+      syncEnabled: false,
+      lastServerSeq: 0,
+      didBootstrapLocalRecords: false,
+      didBootstrapSettings: false,
+      didBackfillOutboxFromMeta: false,
+      dekId: null,
+    );
+    await _hiveService.syncStateBox.put(SyncWriteService.stateKey, updated);
+    _state = updated;
+  }
+
+  String? _tryParseJwtSub(String jwt) {
+    final parts = jwt.split('.');
+    if (parts.length != 3) return null;
+    try {
+      final payload = parts[1];
+      final normalized = base64Url.normalize(payload);
+      final bytes = base64Url.decode(normalized);
+      final decoded = jsonDecode(utf8.decode(bytes));
+      if (decoded is! Map<String, dynamic>) return null;
+      final sub = decoded['sub'];
+      if (sub is String) return sub;
+      if (sub is num) return sub.toString();
+      return null;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> disableSync({bool forgetDek = true}) async {
@@ -227,6 +490,9 @@ class SyncProvider extends ChangeNotifier {
       _setError(SyncErrorCode.disabled);
       return;
     }
+    if (!isLoggedIn) {
+      _authTokens = await _authStorage.read();
+    }
     if (!isConfigured) {
       _setError(SyncErrorCode.notConfigured);
       return;
@@ -244,8 +510,23 @@ class SyncProvider extends ChangeNotifier {
       await _withStatus(SyncStatus.running, () async {
         final client = _client();
 
+        _debugLog(
+          'syncNow begin user=${authUserId.isEmpty ? "(unknown)" : authUserId} '
+          'device=$deviceId lastSeq=$lastServerSeq',
+        );
+        _debugLog(
+          'local counts todos=${_hiveService.todosBox.length} '
+          'repeat=${_hiveService.repeatTodosBox.length} '
+          'stats=${_hiveService.statisticsDataBox.length} '
+          'pomodoro=${_hiveService.pomodoroBox.length} '
+          'meta=${_hiveService.syncMetaBox.length} outbox=${_hiveService.syncOutboxBox.length} '
+          'bootLocal=${_state?.didBootstrapLocalRecords} bootSettings=${_state?.didBootstrapSettings} '
+          'backfillOutbox=${_state?.didBackfillOutboxFromMeta}',
+        );
+
         await _bootstrapLocalRecordsIfNeeded();
         await _bootstrapSettingsIfNeeded();
+        await _backfillOutboxFromExistingMetaIfNeeded();
 
         final state = await _ensureStateLoaded();
         final sinceBefore = state.lastServerSeq;
@@ -258,6 +539,7 @@ class SyncProvider extends ChangeNotifier {
         );
 
         _lastSyncAt = DateTime.now();
+        _debugLog('syncNow end lastSeq=${_state?.lastServerSeq ?? 0}');
       });
     } finally {
       if (!mutex.isCompleted) mutex.complete();
@@ -265,13 +547,155 @@ class SyncProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> _backfillOutboxFromExistingMetaIfNeeded() async {
+    final state = await _ensureStateLoaded();
+    if (state.didBackfillOutboxFromMeta) return;
+
+    final metaBox = _hiveService.syncMetaBox;
+    final outbox = _hiveService.syncOutboxBox;
+    final nowMsUtc = DateTime.now().toUtc().millisecondsSinceEpoch;
+
+    int enqueued = 0;
+
+    Future<void> enqueueIfNeeded(
+      String type,
+      String recordId,
+      int schemaVersion,
+    ) async {
+      await _syncWriteService.ensureMetaExists(
+        type: type,
+        recordId: recordId,
+        schemaVersion: schemaVersion,
+      );
+      final key = SyncWriteService.metaKeyOf(type, recordId);
+      final meta = metaBox.get(key);
+      if (meta == null) return;
+      if (meta.deletedAtMsUtc != null) return;
+      if (outbox.containsKey(key)) return;
+
+      await outbox.put(
+        key,
+        SyncOutboxItem(
+          type: type,
+          recordId: recordId,
+          lastEnqueuedAtMsUtc: nowMsUtc,
+        ),
+      );
+      enqueued++;
+    }
+
+    for (final todo in _hiveService.todosBox.values) {
+      await enqueueIfNeeded(
+        SyncTypes.todo,
+        todo.id,
+        TodoRepository.schemaVersion,
+      );
+    }
+    for (final repeat in _hiveService.repeatTodosBox.values) {
+      await enqueueIfNeeded(
+        SyncTypes.repeatTodo,
+        repeat.id,
+        RepeatTodoRepository.schemaVersion,
+      );
+    }
+    for (final stat in _hiveService.statisticsDataBox.values) {
+      await enqueueIfNeeded(
+        SyncTypes.statisticsData,
+        stat.id,
+        StatisticsDataRepository.schemaVersion,
+      );
+    }
+    for (final session in _hiveService.pomodoroBox.values) {
+      await enqueueIfNeeded(
+        SyncTypes.pomodoro,
+        session.id,
+        PomodoroRepository.schemaVersion,
+      );
+    }
+
+    // Also enqueue tombstones that may have been lost from outbox.
+    for (final key in metaBox.keys.cast<String>()) {
+      final meta = metaBox.get(key);
+      if (meta == null || meta.deletedAtMsUtc == null) continue;
+      if (outbox.containsKey(key)) continue;
+      await outbox.put(
+        key,
+        SyncOutboxItem(
+          type: meta.type,
+          recordId: meta.recordId,
+          lastEnqueuedAtMsUtc: nowMsUtc,
+        ),
+      );
+      enqueued++;
+    }
+
+    if (enqueued > 0) {
+      _debugLog('backfillOutboxFromMeta: enqueued=$enqueued');
+    }
+
+    final updated = state.copyWith(didBackfillOutboxFromMeta: true);
+    await _hiveService.syncStateBox.put(SyncWriteService.stateKey, updated);
+    _state = updated;
+  }
+
   Future<void> _bootstrapLocalRecordsIfNeeded() async {
     final state = await _ensureStateLoaded();
-    if (state.didBootstrapLocalRecords) return;
+    final metaBox = _hiveService.syncMetaBox;
+
+    // If meta/outbox was cleared (or a legacy migration bug happened) but the
+    // flag stayed true, we'd never upload existing todos/repeats/etc and new
+    // devices would only see singleton settings. Re-bootstrap when we detect any
+    // missing meta for existing local records.
+    if (state.didBootstrapLocalRecords) {
+      bool hasMissingMeta = false;
+
+      bool isMetaMissing(String type, String recordId) =>
+          !metaBox.containsKey(SyncWriteService.metaKeyOf(type, recordId));
+
+      for (final todo in _hiveService.todosBox.values) {
+        if (isMetaMissing(SyncTypes.todo, todo.id)) {
+          hasMissingMeta = true;
+          break;
+        }
+      }
+      if (!hasMissingMeta) {
+        for (final repeat in _hiveService.repeatTodosBox.values) {
+          if (isMetaMissing(SyncTypes.repeatTodo, repeat.id)) {
+            hasMissingMeta = true;
+            break;
+          }
+        }
+      }
+      if (!hasMissingMeta) {
+        for (final stat in _hiveService.statisticsDataBox.values) {
+          if (isMetaMissing(SyncTypes.statisticsData, stat.id)) {
+            hasMissingMeta = true;
+            break;
+          }
+        }
+      }
+      if (!hasMissingMeta) {
+        for (final session in _hiveService.pomodoroBox.values) {
+          if (isMetaMissing(SyncTypes.pomodoro, session.id)) {
+            hasMissingMeta = true;
+            break;
+          }
+        }
+      }
+
+      if (!hasMissingMeta) return;
+    }
+
+    _debugLog(
+      'bootstrapLocalRecords: todos=${_hiveService.todosBox.length} '
+      'repeat=${_hiveService.repeatTodosBox.length} '
+      'stats=${_hiveService.statisticsDataBox.length} '
+      'pomodoro=${_hiveService.pomodoroBox.length} '
+      'meta=${metaBox.length} outbox=${_hiveService.syncOutboxBox.length}',
+    );
 
     final nowMsUtc = DateTime.now().toUtc().millisecondsSinceEpoch;
     final outbox = _hiveService.syncOutboxBox;
-    final metaBox = _hiveService.syncMetaBox;
 
     Future<void> enqueue({
       required String type,
@@ -419,20 +843,22 @@ class SyncProvider extends ChangeNotifier {
     if (state == null) {
       throw StateError('SyncState not initialized');
     }
-    return SyncApiClient(
+    return SyncApiClient.tokens(
       serverUrl: state.serverUrl,
-      bearerToken: state.authToken,
+      authStorage: _authStorage,
+      authService: _authService,
     );
   }
 
   Future<void> checkServerHealth() async {
-    if (!isConfigured) {
+    if (!isServerConfigured) {
       _setError(SyncErrorCode.notConfigured);
       return;
     }
     await _withStatus(SyncStatus.running, () async {
       await _ensureStateLoaded();
       await _client().health();
+      await refreshProviders();
     });
   }
 
@@ -469,6 +895,16 @@ class SyncProvider extends ChangeNotifier {
       _status = SyncStatus.error;
       if (e is InvalidPassphraseException) {
         _lastErrorCode = SyncErrorCode.invalidPassphrase;
+      } else if (e is SyncPushRejectedException) {
+        if (e.rejectedByReason.length == 1 &&
+            e.rejectedByReason.keys.single == 'quota_exceeded') {
+          _lastErrorCode = SyncErrorCode.quotaExceeded;
+          _lastErrorDetail =
+              'quota_exceeded x${e.rejectedByReason.values.single}';
+        } else {
+          _lastErrorCode = SyncErrorCode.unknown;
+          _lastErrorDetail = 'push rejected: ${e.rejectedByReason}';
+        }
       } else if (e is SyncApiException) {
         if (e.statusCode == null) {
           _lastErrorCode = SyncErrorCode.network;
@@ -484,7 +920,7 @@ class SyncProvider extends ChangeNotifier {
       } else {
         _lastErrorCode = SyncErrorCode.unknown;
       }
-      _lastErrorDetail = e.toString();
+      _lastErrorDetail ??= e.toString();
       notifyListeners();
       rethrow;
     }
@@ -497,7 +933,10 @@ class SyncProvider extends ChangeNotifier {
     if (dekId == null) throw StateError('Missing dekId');
 
     final outbox = _hiveService.syncOutboxBox;
-    if (outbox.isEmpty) return;
+    if (outbox.isEmpty) {
+      _debugLog('pushOutbox: empty');
+      return;
+    }
 
     final metaBox = _hiveService.syncMetaBox;
 
@@ -510,6 +949,12 @@ class SyncProvider extends ChangeNotifier {
     items.sort(
       (a, b) => a.$2.lastEnqueuedAtMsUtc.compareTo(b.$2.lastEnqueuedAtMsUtc),
     );
+
+    final countsByType = <String, int>{};
+    for (final entry in items) {
+      countsByType[entry.$2.type] = (countsByType[entry.$2.type] ?? 0) + 1;
+    }
+    _debugLog('pushOutbox: queued=${items.length} byType=$countsByType');
 
     for (var offset = 0; offset < items.length; offset += _pushBatchLimit) {
       final batch = items
@@ -534,7 +979,12 @@ class SyncProvider extends ChangeNotifier {
           dekId: dekId,
           dek: dek,
         );
-        if (envelope == null) continue;
+        if (envelope == null) {
+          _debugLog(
+            'pushOutbox: missing payload type=${item.type} id=${item.recordId}',
+          );
+          continue;
+        }
 
         toPush.add(envelope);
         pushedKeys.add(key);
@@ -542,7 +992,20 @@ class SyncProvider extends ChangeNotifier {
 
       if (toPush.isEmpty) continue;
 
+      _debugLog('pushOutbox: pushing ${toPush.length} records');
       final resp = await client.push(records: toPush);
+
+      // Older HLC is benign (already have a newer version server-side), but other
+      // rejections mean the server did not store the record. If we ignore this,
+      // the UI may show "synced" while another device won't receive data.
+      final rejectedByReason = <String, int>{};
+      for (final r in resp.rejected) {
+        if (r.reason == 'older_hlc') continue;
+        rejectedByReason[r.reason] = (rejectedByReason[r.reason] ?? 0) + 1;
+      }
+      if (rejectedByReason.isNotEmpty) {
+        throw SyncPushRejectedException(rejectedByReason);
+      }
 
       final acceptedKeys = <String>{};
       for (final a in resp.accepted) {
@@ -605,16 +1068,37 @@ class SyncProvider extends ChangeNotifier {
   }) async {
     switch (type) {
       case SyncTypes.todo:
-        final todo = _hiveService.todosBox.get(recordId);
+        final box = _hiveService.todosBox;
+        var todo = box.get(recordId);
+        // Legacy Hive box keys might not equal `TodoModel.id`.
+        todo ??= box.values
+            .where((t) => t.id == recordId)
+            .cast<TodoModel?>()
+            .firstOrNull;
         return todo?.toJson();
       case SyncTypes.repeatTodo:
-        final repeat = _hiveService.repeatTodosBox.get(recordId);
+        final box = _hiveService.repeatTodosBox;
+        var repeat = box.get(recordId);
+        repeat ??= box.values
+            .where((t) => t.id == recordId)
+            .cast<RepeatTodoModel?>()
+            .firstOrNull;
         return repeat?.toJson();
       case SyncTypes.statisticsData:
-        final stat = _hiveService.statisticsDataBox.get(recordId);
+        final box = _hiveService.statisticsDataBox;
+        var stat = box.get(recordId);
+        stat ??= box.values
+            .where((t) => t.id == recordId)
+            .cast<StatisticsDataModel?>()
+            .firstOrNull;
         return stat?.toJson();
       case SyncTypes.pomodoro:
-        final pomodoro = _hiveService.pomodoroBox.get(recordId);
+        final box = _hiveService.pomodoroBox;
+        var pomodoro = box.get(recordId);
+        pomodoro ??= box.values
+            .where((t) => t.id == recordId)
+            .cast<PomodoroModel?>()
+            .firstOrNull;
         return pomodoro?.toJson();
       case SyncTypes.userPrefs:
         final prefs = _hiveService.userPreferencesBox.get(
@@ -791,5 +1275,13 @@ class SyncProvider extends ChangeNotifier {
       default:
         return;
     }
+  }
+}
+
+extension _FirstOrNullExtension<T> on Iterable<T> {
+  T? get firstOrNull {
+    final it = iterator;
+    if (!it.moveNext()) return null;
+    return it.current;
   }
 }

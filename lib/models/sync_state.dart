@@ -16,10 +16,23 @@ class SyncState {
   /// new device can't pull it.
   final bool didBootstrapSettings;
 
+  /// One-time repair: if meta exists but outbox was lost, existing local records
+  /// might never be pushed (only singleton settings are). This flag prevents
+  /// re-enqueueing all records on every sync.
+  final bool didBackfillOutboxFromMeta;
+
   /// Device-local sync configuration/state.
   final bool syncEnabled;
   final String serverUrl;
-  final String authToken;
+
+  /// Current logged-in sync user id (derived from access token sub).
+  ///
+  /// Used to detect account switches and reset bootstrap/cursors to avoid
+  /// accidentally mixing two users in one local sync space.
+  final String authUserId;
+
+  /// OAuth provider name used for `GET /v1/auth/start?provider=...`.
+  final String authProvider;
 
   /// Current DEK id for this sync space.
   ///
@@ -33,9 +46,11 @@ class SyncState {
     required this.lastServerSeq,
     required this.didBootstrapLocalRecords,
     required this.didBootstrapSettings,
+    required this.didBackfillOutboxFromMeta,
     required this.syncEnabled,
     required this.serverUrl,
-    required this.authToken,
+    required this.authUserId,
+    required this.authProvider,
     required this.dekId,
   });
 
@@ -46,9 +61,11 @@ class SyncState {
     int? lastServerSeq,
     bool? didBootstrapLocalRecords,
     bool? didBootstrapSettings,
+    bool? didBackfillOutboxFromMeta,
     bool? syncEnabled,
     String? serverUrl,
-    String? authToken,
+    String? authUserId,
+    String? authProvider,
     Object? dekId = _unset,
   }) {
     return SyncState(
@@ -59,9 +76,12 @@ class SyncState {
       didBootstrapLocalRecords:
           didBootstrapLocalRecords ?? this.didBootstrapLocalRecords,
       didBootstrapSettings: didBootstrapSettings ?? this.didBootstrapSettings,
+      didBackfillOutboxFromMeta:
+          didBackfillOutboxFromMeta ?? this.didBackfillOutboxFromMeta,
       syncEnabled: syncEnabled ?? this.syncEnabled,
       serverUrl: serverUrl ?? this.serverUrl,
-      authToken: authToken ?? this.authToken,
+      authUserId: authUserId ?? this.authUserId,
+      authProvider: authProvider ?? this.authProvider,
       dekId: identical(dekId, _unset) ? this.dekId : dekId as String?,
     );
   }
@@ -74,9 +94,11 @@ class SyncState {
       lastServerSeq: 0,
       didBootstrapLocalRecords: false,
       didBootstrapSettings: false,
+      didBackfillOutboxFromMeta: false,
       syncEnabled: false,
       serverUrl: '',
-      authToken: '',
+      authUserId: '',
+      authProvider: '',
       dekId: null,
     );
   }

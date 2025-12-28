@@ -83,7 +83,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get cloudSyncSetupTitle => '1）サーバー設定';
 
   @override
-  String get cloudSyncSetupSubtitle => 'URL とトークンを設定し、接続を確認します。';
+  String get cloudSyncSetupSubtitle => 'サーバーURL を設定し、プロバイダーを選択してログインします。';
 
   @override
   String get cloudSyncSetupDialogTitle => 'サーバー設定';
@@ -95,19 +95,43 @@ class AppLocalizationsJa extends AppLocalizations {
   String get cloudSyncServerUrlHint => 'http://127.0.0.1:8787';
 
   @override
-  String get cloudSyncBearerToken => 'Bearer トークン（開発用）';
+  String get cloudSyncAuthProvider => 'OAuth プロバイダー';
 
   @override
-  String get cloudSyncShowToken => 'トークンを表示';
+  String get cloudSyncAuthProviderHint => 'linuxdo';
 
   @override
-  String get cloudSyncHideToken => 'トークンを非表示';
+  String get cloudSyncAuthMode => '認証';
+
+  @override
+  String get cloudSyncAuthModeLoggedIn => 'ログイン済み';
+
+  @override
+  String get cloudSyncAuthModeLoggedOut => '未ログイン';
 
   @override
   String get cloudSyncCheckServer => 'サーバー確認';
 
   @override
   String get cloudSyncEditServerConfig => '編集';
+
+  @override
+  String get cloudSyncLogin => 'ログイン';
+
+  @override
+  String get cloudSyncLogout => 'ログアウト';
+
+  @override
+  String get cloudSyncLoggedInSnack => 'ログインしました';
+
+  @override
+  String get cloudSyncLoggedOutSnack => 'ログアウトしました';
+
+  @override
+  String get cloudSyncLoginRedirectedSnack => 'ブラウザでログインを続行してください';
+
+  @override
+  String get cloudSyncLoginFailedSnack => 'ログインに失敗しました';
 
   @override
   String get cloudSyncNotSet => '未設定';
@@ -277,6 +301,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get cloudSyncErrorConflict => '競合（bundleVersion 不一致）';
+
+  @override
+  String get cloudSyncErrorQuotaExceeded =>
+      'Server quota exceeded (some records were rejected)';
 
   @override
   String get cloudSyncErrorUnknown => '不明なエラー';

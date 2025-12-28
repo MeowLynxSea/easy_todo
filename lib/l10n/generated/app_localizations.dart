@@ -255,7 +255,7 @@ abstract class AppLocalizations {
   /// No description provided for @cloudSyncSetupSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Set server URL and token, then check connectivity.'**
+  /// **'Set server URL, then choose a provider and login.'**
   String get cloudSyncSetupSubtitle;
 
   /// No description provided for @cloudSyncSetupDialogTitle.
@@ -276,23 +276,35 @@ abstract class AppLocalizations {
   /// **'http://127.0.0.1:8787'**
   String get cloudSyncServerUrlHint;
 
-  /// No description provided for @cloudSyncBearerToken.
+  /// No description provided for @cloudSyncAuthProvider.
   ///
   /// In en, this message translates to:
-  /// **'Bearer token (dev login)'**
-  String get cloudSyncBearerToken;
+  /// **'OAuth provider'**
+  String get cloudSyncAuthProvider;
 
-  /// No description provided for @cloudSyncShowToken.
+  /// No description provided for @cloudSyncAuthProviderHint.
   ///
   /// In en, this message translates to:
-  /// **'Show token'**
-  String get cloudSyncShowToken;
+  /// **'linuxdo'**
+  String get cloudSyncAuthProviderHint;
 
-  /// No description provided for @cloudSyncHideToken.
+  /// No description provided for @cloudSyncAuthMode.
   ///
   /// In en, this message translates to:
-  /// **'Hide token'**
-  String get cloudSyncHideToken;
+  /// **'Auth'**
+  String get cloudSyncAuthMode;
+
+  /// No description provided for @cloudSyncAuthModeLoggedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged in'**
+  String get cloudSyncAuthModeLoggedIn;
+
+  /// No description provided for @cloudSyncAuthModeLoggedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Not logged in'**
+  String get cloudSyncAuthModeLoggedOut;
 
   /// No description provided for @cloudSyncCheckServer.
   ///
@@ -305,6 +317,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Edit'**
   String get cloudSyncEditServerConfig;
+
+  /// No description provided for @cloudSyncLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Login'**
+  String get cloudSyncLogin;
+
+  /// No description provided for @cloudSyncLogout.
+  ///
+  /// In en, this message translates to:
+  /// **'Logout'**
+  String get cloudSyncLogout;
+
+  /// No description provided for @cloudSyncLoggedInSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged in'**
+  String get cloudSyncLoggedInSnack;
+
+  /// No description provided for @cloudSyncLoggedOutSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged out'**
+  String get cloudSyncLoggedOutSnack;
+
+  /// No description provided for @cloudSyncLoginRedirectedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue login in your browser'**
+  String get cloudSyncLoginRedirectedSnack;
+
+  /// No description provided for @cloudSyncLoginFailedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Login failed'**
+  String get cloudSyncLoginFailedSnack;
 
   /// No description provided for @cloudSyncNotSet.
   ///
@@ -635,6 +683,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Conflict (bundle version mismatch)'**
   String get cloudSyncErrorConflict;
+
+  /// No description provided for @cloudSyncErrorQuotaExceeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Server quota exceeded (some records were rejected)'**
+  String get cloudSyncErrorQuotaExceeded;
 
   /// No description provided for @cloudSyncErrorUnknown.
   ///

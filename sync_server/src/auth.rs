@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 
 use anyhow::Context;
@@ -393,12 +393,16 @@ impl AuthService {
         pool: &Pool<Sqlite>,
         limiter: &tokio::sync::Mutex<RateLimiter>,
         headers: &HeaderMap,
+        remote_ip: Option<IpAddr>,
     ) -> Result<AuthedUser, (StatusCode, Json<ErrorBody>)> {
         let token = extract_bearer(headers)
             .ok_or_else(|| json_error(StatusCode::UNAUTHORIZED, "missing bearer token"))?;
         {
             let mut limiter = limiter.lock().await;
-            if !limiter.check(&token) {
+            let ip = remote_ip
+                .map(|v| v.to_string())
+                .unwrap_or_else(|| "unknown".to_string());
+            if !limiter.check(&format!("api_ip:{ip}")) {
                 return Err(json_error(StatusCode::TOO_MANY_REQUESTS, "rate limited"));
             }
         }
@@ -407,6 +411,12 @@ impl AuthService {
             .verify_access_token(pool, &token)
             .await
             .map_err(|_| json_error(StatusCode::UNAUTHORIZED, "invalid access token"))?;
+        {
+            let mut limiter = limiter.lock().await;
+            if !limiter.check(&format!("api_user:{user_id}")) {
+                return Err(json_error(StatusCode::TOO_MANY_REQUESTS, "rate limited"));
+            }
+        }
         Ok(AuthedUser { user_id })
     }
 
@@ -539,9 +549,13 @@ impl FromRequestParts<AppState> for AuthedUser {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
+        let remote_ip = parts
+            .extensions
+            .get::<ConnectInfo<SocketAddr>>()
+            .map(|ci| ci.0.ip());
         state
             .auth
-            .authenticate_request(&state.db, &state.limiter, &parts.headers)
+            .authenticate_request(&state.db, &state.limiter, &parts.headers, remote_ip)
             .await
     }
 }

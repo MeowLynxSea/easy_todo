@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -37,36 +37,86 @@ struct AppState {
 }
 
 struct RateLimiter {
-    per_user: HashMap<String, (Instant, u32)>,
+    per_key: HashMap<String, (Instant, u32, u64)>,
+    lru: VecDeque<(String, u64)>,
     window: Duration,
     max_requests: u32,
+    max_entries: usize,
+    next_id: u64,
 }
 
 impl RateLimiter {
-    fn new(window: Duration, max_requests: u32) -> Self {
+    fn new(window: Duration, max_requests: u32, max_entries: usize) -> Self {
         Self {
-            per_user: HashMap::new(),
+            per_key: HashMap::new(),
+            lru: VecDeque::new(),
             window,
             max_requests,
+            max_entries: max_entries.max(1),
+            next_id: 0,
         }
     }
 
-    fn check(&mut self, user_key: &str) -> bool {
+    fn check(&mut self, key: &str) -> bool {
         let now = Instant::now();
-        let entry = self
-            .per_user
-            .entry(user_key.to_string())
-            .or_insert((now, 0));
+        self.next_id = self.next_id.wrapping_add(1);
+        let id = self.next_id;
 
-        if now.duration_since(entry.0) > self.window {
-            *entry = (now, 0);
-        }
+        let key = key.to_string();
+        let allowed = {
+            let entry = self.per_key.entry(key.clone()).or_insert((now, 0, id));
+            entry.2 = id;
 
-        if entry.1 >= self.max_requests {
+            if now.duration_since(entry.0) > self.window {
+                *entry = (now, 0, id);
+            }
+
+            if entry.1 >= self.max_requests {
+                false
+            } else {
+                entry.1 += 1;
+                true
+            }
+        };
+
+        self.lru.push_back((key, id));
+        self.evict_if_needed();
+        if !allowed {
             return false;
         }
-        entry.1 += 1;
         true
+    }
+
+    fn evict_if_needed(&mut self) {
+        // Drop stale LRU pointers.
+        while let Some((k, id)) = self.lru.front() {
+            let Some(cur) = self.per_key.get(k) else {
+                self.lru.pop_front();
+                continue;
+            };
+            if cur.2 != *id {
+                self.lru.pop_front();
+                continue;
+            }
+            break;
+        }
+
+        while self.per_key.len() > self.max_entries {
+            let Some((k, id)) = self.lru.pop_front() else {
+                break;
+            };
+            if self.per_key.get(&k).map(|cur| cur.2) == Some(id) {
+                self.per_key.remove(&k);
+            }
+        }
+
+        // Avoid unbounded growth when the same few keys are hit repeatedly.
+        if self.lru.len() > self.max_entries.saturating_mul(4) {
+            self.lru.clear();
+            for (k, cur) in self.per_key.iter() {
+                self.lru.push_back((k.clone(), cur.2));
+            }
+        }
     }
 }
 
@@ -683,10 +733,12 @@ async fn main() -> anyhow::Result<()> {
         limiter: Arc::new(tokio::sync::Mutex::new(RateLimiter::new(
             Duration::from_secs(1),
             50,
+            8192,
         ))),
         auth_limiter: Arc::new(tokio::sync::Mutex::new(RateLimiter::new(
             Duration::from_secs(1),
             10,
+            8192,
         ))),
         auth: auth_service,
         max_push_records,

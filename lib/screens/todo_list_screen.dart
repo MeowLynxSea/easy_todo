@@ -828,30 +828,6 @@ class _TodoListScreenState extends State<TodoListScreen> {
               ),
             ],
           ),
-          floatingActionButton: AnimatedScale(
-            scale: 1.0,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.elasticOut,
-            child: AnimatedRotation(
-              turns: 0.0,
-              duration: const Duration(milliseconds: 600),
-              curve: Curves.elasticOut,
-              child: FloatingActionButton(
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  if (_addTodoController.text.trim().isNotEmpty) {
-                    _addTodo();
-                  } else {
-                    _showAddTodoDialog();
-                  }
-                },
-                elevation: 6,
-                highlightElevation: 12,
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                child: const Icon(Icons.add, color: Colors.white),
-              ),
-            ),
-          ),
           body: WebDesktopContent(
             padding: EdgeInsets.zero,
             child: Column(
@@ -1211,7 +1187,14 @@ class _TodoListScreenState extends State<TodoListScreen> {
                 ),
                 child: IconButton(
                   icon: const Icon(Icons.add, color: Colors.white),
-                  onPressed: _addTodo,
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    if (_addTodoController.text.trim().isNotEmpty) {
+                      _addTodo();
+                    } else {
+                      _showAddTodoDialog();
+                    }
+                  },
                   tooltip: l10n.addTodo,
                 ),
               ),

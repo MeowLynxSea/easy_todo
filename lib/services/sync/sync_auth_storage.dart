@@ -61,9 +61,13 @@ class SyncAuthStorage {
       setSessionValue(_accessTokenKey, tokens.accessToken);
       if (tokens.refreshToken != null) {
         setSessionValue(_refreshTokenKey, tokens.refreshToken!);
+      } else {
+        removeSessionValue(_refreshTokenKey);
       }
       if (tokens.expiresAtMsUtc != null) {
         setSessionValue(_expiresAtKey, tokens.expiresAtMsUtc.toString());
+      } else {
+        removeSessionValue(_expiresAtKey);
       }
       return;
     }
@@ -77,12 +81,16 @@ class SyncAuthStorage {
         key: _refreshTokenKey,
         value: tokens.refreshToken,
       );
+    } else {
+      await _secureStorage.delete(key: _refreshTokenKey);
     }
     if (tokens.expiresAtMsUtc != null) {
       await _secureStorage.write(
         key: _expiresAtKey,
         value: tokens.expiresAtMsUtc.toString(),
       );
+    } else {
+      await _secureStorage.delete(key: _expiresAtKey);
     }
   }
 

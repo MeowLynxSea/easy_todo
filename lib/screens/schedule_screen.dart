@@ -1,12 +1,14 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:easy_todo/models/todo_model.dart';
 import 'package:easy_todo/providers/app_settings_provider.dart';
 import 'package:easy_todo/providers/todo_provider.dart';
+import 'package:easy_todo/utils/date_utils.dart';
 import 'package:easy_todo/utils/responsive.dart';
 import 'package:easy_todo/utils/time_format.dart';
 import 'package:easy_todo/widgets/add_todo_dialog.dart';
@@ -19,73 +21,145 @@ class ScheduleScreen extends StatefulWidget {
 }
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
+  static const int _baseIndex = 10000;
+  static const int _visibleDays = 7;
+  static const int _centerOffsetDays = 3;
+  static const int _bufferDays = 14;
+
+  late final ScrollController _scrollController;
+  late final DateTime _anchorDay;
+  int _startIndex = _baseIndex - _centerOffsetDays;
+  double _dayWidth = 0;
+  bool _didInitialJump = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _anchorDay = localDay(DateTime.now());
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  DateTime _dateForIndex(int index) {
+    return _anchorDay.add(Duration(days: index - _baseIndex));
+  }
+
+  Future<void> _animateToStartIndex(int startIndex) async {
+    if (!_scrollController.hasClients || _dayWidth <= 0) return;
+    await _scrollController.animateTo(
+      startIndex * _dayWidth,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  String _formatWindowLabel(DateTime start, DateTime endInclusive) {
+    String md(DateTime d) =>
+        '${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}';
+
+    if (start.year == endInclusive.year) {
+      return '${md(start)} - ${md(endInclusive)}';
+    }
+    return '${start.year}/${md(start)} - ${endInclusive.year}/${md(endInclusive)}';
+  }
+
+  Widget _wrapPagerForDesktop({
+    required bool isDesktop,
+    required Widget child,
+  }) {
+    if (!isDesktop) return child;
+
+    return Shortcuts(
+      shortcuts: <ShortcutActivator, Intent>{
+        const SingleActivator(LogicalKeyboardKey.arrowLeft):
+            const _PreviousWindowIntent(),
+        const SingleActivator(LogicalKeyboardKey.arrowRight):
+            const _NextWindowIntent(),
+      },
+      child: Actions(
+        actions: <Type, Action<Intent>>{
+          _PreviousWindowIntent: CallbackAction<_PreviousWindowIntent>(
+            onInvoke: (intent) {
+              _animateToStartIndex(_startIndex - 1);
+              return null;
+            },
+          ),
+          _NextWindowIntent: CallbackAction<_NextWindowIntent>(
+            onInvoke: (intent) {
+              _animateToStartIndex(_startIndex + 1);
+              return null;
+            },
+          ),
+        },
+        child: Focus(autofocus: true, child: child),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final isDesktop = isWebDesktop(context);
+    final materialL10n = MaterialLocalizations.of(context);
 
     return Consumer2<TodoProvider, AppSettingsProvider>(
       builder: (context, todoProvider, appSettingsProvider, child) {
-        final now = DateTime.now();
-        final today = DateTime(now.year, now.month, now.day);
-        final weekStart = today.subtract(Duration(days: today.weekday - 1));
-
-        final weekDays = List<DateTime>.generate(
-          7,
-          (i) => weekStart.add(Duration(days: i)),
-        );
-
-        final selectedWeekdays = appSettingsProvider.scheduleVisibleWeekdays;
-        final filteredDays = selectedWeekdays.isEmpty
-            ? weekDays
-            : weekDays
-                  .where((d) => selectedWeekdays.contains(d.weekday))
-                  .toList(growable: false);
-        final days = filteredDays.isEmpty ? weekDays : filteredDays;
-
         final rawStartMinute = appSettingsProvider.scheduleDayStartMinutes;
         final rawEndMinute = appSettingsProvider.scheduleDayEndMinutes;
         final startMinute = rawStartMinute.clamp(0, 1440);
         final endMinute = rawEndMinute.clamp(0, 1440);
         final visibleStartMinute = endMinute > startMinute ? startMinute : 0;
         final visibleEndMinute = endMinute > startMinute ? endMinute : 1440;
-
-        final scheduleTodos = todoProvider.getThisWeekScheduleTodos();
         final labelTextScale = appSettingsProvider.scheduleLabelTextScale.clamp(
           0.8,
           1.4,
         );
 
-        final itemsByDay = <DateTime, List<_PlacedScheduleItem>>{};
-        for (final dayStart in days) {
-          itemsByDay[dayStart] = _collectItemsForDay(
-            scheduleTodos,
-            dayStart: dayStart,
-          );
-        }
-
-        final maxUnscheduled = itemsByDay.values
-            .map((items) => items.where((e) => e.type == _ItemType.unscheduled))
-            .map((items) => items.length)
-            .fold<int>(0, math.max);
+        final currentStart = _dateForIndex(_startIndex);
+        final currentEnd = currentStart.add(const Duration(days: _visibleDays));
+        final currentEndInclusive = currentEnd.subtract(
+          const Duration(days: 1),
+        );
+        final windowLabel = _formatWindowLabel(
+          currentStart,
+          currentEndInclusive,
+        );
 
         return Scaffold(
           appBar: AppBar(
             title: Text(l10n.schedule),
             actions: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Center(
-                  child: Text(
-                    l10n.thisWeek,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.75),
-                    ),
+              if (isDesktop)
+                IconButton(
+                  tooltip: materialL10n.previousPageTooltip,
+                  onPressed: () => _animateToStartIndex(_startIndex - 1),
+                  icon: const Icon(Icons.chevron_left),
+                ),
+              TextButton(
+                onPressed: _startIndex == _baseIndex - _centerOffsetDays
+                    ? null
+                    : () =>
+                          _animateToStartIndex(_baseIndex - _centerOffsetDays),
+                child: Text(
+                  windowLabel,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.75),
                   ),
                 ),
               ),
+              if (isDesktop)
+                IconButton(
+                  tooltip: materialL10n.nextPageTooltip,
+                  onPressed: () => _animateToStartIndex(_startIndex + 1),
+                  icon: const Icon(Icons.chevron_right),
+                ),
             ],
           ),
           body: LayoutBuilder(
@@ -99,8 +173,55 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 0.0,
                 constraints.maxWidth - gutterWidth,
               );
-              final dayCount = math.max(1, days.length);
-              final dayWidth = availableForDays / dayCount.toDouble();
+              final dayWidth = availableForDays / _visibleDays;
+              if (dayWidth > 0 && (dayWidth - _dayWidth).abs() > 0.01) {
+                _dayWidth = dayWidth;
+                _didInitialJump = false;
+              }
+
+              if (!_didInitialJump && _dayWidth > 0) {
+                _didInitialJump = true;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!_scrollController.hasClients) return;
+                  final initialStart = _baseIndex - _centerOffsetDays;
+                  _scrollController.jumpTo(initialStart * _dayWidth);
+                  if (mounted) {
+                    setState(() => _startIndex = initialStart);
+                  }
+                });
+              }
+
+              final visibleStart = _dateForIndex(_startIndex);
+
+              final bufferStartIndex = _startIndex - _bufferDays;
+              final bufferEndIndex =
+                  _startIndex + _visibleDays - 1 + _bufferDays;
+              final bufferStart = _dateForIndex(bufferStartIndex);
+              final bufferEnd = _dateForIndex(
+                bufferEndIndex,
+              ).add(const Duration(days: 1));
+
+              final scheduleTodos = todoProvider.getScheduleTodosInRange(
+                start: bufferStart,
+                end: bufferEnd,
+              );
+
+              final itemsByDay = <DateTime, List<_PlacedScheduleItem>>{};
+              for (int i = bufferStartIndex; i <= bufferEndIndex; i++) {
+                final dayStart = _dateForIndex(i);
+                itemsByDay[dayStart] = _collectItemsForDay(
+                  scheduleTodos,
+                  dayStart: dayStart,
+                );
+              }
+
+              final maxUnscheduled = List<int>.generate(_visibleDays, (i) {
+                final dayStart = visibleStart.add(Duration(days: i));
+                final items = itemsByDay[dayStart] ?? const [];
+                return items
+                    .where((e) => e.type == _ItemType.unscheduled)
+                    .length;
+              }).fold<int>(0, math.max);
 
               final baseUnscheduledItemHeight = isDesktop ? 24.0 : 22.0;
               const baseUnscheduledGap = 6.0;
@@ -181,6 +302,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               ];
 
               final contentHeight = availableHeight;
+              final today = localDay(DateTime.now());
+              final selectedWeekdays =
+                  appSettingsProvider.scheduleVisibleWeekdays;
 
               return SizedBox(
                 width: constraints.maxWidth,
@@ -200,12 +324,35 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       dense: !isDesktop,
                     ),
                     Expanded(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: days
-                            .map(
-                              (dayStart) => _DayColumn(
+                      child: _wrapPagerForDesktop(
+                        isDesktop: isDesktop,
+                        child: NotificationListener<ScrollNotification>(
+                          onNotification: (notification) {
+                            final metrics = notification.metrics;
+                            if (_dayWidth <= 0 ||
+                                metrics.axis != Axis.horizontal) {
+                              return false;
+                            }
+                            final newStartIndex = (metrics.pixels / _dayWidth)
+                                .floor();
+                            if (newStartIndex != _startIndex && mounted) {
+                              setState(() => _startIndex = newStartIndex);
+                            }
+                            return false;
+                          },
+                          child: ListView.builder(
+                            controller: _scrollController,
+                            scrollDirection: Axis.horizontal,
+                            itemExtent: dayWidth,
+                            itemBuilder: (context, index) {
+                              final dayStart = _dateForIndex(index);
+                              final isDimmed =
+                                  selectedWeekdays.isNotEmpty &&
+                                  !selectedWeekdays.contains(dayStart.weekday);
+
+                              final column = _DayColumn(
                                 dayStart: dayStart,
+                                isToday: isSameLocalDay(dayStart, today),
                                 items: itemsByDay[dayStart] ?? const [],
                                 width: dayWidth,
                                 height: contentHeight,
@@ -222,9 +369,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                                 labelTextScale: labelTextScale,
                                 isWebDesktop: isDesktop,
                                 onEdit: _showEditDialog,
-                              ),
-                            )
-                            .toList(growable: false),
+                              );
+
+                              return isDimmed
+                                  ? Opacity(opacity: 0.35, child: column)
+                                  : column;
+                            },
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -323,6 +475,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       ),
     );
   }
+}
+
+class _PreviousWindowIntent extends Intent {
+  const _PreviousWindowIntent();
+}
+
+class _NextWindowIntent extends Intent {
+  const _NextWindowIntent();
 }
 
 enum _ItemType { unscheduled, startOnly, endOnly, ranged }
@@ -445,6 +605,7 @@ class _TimeGutter extends StatelessWidget {
 
 class _DayColumn extends StatelessWidget {
   final DateTime dayStart;
+  final bool isToday;
   final List<_PlacedScheduleItem> items;
   final double width;
   final double height;
@@ -464,6 +625,7 @@ class _DayColumn extends StatelessWidget {
 
   const _DayColumn({
     required this.dayStart,
+    required this.isToday,
     required this.items,
     required this.width,
     required this.height,
@@ -538,7 +700,12 @@ class _DayColumn extends StatelessWidget {
                               compact ? compactDayLabel : dayLabel,
                               overflow: TextOverflow.ellipsis,
                               style: Theme.of(context).textTheme.titleSmall
-                                  ?.copyWith(fontWeight: FontWeight.w600),
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: isToday
+                                        ? Theme.of(context).colorScheme.primary
+                                        : null,
+                                  ),
                             ),
                           ),
                           if (!compact) ...[

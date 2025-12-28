@@ -1435,23 +1435,34 @@ class TodoProvider extends ChangeNotifier {
     final weekStart = today.subtract(Duration(days: today.weekday - 1));
     final weekEnd = weekStart.add(const Duration(days: 7));
 
+    return getScheduleTodosInRange(start: weekStart, end: weekEnd);
+  }
+
+  List<TodoModel> getScheduleTodosInRange({
+    required DateTime start,
+    required DateTime end,
+  }) {
+    if (!end.isAfter(start)) return const [];
+
     return _todos
         .where((todo) {
-          final start = todo.startTime;
-          final end = todo.endTime;
+          final startTime = todo.startTime;
+          final endTime = todo.endTime;
 
-          if (start != null && end != null && end.isAfter(start)) {
-            return start.isBefore(weekEnd) && end.isAfter(weekStart);
+          if (startTime != null &&
+              endTime != null &&
+              endTime.isAfter(startTime)) {
+            return startTime.isBefore(end) && endTime.isAfter(start);
           }
 
           final point =
-              start ??
-              end ??
+              startTime ??
+              endTime ??
               ((todo.reminderEnabled && todo.reminderTime != null)
                   ? todo.reminderTime!
                   : todo.createdAt);
 
-          return !point.isBefore(weekStart) && point.isBefore(weekEnd);
+          return !point.isBefore(start) && point.isBefore(end);
         })
         .toList(growable: false);
   }

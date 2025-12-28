@@ -309,16 +309,19 @@ class SyncProvider extends ChangeNotifier {
         ? nextUrl.substring(0, nextUrl.length - 1)
         : nextUrl;
 
-    if (normalizedPrev.isNotEmpty && normalizedPrev != normalizedNext) {
+    final didChangeServer = normalizedPrev != normalizedNext;
+    if (normalizedPrev.isNotEmpty && didChangeServer) {
       await _resetForNewSyncServer(state: state);
     }
 
     final updated = state.copyWith(serverUrl: nextUrl);
     await _hiveService.syncStateBox.put(SyncWriteService.stateKey, updated);
     _state = updated;
-    await _authStorage.clear();
-    _authTokens = null;
-    _availableProviders = const [];
+    if (didChangeServer) {
+      await _authStorage.clear();
+      _authTokens = null;
+      _availableProviders = const [];
+    }
     notifyListeners();
     unawaited(refreshProviders());
   }

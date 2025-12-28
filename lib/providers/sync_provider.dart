@@ -1105,10 +1105,10 @@ class SyncProvider extends ChangeNotifier {
 
     final prefsBox = _hiveService.userPreferencesBox;
     if (!prefsBox.containsKey(UserPreferencesRepository.hiveKey)) {
-      await prefsBox.put(
-        UserPreferencesRepository.hiveKey,
-        UserPreferencesModel.create(),
-      );
+      await UserPreferencesRepository(
+        hiveService: _hiveService,
+        syncWriteService: _syncWriteService,
+      ).load();
     }
     await enqueue(
       type: SyncTypes.userPrefs,
@@ -1118,7 +1118,10 @@ class SyncProvider extends ChangeNotifier {
 
     final aiBox = _hiveService.aiSettingsBox;
     if (!aiBox.containsKey(AISettingsRepository.hiveKey)) {
-      await aiBox.put(AISettingsRepository.hiveKey, AISettingsModel.create());
+      await AISettingsRepository(
+        hiveService: _hiveService,
+        syncWriteService: _syncWriteService,
+      ).save(AISettingsModel.create());
     }
     await enqueue(
       type: SyncTypes.aiSettings,

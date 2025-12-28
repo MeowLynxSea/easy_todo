@@ -71,8 +71,10 @@ class AppSettingsProvider extends ChangeNotifier {
                   defaultPrefs.scheduleDayEndMinutes &&
               _preferences.scheduleLabelTextScale ==
                   defaultPrefs.scheduleLabelTextScale &&
-              _preferences.scheduleVisibleWeekdays.length ==
-                  defaultPrefs.scheduleVisibleWeekdays.length) {
+              listEquals(
+                _preferences.scheduleVisibleWeekdays,
+                defaultPrefs.scheduleVisibleWeekdays,
+              )) {
             _preferences = UserPreferencesModel(
               languageCode: _preferences.languageCode,
               themeModeIndex: _preferences.themeModeIndex,

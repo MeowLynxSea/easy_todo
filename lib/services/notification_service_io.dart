@@ -10,6 +10,7 @@ import 'package:easy_todo/models/pomodoro_model.dart';
 import 'package:easy_todo/models/notification_settings_model.dart';
 import 'package:easy_todo/services/hive_service.dart';
 import 'package:easy_todo/services/sync_write_service.dart';
+import 'package:easy_todo/services/repositories/user_preferences_repository.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:easy_todo/providers/ai_provider.dart';
@@ -42,6 +43,23 @@ class NotificationService {
     // Ensure positive value within 32-bit range
     final notificationId = hash.abs() % 2147483647;
     return notificationId;
+  }
+
+  Future<String> _getCurrentLanguageCode() async {
+    try {
+      final prefs =
+          _hiveService.userPreferencesBox.get(UserPreferencesRepository.hiveKey);
+      final languageCode = prefs?.languageCode ?? '';
+      if (languageCode.isNotEmpty) return languageCode;
+    } catch (_) {}
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final languageCode = prefs.getString('app_language') ?? '';
+      if (languageCode.isNotEmpty) return languageCode;
+    } catch (_) {}
+
+    return 'zh';
   }
 
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
@@ -546,8 +564,7 @@ class NotificationService {
       try {
         if (_aiProvider?.settings.enableSmartNotifications == true &&
             _aiProvider?.settings.isValid == true) {
-          final prefs = await SharedPreferences.getInstance();
-          final languageCode = prefs.getString('app_language') ?? 'zh';
+          final languageCode = await _getCurrentLanguageCode();
           final aiMessage = await _aiProvider?.generateSmartNotification(
             todo,
             languageCode: languageCode,
@@ -954,8 +971,7 @@ class NotificationService {
         if (_aiProvider?.settings.enableSmartNotifications == true &&
             _aiProvider?.settings.isValid == true) {
           debugPrint('Generating AI-powered daily summary content');
-          final prefs = await SharedPreferences.getInstance();
-          final languageCode = prefs.getString('app_language') ?? 'zh';
+          final languageCode = await _getCurrentLanguageCode();
           final aiMessage = await _aiProvider?.generateDailySummary(
             todos,
             languageCode: languageCode,
@@ -1177,8 +1193,7 @@ class NotificationService {
 
   Future<String?> _getLocalizedString(String key) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final languageCode = prefs.getString('app_language') ?? 'zh';
+      final languageCode = await _getCurrentLanguageCode();
       final locale = Locale(languageCode);
 
       // 使用Flutter的l10n框架加载本地化字符串
@@ -1198,8 +1213,7 @@ class NotificationService {
 
   Future<String?> _getLocalizedStringWithCount(String key, int count) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final languageCode = prefs.getString('app_language') ?? 'zh';
+      final languageCode = await _getCurrentLanguageCode();
       final locale = Locale(languageCode);
 
       // 使用Flutter的l10n框架加载本地化字符串
@@ -1220,8 +1234,7 @@ class NotificationService {
 
   Future<AppLocalizations?> _getLocalizations() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final languageCode = prefs.getString('app_language') ?? 'zh';
+      final languageCode = await _getCurrentLanguageCode();
       final locale = Locale(languageCode);
       final l10n = await AppLocalizations.delegate.load(locale);
       debugPrint(
@@ -1353,8 +1366,7 @@ class NotificationService {
             debugPrint(
               'No pre-prepared AI content available, generating now...',
             );
-            final prefs = await SharedPreferences.getInstance();
-            final languageCode = prefs.getString('app_language') ?? 'zh';
+            final languageCode = await _getCurrentLanguageCode();
 
             aiMessage = await _aiProvider?.generatePomodoroNotification(
               session,

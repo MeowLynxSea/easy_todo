@@ -937,6 +937,11 @@ class TodoProvider extends ChangeNotifier {
 
   Future<void> reloadFromHiveReadOnly({FilterProvider? filterProvider}) async {
     try {
+      // Avoid stale persistent caches overriding freshly-synced data on next app
+      // start (or web refresh). Cache invalidation is local-only and does not
+      // touch sync outbox.
+      await _invalidateTodoCache();
+
       if (filterProvider != null) {
         syncWithFilterProvider(filterProvider);
       }

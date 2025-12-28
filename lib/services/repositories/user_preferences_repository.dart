@@ -18,18 +18,21 @@ class UserPreferencesRepository {
 
   Future<UserPreferencesModel> load() async {
     final box = _hiveService.userPreferencesBox;
-    var prefs = box.get(hiveKey);
+    final existing = box.get(hiveKey);
+    final didExist = existing != null;
 
-    if (prefs == null) {
-      prefs = UserPreferencesModel.create();
+    var prefs = existing ?? UserPreferencesModel.create();
+
+    // Only migrate legacy SharedPreferences once, when creating the Hive record
+    // for the first time. Otherwise, legacy keys can override user choices on
+    // every app start (especially when the "default" equals a valid selection).
+    if (!didExist) {
+      final migrated = await _migrateFromSharedPreferencesIfHelpful(prefs);
+      if (migrated != prefs) {
+        prefs = migrated;
+      }
       await save(prefs);
       return prefs;
-    }
-
-    final migrated = await _migrateFromSharedPreferencesIfHelpful(prefs);
-    if (migrated != prefs) {
-      await save(migrated);
-      return migrated;
     }
 
     return prefs;

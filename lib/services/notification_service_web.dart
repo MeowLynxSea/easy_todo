@@ -14,6 +14,7 @@ import 'package:easy_todo/models/pomodoro_model.dart';
 import 'package:easy_todo/models/todo_model.dart';
 import 'package:easy_todo/providers/ai_provider.dart';
 import 'package:easy_todo/services/hive_service.dart';
+import 'package:easy_todo/services/repositories/user_preferences_repository.dart';
 import 'package:easy_todo/services/sync_write_service.dart';
 import 'package:easy_todo/services/timezone_service.dart';
 
@@ -624,6 +625,13 @@ class NotificationService {
   }
 
   Future<String> _getCurrentLanguageCode() async {
+    try {
+      final prefs =
+          _hiveService.userPreferencesBox.get(UserPreferencesRepository.hiveKey);
+      final languageCode = prefs?.languageCode ?? '';
+      if (languageCode.isNotEmpty) return languageCode;
+    } catch (_) {}
+
     try {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getString('app_language') ?? 'zh';

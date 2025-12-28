@@ -1549,7 +1549,10 @@ class SyncProvider extends ChangeNotifier {
 
         if (remote.deletedAtMsUtc == null) {
           if (state.dekId != null && remote.dekId != state.dekId) {
-            continue;
+            throw StateError(
+              'DEK mismatch: expected=${state.dekId} got=${remote.dekId} '
+              'type=${remote.type} id=${remote.recordId}',
+            );
           }
 
           final payloadBytes = await _crypto.decryptRecordPayload(
@@ -1558,7 +1561,10 @@ class SyncProvider extends ChangeNotifier {
           );
           final decoded = jsonDecode(utf8.decode(payloadBytes));
           if (decoded is! Map<String, dynamic>) {
-            continue;
+            throw StateError(
+              'invalid record payload json: expected object, got ${decoded.runtimeType} '
+              'type=${remote.type} id=${remote.recordId}',
+            );
           }
           await _applyRemotePayload(
             type: remote.type,

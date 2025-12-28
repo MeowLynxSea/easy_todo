@@ -169,10 +169,72 @@ impl AuthService {
     }
 
     fn is_allowed_app_redirect(&self, app_redirect: &str) -> bool {
-        self.config
-            .app_redirect_allowlist
-            .iter()
-            .any(|prefix| app_redirect.starts_with(prefix))
+        let Ok(app_url) = Url::parse(app_redirect.trim()) else {
+            return false;
+        };
+
+        let app_scheme = app_url.scheme().to_ascii_lowercase();
+        let app_host = app_url.host_str().map(|s| s.to_ascii_lowercase());
+        let app_port = app_url.port_or_known_default();
+        let app_path = app_url.path();
+        let app_fragment = app_url.fragment().unwrap_or("");
+
+        for raw in &self.config.app_redirect_allowlist {
+            let raw = raw.trim();
+            if raw.is_empty() {
+                continue;
+            }
+
+            // Support scheme-only allowlist entries like `easy_todo://`.
+            if raw.ends_with("://") {
+                let scheme = raw.trim_end_matches("://").to_ascii_lowercase();
+                if scheme == app_scheme && scheme != "http" && scheme != "https" {
+                    return true;
+                }
+                continue;
+            }
+
+            let Ok(allowed) = Url::parse(raw) else {
+                continue;
+            };
+
+            if allowed.scheme().to_ascii_lowercase() != app_scheme {
+                continue;
+            }
+
+            let allowed_host = allowed.host_str().map(|s| s.to_ascii_lowercase());
+            if allowed_host != app_host {
+                continue;
+            }
+
+            if let Some(allowed_port) = allowed.port() {
+                if app_port != Some(allowed_port) {
+                    continue;
+                }
+            }
+
+            let allowed_path = allowed.path();
+            if allowed_path != "/" && !allowed_path.is_empty() {
+                let ok = if allowed_path.ends_with('/') {
+                    app_path.starts_with(allowed_path)
+                } else {
+                    app_path == allowed_path
+                        || app_path.starts_with(&format!("{allowed_path}/"))
+                };
+                if !ok {
+                    continue;
+                }
+            }
+
+            let allowed_fragment = allowed.fragment().unwrap_or("");
+            if !allowed_fragment.is_empty() && !app_fragment.starts_with(allowed_fragment) {
+                continue;
+            }
+
+            return true;
+        }
+
+        false
     }
 
     fn random_token_b64(&self, bytes_len: usize) -> String {

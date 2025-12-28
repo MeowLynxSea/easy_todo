@@ -25,6 +25,7 @@ import 'package:easy_todo/screens/ai_settings_screen.dart';
 import 'package:easy_todo/screens/sync_settings_screen.dart';
 import 'package:easy_todo/providers/ai_provider.dart';
 import 'package:easy_todo/widgets/web_desktop_content.dart';
+import 'package:easy_todo/utils/responsive.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -101,12 +102,8 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                       title: l10n.notifications,
                       subtitle: l10n.notificationsSubtitle,
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const NotificationSettingsScreen(),
-                          ),
+                        _openPreferenceSubPage(
+                          (context) => const NotificationSettingsScreen(),
                         );
                       },
                     ),
@@ -116,11 +113,8 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                       title: l10n.theme,
                       subtitle: themeProvider.getThemeModeText(context),
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ThemeSettingsScreen(),
-                          ),
+                        _openPreferenceSubPage(
+                          (context) => const ThemeSettingsScreen(),
                         );
                       },
                     ),
@@ -130,12 +124,8 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                       title: l10n.pomodoroTimer,
                       subtitle: l10n.pomodoroSettings,
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const PomodoroSettingsScreen(),
-                          ),
+                        _openPreferenceSubPage(
+                          (context) => const PomodoroSettingsScreen(),
                         );
                       },
                     ),
@@ -147,11 +137,8 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                           ? l10n.aiEnabled
                           : l10n.aiDisabled,
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AISettingsScreen(),
-                          ),
+                        _openPreferenceSubPage(
+                          (context) => const AISettingsScreen(),
                         );
                       },
                     ),
@@ -164,12 +151,8 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                         l10n,
                       ),
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const LanguageSettingsScreen(),
-                          ),
+                        _openPreferenceSubPage(
+                          (context) => const LanguageSettingsScreen(),
                         );
                       },
                     ),
@@ -203,11 +186,8 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                       title: l10n.viewDisplay,
                       subtitle: l10n.viewDisplaySubtitle,
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ViewSettingsScreen(),
-                          ),
+                        _openPreferenceSubPage(
+                          (context) => const ViewSettingsScreen(),
                         );
                       },
                     ),
@@ -217,12 +197,8 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                       title: l10n.scheduleLayoutSettings,
                       subtitle: l10n.scheduleLayoutSettingsSubtitle,
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const ScheduleLayoutSettingsScreen(),
-                          ),
+                        _openPreferenceSubPage(
+                          (context) => const ScheduleLayoutSettingsScreen(),
                         );
                       },
                     ),
@@ -250,11 +226,8 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                       title: l10n.cloudSync,
                       subtitle: l10n.cloudSyncSubtitle,
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const SyncSettingsScreen(),
-                          ),
+                        _openPreferenceSubPage(
+                          (context) => const SyncSettingsScreen(),
                         );
                       },
                     ),
@@ -264,14 +237,10 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                       title: l10n.backupRestore,
                       subtitle: l10n.backupSubtitle,
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const BackupRestoreScreen(),
-                          ),
-                        ).then((_) {
-                          _loadStorageStats();
-                        });
+                        _openPreferenceSubPage(
+                          (context) => const BackupRestoreScreen(),
+                          onClosed: _loadStorageStats,
+                        );
                       },
                     ),
                     const Divider(),
@@ -282,14 +251,10 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                           ? '${_storageStats!['todos']['total']} ${l10n.todos.toLowerCase()}, ${FileService.formatFileSize(_storageStats!['storage']['dataSize'])}'
                           : l10n.storageSubtitle,
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const StorageScreen(),
-                          ),
-                        ).then((_) {
-                          _loadStorageStats();
-                        });
+                        _openPreferenceSubPage(
+                          (context) => const StorageScreen(),
+                          onClosed: _loadStorageStats,
+                        );
                       },
                     ),
                   ],
@@ -318,11 +283,8 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                           ? _packageInfo!.version
                           : l10n.version,
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AboutScreen(),
-                          ),
+                        _openPreferenceSubPage(
+                          (context) => const AboutScreen(),
                         );
                       },
                     ),
@@ -395,6 +357,41 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
     );
+  }
+
+  Future<void> _openPreferenceSubPage(
+    WidgetBuilder builder, {
+    VoidCallback? onClosed,
+  }) async {
+    if (isWebDesktop(context)) {
+      const inset = 24.0;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) {
+          final size = MediaQuery.sizeOf(dialogContext);
+          final width = (size.width - inset * 2).clamp(360.0, 720.0);
+          final height = (size.height - inset * 2).clamp(480.0, 860.0);
+
+          return Dialog(
+            insetPadding: const EdgeInsets.all(inset),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: SizedBox(
+              width: width,
+              height: height,
+              child: Builder(builder: builder),
+            ),
+          );
+        },
+      );
+      onClosed?.call();
+      return;
+    }
+
+    await Navigator.of(context).push(MaterialPageRoute(builder: builder));
+    onClosed?.call();
   }
 
   void _showHelpSupportDialog() {

@@ -3,12 +3,9 @@ FROM rust:1.85-bookworm AS builder
 
 WORKDIR /app
 
-COPY Cargo.toml Cargo.lock ./
-RUN mkdir -p src && echo "fn main() {}" > src/main.rs
-RUN cargo build --release
-
 COPY . .
 RUN cargo build --release
+RUN test "$(stat -c%s /app/target/release/easy_todo_sync_server)" -gt 3000000
 
 FROM debian:bookworm-slim
 
@@ -22,6 +19,7 @@ COPY --from=builder /app/target/release/easy_todo_sync_server /app/easy_todo_syn
 COPY --from=builder /app/migrations /app/migrations
 
 ENV PORT=8787
+ENV HOST=0.0.0.0
 EXPOSE 8787
 
 CMD ["/app/easy_todo_sync_server"]

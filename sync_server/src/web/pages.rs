@@ -66,53 +66,51 @@ pub(super) async fn home_page(
 
     let body = format!(
         r#"
-<div class="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50">
-  {nav}
-  <main class="mx-auto max-w-5xl px-4 pb-16 pt-10">
-    <div class="space-y-2">
-      <h1 class="text-3xl font-semibold tracking-tight">轻单 同步服务</h1>
-      <p class="text-sm text-slate-600 dark:text-slate-300">Easy Todo Sync Service</p>
+{nav}
+<main class="mx-auto max-w-5xl px-4 pb-20 pt-14">
+  <div class="space-y-3 parallax-hero" data-parallax-hero>
+    <div class="inline-flex items-center gap-2 text-xs font-mono tracking-widest subtle">
+      <span class="badge">SYNC</span>
+      <span>SERVER</span>
     </div>
+    <h1 class="text-4xl font-semibold tracking-tight md:text-5xl heading-grad">轻单 同步服务</h1>
+    <p class="text-sm muted md:text-base">Easy Todo Sync Service</p>
+  </div>
 
-    <div class="mt-8 grid gap-4 md:grid-cols-4">
-      {stat_users}
-      {stat_records}
-      {stat_storage}
-      {stat_uptime}
-    </div>
+  <div class="mt-10 grid gap-4 md:grid-cols-4">
+    {stat_users}
+    {stat_records}
+    {stat_storage}
+    {stat_uptime}
+  </div>
 
-    <div class="mt-10 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <h2 class="text-base font-semibold">使用教程</h2>
-      <ol class="mt-3 list-decimal space-y-2 pl-5 text-sm text-slate-700 dark:text-slate-200">
-        <li>复制下方的「服务器链接」</li>
-        <li>打开应用 → 云同步 → 服务器配置</li>
-        <li>粘贴并保存</li>
-      </ol>
+  <div class="mt-10 card p-6" data-spotlight>
+    <h2 class="text-base font-semibold">使用教程</h2>
+    <ol class="mt-4 list-decimal space-y-2 pl-5 text-sm muted">
+      <li>复制下方的「服务器链接」</li>
+      <li>打开应用 → 云同步 → 服务器配置</li>
+      <li>粘贴并保存</li>
+    </ol>
 
-      <div class="mt-5">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <div class="text-xs font-medium text-slate-500 dark:text-slate-400">服务器链接</div>
-            <div class="mt-1 font-mono text-sm">{server_link}</div>
-          </div>
-          <button id="copy-link" class="shrink-0 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900">
-            复制
-          </button>
-        </div>
-        <p id="copy-hint" class="mt-2 hidden text-xs text-emerald-600 dark:text-emerald-400">已复制</p>
+    <div class="mt-6">
+      <div class="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+        <label class="block">
+          <span class="text-xs font-medium subtle">服务器链接</span>
+          <input class="input mt-2 font-mono text-sm" value="{server_link}" readonly />
+        </label>
+        <button id="copy-link" class="btn btn-secondary h-11 w-full sm:w-auto" type="button">复制</button>
       </div>
+      <p id="copy-hint" class="mt-2 hidden text-xs text-emerald-600 dark:text-emerald-400">已复制</p>
     </div>
+  </div>
 
-    <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
-      <div class="text-xs text-slate-500 dark:text-slate-400">
-        API: <a class="underline decoration-slate-300 underline-offset-4 hover:text-slate-700 dark:decoration-slate-700 dark:hover:text-slate-200" href="/v1/health">/v1/health</a>
+    <div class="mt-8 flex flex-wrap items-center justify-between gap-3">
+      <div class="text-xs subtle">
+        API: <a class="link" href="/v1/health">/v1/health</a>
       </div>
-      <a class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100" href="/dashboard">
-        进入仪表盘
-      </a>
+      <a class="btn btn-primary w-full sm:w-auto" href="/dashboard">进入仪表盘</a>
     </div>
-  </main>
-</div>
+</main>
 <script>
 (() => {{
   const text = {server_link_js};
@@ -182,15 +180,15 @@ pub(super) async fn dashboard_login_page(
                 url_encode(next)
             );
             format!(
-                r#"<a class="group flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900" href="{href}">
+                r#"<a class="card group flex items-center justify-between px-5 py-4" data-spotlight href="{href}">
   <div class="flex items-center gap-3">
-    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-sm font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{icon}</div>
+    <div class="icon-chip text-sm font-semibold">{icon}</div>
     <div>
       <div class="text-sm font-semibold">{display}</div>
-      <div class="text-xs text-slate-500 dark:text-slate-400">OAuth 登录</div>
+      <div class="text-xs muted">OAuth 登录</div>
     </div>
   </div>
-  <div class="text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200">→</div>
+  <div class="subtle transition duration-200 group-hover:translate-x-0.5 group-hover:text-[color:var(--foreground)]">→</div>
 </a>"#,
                 href = h(&href),
                 display = h(&display),
@@ -202,23 +200,21 @@ pub(super) async fn dashboard_login_page(
 
     let body = format!(
         r#"
-<div class="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50">
-  {nav}
-  <main class="mx-auto max-w-xl px-4 pb-16 pt-10">
-    <div class="space-y-2">
-      <h1 class="text-2xl font-semibold tracking-tight">登录仪表盘</h1>
-      <p class="text-sm text-slate-600 dark:text-slate-300">请选择一个 Provider 继续</p>
-    </div>
+{nav}
+<main class="mx-auto max-w-xl px-4 pb-20 pt-14">
+  <div class="space-y-3">
+    <h1 class="text-3xl font-semibold tracking-tight heading-grad">登录仪表盘</h1>
+    <p class="text-sm muted">请选择一个 Provider 继续</p>
+  </div>
 
-    <div class="mt-8 space-y-3">
-      {items}
-    </div>
+  <div class="mt-8 space-y-3">
+    {items}
+  </div>
 
-    <p class="mt-8 text-xs text-slate-500 dark:text-slate-400">
-      登录后仅用于查看你的同步用量与管理数据，不会跳转回客户端。
-    </p>
-  </main>
-</div>
+  <p class="mt-8 text-xs subtle">
+    登录后仅用于查看你的同步用量与管理数据，不会跳转回客户端。
+  </p>
+</main>
 "#,
         nav = nav_bar(Some("登录")),
         items = items,
@@ -420,27 +416,27 @@ pub(super) async fn dashboard_page(
         .unwrap_or_else(|| "无订阅".to_string());
 
     let subscription_section = format!(
-        r#"<div class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        r#"<div class="mt-6 card p-6" data-spotlight>
   <h2 class="text-base font-semibold">当前订阅</h2>
   <dl class="mt-4 grid gap-3 text-sm md:grid-cols-2">
-    <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-950">
-      <dt class="text-xs font-medium text-slate-500 dark:text-slate-400">状态</dt>
+    <div class="subcard">
+      <dt class="text-xs font-medium subtle">状态</dt>
       <dd class="mt-1 font-mono">{status}</dd>
     </div>
-    <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-950">
-      <dt class="text-xs font-medium text-slate-500 dark:text-slate-400">方案</dt>
+    <div class="subcard">
+      <dt class="text-xs font-medium subtle">方案</dt>
       <dd class="mt-1 font-mono">{plan}</dd>
     </div>
-    <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-950">
-      <dt class="text-xs font-medium text-slate-500 dark:text-slate-400">到期时间</dt>
+    <div class="subcard">
+      <dt class="text-xs font-medium subtle">到期时间</dt>
       <dd id="sub-exp" data-ms="{exp}" class="mt-1 font-mono">—</dd>
     </div>
-    <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-950">
-      <dt class="text-xs font-medium text-slate-500 dark:text-slate-400">剩余</dt>
+    <div class="subcard">
+      <dt class="text-xs font-medium subtle">剩余</dt>
       <dd class="mt-1 font-mono">{remain}</dd>
     </div>
   </dl>
-  <p class="mt-4 text-xs text-slate-500 dark:text-slate-400">订阅期间额外提升：存储 +{bonus_storage}，出站 +{bonus_out}</p>
+  <p class="mt-4 text-xs subtle">订阅期间额外提升：存储 +{bonus_storage}，出站 +{bonus_out}</p>
 </div>"#,
         status = h(&sub_status),
         plan = h(&sub_plan_display),
@@ -451,33 +447,33 @@ pub(super) async fn dashboard_page(
     );
 
     let quota_section = format!(
-        r#"<div class="mt-10 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        r#"<div class="mt-10 card p-6" data-spotlight>
   <h2 class="text-base font-semibold">当前配额</h2>
   <div class="mt-4 grid gap-3 md:grid-cols-2">
-    <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-950">
-      <div class="text-xs font-medium text-slate-500 dark:text-slate-400">存储</div>
-      <div class="mt-2 grid gap-1 text-sm text-slate-700 dark:text-slate-200">
+    <div class="subcard">
+      <div class="text-xs font-medium subtle">存储</div>
+      <div class="mt-2 grid gap-1 text-sm">
         <div>已用：<span class="font-mono font-semibold">{storage_used}</span></div>
         <div>可用：<span class="font-mono font-semibold">{storage_allowed}</span></div>
-        <div class="text-xs text-slate-500 dark:text-slate-400">组成：基础 {storage_base} + 订阅 {storage_bonus}</div>
+        <div class="text-xs subtle">组成：基础 {storage_base} + 订阅 {storage_bonus}</div>
       </div>
     </div>
-    <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-950">
-      <div class="text-xs font-medium text-slate-500 dark:text-slate-400">出站流量</div>
-      <div class="mt-2 grid gap-1 text-sm text-slate-700 dark:text-slate-200">
+    <div class="subcard">
+      <div class="text-xs font-medium subtle">出站流量</div>
+      <div class="mt-2 grid gap-1 text-sm">
         <div>已用：<span class="font-mono font-semibold">{out_used}</span></div>
         <div>可用：<span class="font-mono font-semibold">{out_allowed}</span></div>
-        <div class="text-xs text-slate-500 dark:text-slate-400">组成：基础 {out_base} + 订阅 {out_bonus}</div>
+        <div class="text-xs subtle">组成：基础 {out_base} + 订阅 {out_bonus}</div>
       </div>
     </div>
   </div>
-  <div class="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 {warn_hide}">
+  <div class="mt-4 rounded-xl border border-rose-500/20 bg-rose-500/5 p-4 text-sm {warn_hide}">
     <div class="font-semibold text-rose-700 dark:text-rose-200">已超出允许配额</div>
-    <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">为保证资源可控，服务器将拒绝你的推送/拉取；你仍可正常登录与删除账户（不会自动删除数据）。</div>
+    <div class="mt-1 text-xs subtle">为保证资源可控，服务器将拒绝你的推送/拉取；你仍可正常登录与删除账户（不会自动删除数据）。</div>
   </div>
-  <div class="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 {ban_hide}">
+  <div class="mt-4 rounded-xl border border-rose-500/20 bg-rose-500/5 p-4 text-sm {ban_hide}">
     <div class="font-semibold text-rose-700 dark:text-rose-200">账号已被封禁</div>
-    <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">如需解封请联系管理员。</div>
+    <div class="mt-1 text-xs subtle">如需解封请联系管理员。</div>
   </div>
 </div>"#,
         storage_used = h(&format_bytes(stored_b64)),
@@ -494,14 +490,12 @@ pub(super) async fn dashboard_page(
 
     let cdkey_disabled = has_active_subscription;
     let cdkey_section = format!(
-        r#"<div class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        r#"<div class="mt-6 card p-6" data-spotlight>
   <h2 class="text-base font-semibold">激活 CDKEY</h2>
-  <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">仅支持在「无订阅」状态下激活；若已有订阅，将拒绝激活且不消耗CDKEY。</p>
-  <div class="mt-4 flex flex-wrap items-center gap-3">
-    <input id="cdkey-input" class="w-full flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 font-mono text-sm text-slate-900 outline-none focus:ring-2 focus:ring-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50" placeholder="输入CDKEY" {disabled} />
-    <button id="cdkey-btn" class="rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 {btn_disabled}" type="button" {btn_attr}>
-      激活
-    </button>
+  <p class="mt-1 text-sm muted">仅支持在「无订阅」状态下激活；若已有订阅，将拒绝激活且不消耗CDKEY。</p>
+  <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+    <input id="cdkey-input" class="input font-mono text-sm" placeholder="输入CDKEY" {disabled} />
+    <button id="cdkey-btn" class="btn btn-primary h-11 w-full sm:w-auto {btn_disabled}" type="button" {btn_attr}>激活</button>
   </div>
   <p id="cdkey-hint" class="mt-3 hidden text-sm text-emerald-700 dark:text-emerald-300"></p>
   <p id="cdkey-error" class="mt-3 hidden text-sm text-rose-600 dark:text-rose-400"></p>
@@ -553,75 +547,69 @@ pub(super) async fn dashboard_page(
 
     let body = format!(
         r#"
-<div class="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50">
-  {nav}
-  <main class="mx-auto max-w-5xl px-4 pb-16 pt-10">
+{nav}
+<main class="mx-auto max-w-5xl px-4 pb-20 pt-14">
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-semibold tracking-tight heading-grad">仪表盘</h1>
+      <p class="mt-2 text-sm muted">管理你的同步数据与账户</p>
+    </div>
+    <form method="post" action="/dashboard/logout">
+      <button class="btn btn-secondary" type="submit">退出登录</button>
+    </form>
+  </div>
+
+  <div class="mt-10 grid gap-4 md:grid-cols-4">
+    {stat_created}
+    {stat_records}
+    {stat_storage}
+    {stat_outbound}
+  </div>
+
+  <div class="mt-4 grid gap-4 md:grid-cols-4">
+    {stat_deleted}
+    {stat_last_sync}
+    {stat_sessions}
+    {stat_sub}
+  </div>
+
+  <div class="mt-10 card p-6" data-spotlight>
+    <h2 class="text-base font-semibold">账户信息</h2>
+    <dl class="mt-4 grid gap-3 text-sm">
+      <div class="subcard">
+        <dt class="text-xs font-medium subtle">OAuth Provider</dt>
+        <dd class="mt-1 font-mono">{provider}</dd>
+      </div>
+    </dl>
+  </div>
+
+  {subscription_section}
+  {quota_section}
+  {cdkey_section}
+
+  <div class="mt-6 rounded-2xl border border-rose-500/20 bg-rose-500/5 p-6 shadow-[0_0_0_1px_rgba(244,63,94,0.12),0_18px_50px_rgba(0,0,0,0.18)]">
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-semibold tracking-tight">仪表盘</h1>
-        <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">管理你的同步数据与账户</p>
+        <h2 class="text-base font-semibold text-rose-900 dark:text-rose-200">危险操作：清除数据</h2>
+        <p class="mt-1 text-sm text-rose-800/90 dark:text-rose-200/80">
+          将清除与你账号关联的所有数据，并删除数据库中的账户。此操作不可撤销。
+        </p>
       </div>
-      <form method="post" action="/dashboard/logout">
-        <button class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800" type="submit">
-          退出登录
-        </button>
-      </form>
+      <button id="open-delete" class="btn btn-danger" type="button">清除数据</button>
     </div>
+  </div>
+</main>
 
-    <div class="mt-8 grid gap-4 md:grid-cols-4">
-      {stat_created}
-      {stat_records}
-      {stat_storage}
-      {stat_outbound}
-    </div>
-
-    <div class="mt-4 grid gap-4 md:grid-cols-4">
-      {stat_deleted}
-      {stat_last_sync}
-      {stat_sessions}
-      {stat_sub}
-    </div>
-
-    <div class="mt-10 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <h2 class="text-base font-semibold">账户信息</h2>
-      <dl class="mt-4 grid gap-3 text-sm md:grid-cols-1">
-        <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-950">
-          <dt class="text-xs font-medium text-slate-500 dark:text-slate-400">OAuth Provider</dt>
-          <dd class="mt-1 font-mono">{provider}</dd>
-        </div>
-      </dl>
-    </div>
-
-    {subscription_section}
-    {quota_section}
-    {cdkey_section}
-
-    <div class="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-6 shadow-sm dark:border-rose-900/60 dark:bg-rose-950/40">
-      <div class="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 class="text-base font-semibold text-rose-900 dark:text-rose-200">危险操作：清除数据</h2>
-          <p class="mt-1 text-sm text-rose-800/90 dark:text-rose-200/80">
-            将清除与你账号关联的所有数据，并删除数据库中的账户。此操作不可撤销。
-          </p>
-        </div>
-        <button id="open-delete" class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500" type="button">
-          清除数据
-        </button>
-      </div>
-    </div>
-  </main>
-</div>
-
-<div id="delete-modal" class="fixed inset-0 hidden items-center justify-center bg-black/50 p-4">
-  <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900">
+<div id="delete-modal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+  <div class="card card-static w-full max-w-lg p-6">
     <h3 class="text-lg font-semibold">二次确认</h3>
-    <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+    <p class="mt-2 text-sm muted">
       请输入 <span class="font-mono font-semibold">DELETE</span> 以确认删除。
     </p>
-    <input id="delete-input" class="mt-4 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 font-mono text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-rose-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50 dark:placeholder:text-slate-500" placeholder="DELETE" />
+    <input id="delete-input" class="input input-danger mt-4 font-mono text-sm" placeholder="DELETE" />
     <div class="mt-5 flex items-center justify-end gap-3">
-      <button id="cancel-delete" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800" type="button">取消</button>
-      <button id="confirm-delete" class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white opacity-50" type="button" disabled>确认删除</button>
+      <button id="cancel-delete" class="btn btn-secondary" type="button">取消</button>
+      <button id="confirm-delete" class="btn btn-danger opacity-50" type="button" disabled>确认删除</button>
     </div>
     <p id="delete-error" class="mt-3 hidden text-sm text-rose-600 dark:text-rose-400"></p>
   </div>
@@ -775,18 +763,14 @@ pub(super) async fn fallback_page(
 
     let body = format!(
         r#"
-<div class="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50">
-  {nav}
-  <main class="mx-auto max-w-xl px-4 pb-16 pt-20 text-center">
-    <h1 class="text-2xl font-semibold">页面不存在</h1>
-    <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Not Found</p>
-    <div class="mt-6">
-      <a class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100" href="/">
-        返回主页
-      </a>
-    </div>
-  </main>
-</div>
+{nav}
+<main class="mx-auto max-w-xl px-4 pb-20 pt-24 text-center">
+  <h1 class="text-3xl font-semibold tracking-tight heading-grad">页面不存在</h1>
+  <p class="mt-3 text-sm muted">Not Found</p>
+  <div class="mt-8">
+    <a class="btn btn-primary" href="/">返回主页</a>
+  </div>
+</main>
 "#,
         nav = nav_bar(Some("404")),
     );

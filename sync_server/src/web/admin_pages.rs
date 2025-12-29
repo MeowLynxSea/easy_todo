@@ -63,25 +63,79 @@ pub(super) fn admin_router(admin_entry_path: &str) -> Router<AppState> {
 fn admin_nav(base: &str) -> String {
     let logout_action = format!("{base}/logout");
     format!(
-        r#"<header class="border-b border-slate-200 bg-white/70 backdrop-blur dark:border-slate-800 dark:bg-slate-950/60">
-  <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-    <div class="flex items-center gap-3">
-      <a href="/" class="text-sm font-semibold tracking-tight">轻单 同步服务</a>
-      <span class="text-xs text-slate-400 dark:text-slate-500">管理员后台</span>
+        r#"<header class="nav-shell sticky top-0 z-50">
+  <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
+    <div class="flex min-w-0 items-center gap-3">
+      <a href="/" class="nav-brand flex min-w-0 items-center gap-3 text-sm font-semibold tracking-tight">
+        <span class="icon-chip" aria-hidden="true">⎈</span>
+        <span class="truncate">轻单 同步服务</span>
+      </a>
+      <span class="badge hidden sm:inline-flex">管理员后台</span>
     </div>
-    <div class="flex items-center gap-2">
-      <a class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800" href="/dashboard">用户仪表盘</a>
-      <form method="post" action="{logout_action}">
-        <button class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800" type="submit">
-          退出
-        </button>
-      </form>
-      <button id="theme-toggle" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800" type="button">
-        明/暗
+    <div class="flex flex-wrap items-center justify-end gap-2">
+      <div class="hidden md:flex items-center gap-2">
+        <a class="btn btn-secondary" href="/dashboard">用户仪表盘</a>
+        <form method="post" action="{logout_action}">
+          <button class="btn btn-secondary" type="submit">退出</button>
+        </form>
+      </div>
+      <button class="btn btn-ghost btn-icon" type="button" aria-label="切换明暗主题" data-theme-toggle>
+        <svg class="icon theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"></path>
+        </svg>
+        <svg class="icon theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
+        </svg>
+      </button>
+      <button class="btn btn-secondary btn-icon mobile-menu-btn md:hidden" type="button" aria-label="打开菜单" aria-controls="admin-mobile-menu" aria-expanded="false" data-mobile-menu-btn data-open="0">
+        <svg class="icon icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
+        <svg class="icon icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M18 6L6 18M6 6l12 12"></path>
+        </svg>
       </button>
     </div>
   </div>
-</header>"#,
+</header>
+
+<div id="admin-mobile-menu" class="mobile-menu-overlay fixed inset-0 z-[60] md:hidden" data-open="0" aria-hidden="true">
+  <div class="mobile-menu-backdrop absolute inset-0 bg-black/60 backdrop-blur-xl" data-mobile-menu-close></div>
+  <div class="relative mx-auto max-w-6xl px-4 pt-20">
+    <div class="card card-static mobile-menu-panel mobile-menu-inner p-4" role="dialog" aria-modal="true" aria-label="管理员菜单">
+      <div class="flex items-center justify-between gap-3">
+        <div class="text-xs font-mono tracking-widest subtle">ADMIN</div>
+        <button class="btn btn-ghost btn-icon" type="button" aria-label="关闭菜单" data-mobile-menu-close>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 6L6 18M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="mt-4 grid gap-2">
+        <a class="btn btn-primary w-full" href="/dashboard" data-mobile-menu-link>用户仪表盘</a>
+        <a class="btn btn-secondary w-full" href="/" data-mobile-menu-link>返回主页</a>
+        <form method="post" action="{logout_action}">
+          <button class="btn btn-secondary w-full" type="submit">退出</button>
+        </form>
+      </div>
+
+      <div class="mt-4 flex items-center justify-between gap-3">
+        <div class="text-xs subtle">Theme</div>
+        <button class="btn btn-secondary btn-icon" type="button" aria-label="切换明暗主题" data-theme-toggle>
+          <svg class="icon theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"></path>
+          </svg>
+          <svg class="icon theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>"#,
         logout_action = h(&logout_action)
     )
 }
@@ -116,33 +170,29 @@ pub(super) async fn admin_login_page(
 
     let body = format!(
         r#"
-<div class="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50">
-  {nav}
-  <main class="mx-auto max-w-md px-4 pb-16 pt-12">
-    <div class="space-y-2">
-      <h1 class="text-2xl font-semibold tracking-tight">管理员登录</h1>
-      <p class="text-sm text-slate-600 dark:text-slate-300">请输入管理员账户与密码</p>
-    </div>
+{nav}
+<main class="mx-auto max-w-md px-4 pb-20 pt-14">
+  <div class="space-y-3">
+    <h1 class="text-3xl font-semibold tracking-tight heading-grad">管理员登录</h1>
+    <p class="text-sm muted">请输入管理员账户与密码</p>
+  </div>
 
-    <form class="mt-8 space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900" method="post" action="{action}">
-      <input type="hidden" name="next" value="{next}" />
-      <p class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200 {err_hide}">
-        账户或密码错误
-      </p>
-      <label class="block">
-        <span class="text-xs font-medium text-slate-500 dark:text-slate-400">账户</span>
-        <input name="username" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50" />
-      </label>
-      <label class="block">
-        <span class="text-xs font-medium text-slate-500 dark:text-slate-400">密码</span>
-        <input name="password" type="password" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50" />
-      </label>
-      <button class="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100" type="submit">
-        登录
-      </button>
-    </form>
-  </main>
-</div>
+  <form class="card mt-8 space-y-4 p-6" data-spotlight method="post" action="{action}">
+    <input type="hidden" name="next" value="{next}" />
+    <p class="rounded-xl border border-rose-500/20 bg-rose-500/5 px-4 py-3 text-sm text-rose-800 dark:text-rose-200 {err_hide}">
+      账户或密码错误
+    </p>
+    <label class="block">
+      <span class="text-xs font-medium subtle">账户</span>
+      <input name="username" class="input mt-2 text-sm" />
+    </label>
+    <label class="block">
+      <span class="text-xs font-medium subtle">密码</span>
+      <input name="password" type="password" class="input mt-2 text-sm" />
+    </label>
+    <button class="btn btn-primary h-11 w-full" type="submit">登录</button>
+  </form>
+</main>
 "#,
         nav = admin_nav(&base),
         action = h(&action),
@@ -313,7 +363,7 @@ pub(super) async fn admin_dashboard_page(
         };
 
         user_rows.push_str(&format!(
-            r#"<tr class="border-t border-slate-100 dark:border-slate-800/80">
+            r#"<tr class="table-row">
   <td class="px-3 py-2 font-mono text-xs">{id}</td>
   <td class="px-3 py-2 text-xs">{provider}</td>
   <td class="px-3 py-2 text-xs font-mono" data-ms="{created_at}">—</td>
@@ -372,150 +422,144 @@ pub(super) async fn admin_dashboard_page(
 
     let body = format!(
         r#"
-<div class="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50">
-  {nav}
-  <main class="mx-auto max-w-6xl px-4 pb-16 pt-10">
-    <div class="space-y-2">
-      <h1 class="text-2xl font-semibold tracking-tight">管理员后台</h1>
-      <p class="text-sm text-slate-600 dark:text-slate-300">CDKEY、订阅与用户配额管理</p>
+{nav}
+<main class="mx-auto max-w-6xl px-4 pb-20 pt-14">
+  <div class="space-y-3">
+    <h1 class="text-3xl font-semibold tracking-tight heading-grad">管理员后台</h1>
+    <p class="text-sm muted">CDKEY、订阅与用户配额管理</p>
+  </div>
+
+  <div class="mt-10 grid gap-4 md:grid-cols-4">
+    {stat_users}
+    {stat_cdkeys}
+    {stat_storage}
+    {stat_uptime}
+  </div>
+
+  <div class="mt-10 grid gap-6 lg:grid-cols-2">
+    <div class="card p-6" data-spotlight>
+      <h2 class="text-base font-semibold">批量生成 CDKEY</h2>
+      <div class="mt-4 grid gap-3 sm:grid-cols-2">
+        <label class="block">
+          <span class="text-xs font-medium subtle">订阅方案</span>
+          <select id="plan-generate" class="input mt-2 text-sm">
+            {plans}
+          </select>
+        </label>
+        <label class="block">
+          <span class="text-xs font-medium subtle">数量</span>
+          <input id="count-generate" type="number" value="10" min="1" max="2000" class="input mt-2 text-sm" />
+        </label>
+      </div>
+      <button id="btn-generate" class="btn btn-primary mt-4 w-full sm:w-auto" type="button">生成</button>
+      <p id="gen-error" class="mt-3 hidden text-sm text-rose-600 dark:text-rose-400"></p>
+      <textarea id="gen-output" class="codeblock mt-4 hidden h-40 w-full font-mono text-xs" spellcheck="false"></textarea>
     </div>
 
-    <div class="mt-8 grid gap-4 md:grid-cols-4">
-      {stat_users}
-      {stat_cdkeys}
-      {stat_storage}
-      {stat_uptime}
-    </div>
-
-    <div class="mt-10 grid gap-6 lg:grid-cols-2">
-      <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <h2 class="text-base font-semibold">批量生成 CDKEY</h2>
-        <div class="mt-4 grid gap-3 sm:grid-cols-2">
-          <label class="block">
-            <span class="text-xs font-medium text-slate-500 dark:text-slate-400">订阅方案</span>
-            <select id="plan-generate" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm dark:border-slate-800 dark:bg-slate-950">
-              {plans}
-            </select>
-          </label>
-          <label class="block">
-            <span class="text-xs font-medium text-slate-500 dark:text-slate-400">数量</span>
-            <input id="count-generate" type="number" value="10" min="1" max="2000" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm dark:border-slate-800 dark:bg-slate-950" />
-          </label>
+    <div class="card p-6" data-spotlight>
+      <h2 class="text-base font-semibold">批量删除 CDKEY</h2>
+      <div class="mt-4 grid gap-3 sm:grid-cols-2">
+        <label class="block">
+          <span class="text-xs font-medium subtle">订阅方案</span>
+          <select id="plan-delete" class="input mt-2 text-sm">
+            {plans}
+          </select>
+        </label>
+        <div class="flex items-end">
+          <button id="btn-delete" class="btn btn-secondary h-11 w-full" type="button">
+            删除该方案全部未激活 CDKEY
+          </button>
         </div>
-        <button id="btn-generate" class="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100" type="button">
-          生成
+      </div>
+      <p id="del-hint" class="mt-3 hidden text-sm text-emerald-700 dark:text-emerald-300"></p>
+      <p id="del-error" class="mt-3 hidden text-sm text-rose-600 dark:text-rose-400"></p>
+    </div>
+  </div>
+
+  <div class="mt-6 card p-6" data-spotlight>
+    <h2 class="text-base font-semibold">用户管理</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <label class="block sm:col-span-1">
+        <span class="text-xs font-medium subtle">用户ID</span>
+        <input id="user-id" type="number" min="1" class="input mt-2 text-sm" />
+      </label>
+      <div class="flex items-end sm:col-span-1">
+        <button id="btn-load-user" class="btn btn-secondary h-11 w-full" type="button">加载用户</button>
+      </div>
+      <div class="flex items-end sm:col-span-1">
+        <button id="btn-update-user" class="btn btn-primary h-11 w-full" type="button" disabled>
+          保存修改
         </button>
-        <p id="gen-error" class="mt-3 hidden text-sm text-rose-600 dark:text-rose-400"></p>
-        <textarea id="gen-output" class="mt-4 hidden h-40 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs outline-none dark:border-slate-800 dark:bg-slate-950"></textarea>
-      </div>
-
-      <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <h2 class="text-base font-semibold">批量删除 CDKEY</h2>
-        <div class="mt-4 grid gap-3 sm:grid-cols-2">
-          <label class="block">
-            <span class="text-xs font-medium text-slate-500 dark:text-slate-400">订阅方案</span>
-            <select id="plan-delete" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm dark:border-slate-800 dark:bg-slate-950">
-              {plans}
-            </select>
-          </label>
-          <div class="flex items-end">
-            <button id="btn-delete" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900" type="button">
-              删除该方案全部未激活 CDKEY
-            </button>
-          </div>
-        </div>
-        <p id="del-hint" class="mt-3 hidden text-sm text-emerald-700 dark:text-emerald-300"></p>
-        <p id="del-error" class="mt-3 hidden text-sm text-rose-600 dark:text-rose-400"></p>
       </div>
     </div>
 
-    <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <h2 class="text-base font-semibold">用户管理</h2>
-      <div class="mt-4 grid gap-3 sm:grid-cols-3">
-        <label class="block sm:col-span-1">
-          <span class="text-xs font-medium text-slate-500 dark:text-slate-400">用户ID</span>
-          <input id="user-id" type="number" min="1" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm dark:border-slate-800 dark:bg-slate-950" />
-        </label>
-        <div class="flex items-end sm:col-span-1">
-          <button id="btn-load-user" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900" type="button">
-            加载用户
-          </button>
+    <div id="user-form" class="mt-5 hidden grid gap-3 md:grid-cols-2">
+      <label class="block">
+        <span class="text-xs font-medium subtle">基础存储配额（留空=使用默认）</span>
+        <div class="mt-2 flex gap-2">
+          <input id="base-storage" type="number" min="0" step="any" class="input w-full flex-1 text-sm" />
+          <select id="base-storage-unit" class="input w-28 text-sm">
+            <option value="GB">GB</option>
+            <option value="MB">MB</option>
+            <option value="KB">KB</option>
+            <option value="B">B</option>
+          </select>
         </div>
-        <div class="flex items-end sm:col-span-1">
-          <button id="btn-update-user" class="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100" type="button" disabled>
-            保存修改
-          </button>
+      </label>
+      <label class="block">
+        <span class="text-xs font-medium subtle">基础出站配额（留空=使用默认）</span>
+        <div class="mt-2 flex gap-2">
+          <input id="base-outbound" type="number" min="0" step="any" class="input w-full flex-1 text-sm" />
+          <select id="base-outbound-unit" class="input w-28 text-sm">
+            <option value="GB">GB</option>
+            <option value="MB">MB</option>
+            <option value="KB">KB</option>
+            <option value="B">B</option>
+          </select>
         </div>
-      </div>
-
-      <div id="user-form" class="mt-5 hidden grid gap-3 md:grid-cols-2">
-        <label class="block">
-          <span class="text-xs font-medium text-slate-500 dark:text-slate-400">基础存储配额（留空=使用默认）</span>
-          <div class="mt-1 flex gap-2">
-            <input id="base-storage" type="number" min="0" step="any" class="w-full flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm dark:border-slate-800 dark:bg-slate-950" />
-            <select id="base-storage-unit" class="w-28 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm dark:border-slate-800 dark:bg-slate-950">
-              <option value="GB">GB</option>
-              <option value="MB">MB</option>
-              <option value="KB">KB</option>
-              <option value="B">B</option>
-            </select>
-          </div>
-        </label>
-        <label class="block">
-          <span class="text-xs font-medium text-slate-500 dark:text-slate-400">基础出站配额（留空=使用默认）</span>
-          <div class="mt-1 flex gap-2">
-            <input id="base-outbound" type="number" min="0" step="any" class="w-full flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm dark:border-slate-800 dark:bg-slate-950" />
-            <select id="base-outbound-unit" class="w-28 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm dark:border-slate-800 dark:bg-slate-950">
-              <option value="GB">GB</option>
-              <option value="MB">MB</option>
-              <option value="KB">KB</option>
-              <option value="B">B</option>
-            </select>
-          </div>
-        </label>
-        <label class="block">
-          <span class="text-xs font-medium text-slate-500 dark:text-slate-400">订阅方案（留空=无订阅）</span>
-          <input id="sub-plan" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 font-mono text-sm dark:border-slate-800 dark:bg-slate-950" />
-        </label>
-        <label class="block">
-          <span class="text-xs font-medium text-slate-500 dark:text-slate-400">订阅到期时间</span>
-          <input id="sub-expires" type="datetime-local" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm dark:border-slate-800 dark:bg-slate-950" />
-        </label>
-        <label class="flex items-center gap-2">
-          <input id="banned" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-slate-900" />
-          <span class="text-sm">封禁该用户</span>
-        </label>
-      </div>
-
-      <p id="user-hint" class="mt-4 hidden text-sm text-emerald-700 dark:text-emerald-300"></p>
-      <p id="user-error" class="mt-4 hidden text-sm text-rose-600 dark:text-rose-400"></p>
-      <pre id="user-raw" class="mt-4 hidden overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs dark:border-slate-800 dark:bg-slate-950"></pre>
+      </label>
+      <label class="block">
+        <span class="text-xs font-medium subtle">订阅方案（留空=无订阅）</span>
+        <input id="sub-plan" class="input mt-2 font-mono text-sm" />
+      </label>
+      <label class="block">
+        <span class="text-xs font-medium subtle">订阅到期时间</span>
+        <input id="sub-expires" type="datetime-local" class="input mt-2 text-sm" />
+      </label>
+      <label class="flex items-center gap-2 pt-2">
+        <input id="banned" type="checkbox" class="h-4 w-4 rounded border-black/20 dark:border-white/20 accent-[color:var(--accent)]" />
+        <span class="text-sm">封禁该用户</span>
+      </label>
     </div>
 
-    <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <h2 class="text-base font-semibold">最近用户（最多 50）</h2>
-      <div class="mt-4 overflow-x-auto">
-        <table class="w-full text-left text-xs">
-          <thead class="text-slate-500 dark:text-slate-400">
-            <tr>
-              <th class="px-3 py-2">ID</th>
-              <th class="px-3 py-2">Provider</th>
-              <th class="px-3 py-2">注册</th>
-              <th class="px-3 py-2">状态</th>
-              <th class="px-3 py-2">存储</th>
-              <th class="px-3 py-2">出站</th>
-              <th class="px-3 py-2">订阅</th>
-              <th class="px-3 py-2">到期时间</th>
-            </tr>
-          </thead>
-          <tbody class="text-slate-700 dark:text-slate-200">
-            {user_rows}
-          </tbody>
-        </table>
-      </div>
+    <p id="user-hint" class="mt-4 hidden text-sm text-emerald-700 dark:text-emerald-300"></p>
+    <p id="user-error" class="mt-4 hidden text-sm text-rose-600 dark:text-rose-400"></p>
+    <pre id="user-raw" class="codeblock mt-4 hidden overflow-x-auto text-xs"></pre>
+  </div>
+
+  <div class="mt-6 card p-6" data-spotlight>
+    <h2 class="text-base font-semibold">最近用户（最多 50）</h2>
+    <div class="table-wrap mt-4 overflow-x-auto">
+      <table class="table w-full text-left text-xs">
+        <thead class="subtle">
+          <tr>
+            <th class="px-3 py-2">ID</th>
+            <th class="px-3 py-2">Provider</th>
+            <th class="px-3 py-2">注册</th>
+            <th class="px-3 py-2">状态</th>
+            <th class="px-3 py-2">存储</th>
+            <th class="px-3 py-2">出站</th>
+            <th class="px-3 py-2">订阅</th>
+            <th class="px-3 py-2">到期时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          {user_rows}
+        </tbody>
+      </table>
     </div>
-  </main>
-</div>
+  </div>
+</main>
 
 <script>
 (() => {{
@@ -812,8 +856,8 @@ pub(super) async fn admin_dashboard_page(
         nav = admin_nav(&base),
         stat_users = stat_card("注册用户", &format_number(users_count)),
         stat_cdkeys = format!(
-            r#"<div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-  <div class="text-xs font-medium text-slate-500 dark:text-slate-400">未激活 CDKEY</div>
+            r#"<div class="card p-5" data-spotlight>
+  <div class="text-xs font-medium subtle">未激活 CDKEY</div>
   <div id="stat-cdkeys" data-count="{count}" class="mt-2 text-2xl font-semibold tracking-tight">{value}</div>
 </div>"#,
             count = cdkeys_count,

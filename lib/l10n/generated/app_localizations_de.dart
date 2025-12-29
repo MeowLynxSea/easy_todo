@@ -50,10 +50,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get cloudSync => 'Cloud-Synchronisierung';
 
   @override
-  String get cloudSyncSubtitle => 'Ende-zu-Ende-verschlüsselt (manuell)';
+  String get cloudSyncSubtitle => 'Ende-zu-Ende-verschlüsselt';
 
   @override
-  String get cloudSyncOverviewTitle => 'Manuelle E2EE-Synchronisierung';
+  String get cloudSyncOverviewTitle => 'E2EE-Synchronisierung';
 
   @override
   String get cloudSyncOverviewSubtitle =>

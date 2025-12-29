@@ -13,7 +13,7 @@
   "dataAndSync": "Data & Sync",
   "cloudSync": "Cloud Sync",
   "cloudSyncSubtitle": "End-to-end encrypted sync",
-  "cloudSyncOverviewTitle": "Manual E2EE sync",
+  "cloudSyncOverviewTitle": "End-to-end encrypted sync",
   "cloudSyncOverviewSubtitle": "Server stores only ciphertext; unlock with your passphrase on this device.",
   "cloudSyncConfigSaved": "Sync config saved",
   "cloudSyncServerOkSnack": "Server reachable",

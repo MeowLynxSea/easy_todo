@@ -343,11 +343,27 @@ class SyncProvider extends ChangeNotifier {
       return;
     }
     try {
-      final providers = await _authService.listProviders(
+      final rawProviders = await _authService.listProviders(
         serverUrl: state.serverUrl,
       );
+      final providers = <String>[];
+      final seen = <String>{};
+      for (final provider in rawProviders) {
+        final normalized = provider.trim();
+        if (normalized.isEmpty) continue;
+        if (!seen.add(normalized)) continue;
+        providers.add(normalized);
+      }
+
       _availableProviders = providers;
-      if (_availableProviders.isNotEmpty && state.authProvider.trim().isEmpty) {
+
+      final current = state.authProvider.trim();
+      if (_availableProviders.isEmpty) {
+        notifyListeners();
+        return;
+      }
+
+      if (current.isEmpty || !_availableProviders.contains(current)) {
         await setAuthProvider(_availableProviders.first);
       } else {
         notifyListeners();
@@ -1274,7 +1290,15 @@ class SyncProvider extends ChangeNotifier {
         } else if (e.statusCode == 401 || e.statusCode == 403) {
           _lastErrorCode = SyncErrorCode.unauthorized;
         } else if (e.statusCode == 404) {
-          _lastErrorCode = SyncErrorCode.keyBundleNotFound;
+          final message = e.message.toLowerCase();
+          final isKeyBundleMissing =
+              message.contains('key bundle') ||
+              message.contains('key-bundle') ||
+              message.contains('key_bundle') ||
+              message.contains('keybundle');
+          _lastErrorCode = isKeyBundleMissing
+              ? SyncErrorCode.keyBundleNotFound
+              : SyncErrorCode.unknown;
         } else if (e.statusCode == 409) {
           _lastErrorCode = SyncErrorCode.conflict;
         } else {

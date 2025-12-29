@@ -195,7 +195,7 @@ abstract class AppLocalizations {
   /// No description provided for @cloudSyncOverviewTitle.
   ///
   /// In en, this message translates to:
-  /// **'Manual E2EE sync'**
+  /// **'End-to-end encrypted sync'**
   String get cloudSyncOverviewTitle;
 
   /// No description provided for @cloudSyncOverviewSubtitle.

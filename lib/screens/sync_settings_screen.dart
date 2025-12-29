@@ -7,6 +7,7 @@ import 'package:easy_todo/providers/sync_provider.dart';
 import 'package:easy_todo/providers/theme_provider.dart';
 import 'package:easy_todo/providers/todo_provider.dart';
 import 'package:easy_todo/services/crypto/sync_crypto.dart';
+import 'package:easy_todo/services/sync/sync_api_client.dart';
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
@@ -287,6 +288,20 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(l10n.cloudSyncInvalidPassphrase)));
+    } on SyncApiException {
+      if (!mounted) return;
+      final message =
+          _resolveErrorMessage(sync, l10n) ?? l10n.cloudSyncErrorUnknown;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } catch (_) {
+      if (!mounted) return;
+      final message =
+          _resolveErrorMessage(sync, l10n) ?? l10n.cloudSyncErrorUnknown;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -820,9 +835,15 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                             ? Text(l10n.cloudSyncNotSet)
                             : DropdownButtonHideUnderline(
                                 child: DropdownButton<String>(
-                                  value: sync.authProvider.trim().isEmpty
-                                      ? null
-                                      : sync.authProvider.trim(),
+                                  value: () {
+                                    final current = sync.authProvider.trim();
+                                    if (current.isEmpty) return null;
+                                    if (!sync.availableProviders
+                                        .contains(current)) {
+                                      return null;
+                                    }
+                                    return current;
+                                  }(),
                                   isExpanded: true,
                                   items: sync.availableProviders
                                       .map(

@@ -51,7 +51,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cloudSyncSubtitle => '端到端加密同步';
 
   @override
-  String get cloudSyncOverviewTitle => '手动端到端加密同步';
+  String get cloudSyncOverviewTitle => '端到端加密同步';
 
   @override
   String get cloudSyncOverviewSubtitle => '服务器仅保存密文；在本机用同步口令解锁后才能同步。';

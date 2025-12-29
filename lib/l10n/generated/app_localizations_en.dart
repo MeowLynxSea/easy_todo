@@ -52,7 +52,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cloudSyncSubtitle => 'End-to-end encrypted sync';
 
   @override
-  String get cloudSyncOverviewTitle => 'Manual E2EE sync';
+  String get cloudSyncOverviewTitle => 'End-to-end encrypted sync';
 
   @override
   String get cloudSyncOverviewSubtitle =>

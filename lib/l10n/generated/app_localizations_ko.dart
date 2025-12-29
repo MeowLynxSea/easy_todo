@@ -49,10 +49,10 @@ class AppLocalizationsKo extends AppLocalizations {
   String get cloudSync => '클라우드 동기화';
 
   @override
-  String get cloudSyncSubtitle => '종단간 암호화(수동)';
+  String get cloudSyncSubtitle => '종단간 암호화';
 
   @override
-  String get cloudSyncOverviewTitle => '수동 E2EE 동기화';
+  String get cloudSyncOverviewTitle => 'E2EE 동기화';
 
   @override
   String get cloudSyncOverviewSubtitle =>

@@ -49,10 +49,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get cloudSync => 'Sync cloud';
 
   @override
-  String get cloudSyncSubtitle => 'Chiffré de bout en bout (manuel)';
+  String get cloudSyncSubtitle => 'Chiffré de bout en bout';
 
   @override
-  String get cloudSyncOverviewTitle => 'Synchronisation E2EE manuelle';
+  String get cloudSyncOverviewTitle => 'Synchronisation E2EE';
 
   @override
   String get cloudSyncOverviewSubtitle =>

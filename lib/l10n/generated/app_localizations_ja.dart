@@ -49,10 +49,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get cloudSync => 'クラウド同期';
 
   @override
-  String get cloudSyncSubtitle => 'エンドツーエンド暗号化（手動）';
+  String get cloudSyncSubtitle => 'エンドツーエンド暗号化';
 
   @override
-  String get cloudSyncOverviewTitle => '手動 E2EE 同期';
+  String get cloudSyncOverviewTitle => 'E2EE 同期';
 
   @override
   String get cloudSyncOverviewSubtitle =>

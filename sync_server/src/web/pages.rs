@@ -1,8 +1,9 @@
 use std::net::SocketAddr;
 use std::time::Duration;
 
+use axum::body::Body;
 use axum::extract::{ConnectInfo, OriginalUri, Query, State};
-use axum::http::{HeaderMap, StatusCode};
+use axum::http::{header, HeaderMap, StatusCode};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::Json;
 use serde::Deserialize;
@@ -23,6 +24,14 @@ use super::util::{
 };
 
 const REFRESH_COOKIE: &str = "easy_todo_refresh";
+
+pub(super) async fn favicon_png() -> Response {
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "image/png")
+        .body(Body::from(&include_bytes!("favicon.png")[..]))
+        .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+}
 
 #[derive(Debug, Deserialize)]
 pub(super) struct LoginQuery {

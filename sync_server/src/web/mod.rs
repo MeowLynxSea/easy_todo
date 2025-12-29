@@ -17,6 +17,8 @@ use crate::AppState;
 
 pub fn web_router(admin_entry_path: String) -> Router<AppState> {
     Router::new()
+        .route("/favicon.png", get(pages::favicon_png))
+        .route("/favicon.ico", get(pages::favicon_png))
         .route("/", get(pages::home_page))
         .route("/dashboard", get(pages::dashboard_page))
         .route("/dashboard/login", get(pages::dashboard_login_page))

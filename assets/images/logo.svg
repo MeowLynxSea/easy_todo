@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="easy_todo minimalist logo A2">
+  <rect width="1024" height="1024" rx="224" fill="#0A0F1C"/>
+  <!-- Single ring with subtle highlight -->
+  <defs>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.55"/>
+    </linearGradient>
+    <linearGradient id="gem" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#98F3FF"/>
+      <stop offset="0.55" stop-color="#19C7D8"/>
+      <stop offset="1" stop-color="#1389D6"/>
+    </linearGradient>
+  </defs>
+  <circle cx="512" cy="512" r="308" fill="none" stroke="url(#ring)" stroke-width="64"/>
+  <path d="M372 520l96 96 204-244" fill="none" stroke="url(#gem)" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

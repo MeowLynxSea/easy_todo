@@ -564,9 +564,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            Icons.task_alt,
-                            color: Theme.of(context).colorScheme.primary,
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: Image.asset(
+                              'assets/images/logo.png',
+                              width: 24,
+                              height: 24,
+                              fit: BoxFit.cover,
+                              filterQuality: FilterQuality.high,
+                            ),
                           ),
                           if (desktopWebWide) ...[
                             const SizedBox(width: 8),

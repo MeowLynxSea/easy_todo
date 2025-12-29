@@ -11,7 +11,7 @@ use sqlx::Row;
 
 use crate::{
     clear_subscription_if_expired, compute_effective_quota, json_error, now_ms_utc, AppState,
-    ErrorBody, UserBillingRow,
+    reset_user_api_outbound_if_new_month, ErrorBody, UserBillingRow,
 };
 
 use super::layout::{nav_bar, page_shell, stat_card, stat_card_ms, stat_card_ms_opt};
@@ -245,6 +245,11 @@ pub(super) async fn dashboard_page(
         }
     };
 
+    let now_ms = now_ms_utc();
+    reset_user_api_outbound_if_new_month(&state.db, user_id, now_ms)
+        .await
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
     let user_row = sqlx::query(
         r#"SELECT
              created_at_ms_utc,
@@ -266,8 +271,6 @@ pub(super) async fn dashboard_page(
     let Some(user_row) = user_row else {
         return Ok(Redirect::temporary("/dashboard/login?next=/dashboard").into_response());
     };
-
-    let now_ms = now_ms_utc();
 
     let created_at_ms: i64 = user_row
         .try_get("created_at_ms_utc")
@@ -324,14 +327,6 @@ pub(super) async fn dashboard_page(
             .fetch_one(&state.db)
             .await
             .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
-
-    let deleted_records: i64 = sqlx::query_scalar(
-        r#"SELECT COUNT(*) FROM records WHERE user_id = ? AND deleted_at_ms_utc IS NOT NULL"#,
-    )
-    .bind(user_id)
-    .fetch_one(&state.db)
-    .await
-    .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
     let last_sync_at_ms: Option<i64> =
         sqlx::query_scalar(r#"SELECT MAX(updated_at_ms_utc) FROM records WHERE user_id = ?"#)
@@ -416,14 +411,6 @@ pub(super) async fn dashboard_page(
             ("无订阅".to_string(), "—".to_string(), 0, "—".to_string())
         };
 
-    let sub_label = quota
-        .active_plan_name
-        .as_deref()
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .or_else(|| has_active_subscription.then(|| "未知方案".to_string()))
-        .unwrap_or_else(|| "无订阅".to_string());
-
     let subscription_section = format!(
         r#"<div class="mt-6 card p-6" data-spotlight>
   <h2 class="text-base font-semibold">当前订阅</h2>
@@ -455,6 +442,103 @@ pub(super) async fn dashboard_page(
         bonus_out = h(&format_bytes(quota.bonus_outbound_bytes)),
     );
 
+    let next_reset_at_ms_utc: i64 = sqlx::query_scalar(
+        r#"SELECT CAST(strftime('%s', ? / 1000, 'unixepoch', 'start of month', '+1 month') AS INTEGER) * 1000"#,
+    )
+    .bind(now_ms)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+    let mins_until_reset = next_reset_at_ms_utc
+        .saturating_sub(now_ms)
+        .max(0)
+        .saturating_div(60_000);
+    let days_until_reset = mins_until_reset / (24 * 60);
+    let hours_until_reset = (mins_until_reset % (24 * 60)) / 60;
+    let minutes_until_reset = mins_until_reset % 60;
+    let reset_in = format!(
+        "{}天{}时{}分后重置",
+        days_until_reset, hours_until_reset, minutes_until_reset
+    );
+
+    let fmt_ratio = |used: i64, limit: Option<i64>| {
+        let used = format_bytes(used);
+        let limit = match limit {
+            Some(v) => format_bytes(v),
+            None => "不限".to_string(),
+        };
+        format!("{used}/{limit}")
+    };
+
+    let fmt_percent = |used: i64, limit: Option<i64>| match limit.filter(|v| *v > 0) {
+        Some(max) => {
+            let pct = (used.max(0) as f64 / max as f64) * 100.0;
+            format!("{:.0}%", pct.max(0.0))
+        }
+        None => "不限".to_string(),
+    };
+
+    let bar_width = |used: i64, limit: Option<i64>| match limit.filter(|v| *v > 0) {
+        Some(max) => {
+            let pct = (used.max(0) as f64 / max as f64) * 100.0;
+            pct.clamp(0.0, 100.0).round() as i64
+        }
+        None => 0i64,
+    };
+
+    let usage_card = format!(
+        r#"<div class="card p-6 md:col-span-2 md:row-span-2" data-spotlight>
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <div class="text-xs font-medium subtle">用量</div>
+      <div class="mt-1 text-sm muted">存储与本月出站流量</div>
+    </div>
+    <div class="text-xs font-medium subtle">{reset_in}</div>
+  </div>
+
+  <div class="mt-6 grid gap-6">
+    <div>
+	      <div class="flex items-end justify-between gap-3">
+	        <div class="text-sm font-semibold tracking-tight">存储用量</div>
+	        <div class="text-sm font-mono font-semibold tracking-tight">{storage_ratio}</div>
+	      </div>
+	      <div class="mt-3 h-2 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+	        <div class="h-2 rounded-full {storage_bar} transition-[width] duration-300 ease-out" style="width:{storage_width}%"></div>
+	      </div>
+	      <div class="mt-2 text-xs font-mono subtle text-right">{storage_pct}</div>
+	    </div>
+	
+	    <div>
+	      <div class="flex items-end justify-between gap-3">
+	        <div class="text-sm font-semibold tracking-tight">本月出站流量</div>
+	        <div class="text-sm font-mono font-semibold tracking-tight">{out_ratio}</div>
+	      </div>
+	      <div class="mt-3 h-2 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+	        <div class="h-2 rounded-full {out_bar} transition-[width] duration-300 ease-out" style="width:{out_width}%"></div>
+	      </div>
+	      <div class="mt-2 text-xs font-mono subtle text-right">{out_pct}</div>
+	    </div>
+	  </div>
+</div>"#,
+        reset_in = h(&reset_in),
+        storage_ratio = h(&fmt_ratio(stored_b64, quota.allowed_storage_b64)),
+        storage_pct = h(&fmt_percent(stored_b64, quota.allowed_storage_b64)),
+        storage_width = bar_width(stored_b64, quota.allowed_storage_b64),
+        storage_bar = if over_storage {
+            "bg-rose-500"
+        } else {
+            "bg-[color:var(--accent)]"
+        },
+        out_ratio = h(&fmt_ratio(api_outbound_bytes, quota.allowed_outbound_bytes)),
+        out_pct = h(&fmt_percent(api_outbound_bytes, quota.allowed_outbound_bytes)),
+        out_width = bar_width(api_outbound_bytes, quota.allowed_outbound_bytes),
+        out_bar = if over_outbound {
+            "bg-rose-500"
+        } else {
+            "bg-[color:var(--accent)]"
+        },
+    );
+
     let quota_section = format!(
         r#"<div class="mt-10 card p-6" data-spotlight>
   <h2 class="text-base font-semibold">当前配额</h2>
@@ -468,7 +552,7 @@ pub(super) async fn dashboard_page(
       </div>
     </div>
     <div class="subcard">
-      <div class="text-xs font-medium subtle">出站流量</div>
+      <div class="text-xs font-medium subtle">本月出站流量</div>
       <div class="mt-2 grid gap-1 text-sm">
         <div>已用：<span class="font-mono font-semibold">{out_used}</span></div>
         <div>可用：<span class="font-mono font-semibold">{out_allowed}</span></div>
@@ -571,15 +655,9 @@ pub(super) async fn dashboard_page(
   <div class="mt-10 grid gap-4 md:grid-cols-4">
     {stat_created}
     {stat_records}
-    {stat_storage}
-    {stat_outbound}
-  </div>
-
-  <div class="mt-4 grid gap-4 md:grid-cols-4">
-    {stat_deleted}
+    {usage_card}
     {stat_last_sync}
     {stat_sessions}
-    {stat_sub}
   </div>
 
   <div class="mt-10 card p-6" data-spotlight>
@@ -708,12 +786,9 @@ pub(super) async fn dashboard_page(
         nav = nav_bar(Some("仪表盘")),
         stat_created = stat_card_ms("注册时间", created_at_ms, "created-at"),
         stat_records = stat_card("记录数", &format_number(total_records)),
-        stat_storage = stat_card("存储用量", &format_bytes(stored_b64)),
-        stat_outbound = stat_card("出站用量", &format_bytes(api_outbound_bytes)),
-        stat_deleted = stat_card("已删除标记", &format_number(deleted_records)),
+        usage_card = usage_card,
         stat_last_sync = stat_card_ms_opt("最近同步", last_sync_at_ms, "last-sync"),
         stat_sessions = stat_card("活跃会话", &format_number(active_sessions)),
-        stat_sub = stat_card("订阅", &sub_label),
         provider = h(&oauth_provider_display),
         subscription_section = subscription_section,
         quota_section = quota_section,

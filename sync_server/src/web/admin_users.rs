@@ -7,7 +7,9 @@ use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::Json;
 use sqlx::Row;
 
-use crate::{json_error, now_ms_utc, AppState, ErrorBody};
+use crate::{
+    json_error, now_ms_utc, reset_all_users_api_outbound_if_new_month, AppState, ErrorBody,
+};
 
 use super::admin_pages::admin_nav;
 use super::admin_session::authenticate_admin;
@@ -34,6 +36,9 @@ pub(super) async fn admin_users_page(
     }
 
     let now_ms = now_ms_utc();
+    reset_all_users_api_outbound_if_new_month(&state.db, now_ms)
+        .await
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
     sqlx::query(
         r#"UPDATE users
            SET subscription_plan_id = NULL,
@@ -226,7 +231,7 @@ pub(super) async fn admin_users_page(
             <th class="px-3 py-2">注册</th>
             <th class="px-3 py-2">状态</th>
             <th class="px-3 py-2">存储</th>
-            <th class="px-3 py-2">出站</th>
+            <th class="px-3 py-2">本月出站</th>
             <th class="px-3 py-2">订阅</th>
             <th class="px-3 py-2">到期时间</th>
           </tr>

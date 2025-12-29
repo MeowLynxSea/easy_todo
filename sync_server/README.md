@@ -72,12 +72,13 @@ Sync endpoints (require `Authorization: Bearer <accessToken>`):
 ## Quotas, outbound traffic, subscriptions
 
 The server tracks **per-user API outbound bytes** (responses for `/v1/*`; web pages like `/dashboard` are not counted).
+Usage is tracked **per UTC month** and resets to `0` at the beginning of each month.
 
 Quota-related env vars:
 
 - `BASE_USER_STORAGE_B64=<int>`: default base storage quota per user (counts `LENGTH(nonce)+LENGTH(ciphertext)` across records).
   - Backward compatible: if unset, falls back to `MAX_TOTAL_B64_PER_USER`.
-- `BASE_USER_OUTBOUND_BYTES=<int>`: default base outbound quota per user (API-only).
+- `BASE_USER_OUTBOUND_BYTES=<int>`: default base outbound quota per user per month (API-only).
 - `SUBSCRIPTION_PLANS_JSON=[{...}, {...}]`: subscription plan definitions.
 
 `SUBSCRIPTION_PLANS_JSON` example:

@@ -8,7 +8,7 @@ use sqlx::{QueryBuilder, Row, Sqlite};
 
 use crate::{
     clear_subscription_if_expired, compute_effective_quota, json_error, now_ms_utc, AppState,
-    ErrorBody, UserBillingRow,
+    reset_user_api_outbound_if_new_month, ErrorBody, UserBillingRow,
 };
 
 use super::admin_session::authenticate_admin;
@@ -335,6 +335,11 @@ pub(super) async fn admin_get_user(
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorBody>)> {
     authenticate_admin(&state, &headers)?;
 
+    let now_ms = now_ms_utc();
+    reset_user_api_outbound_if_new_month(&state.db, user_id, now_ms)
+        .await
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
     let row = sqlx::query(
         r#"SELECT
              id,
@@ -392,7 +397,6 @@ pub(super) async fn admin_get_user(
         .try_get("api_outbound_bytes")
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
-    let now_ms = now_ms_utc();
     let has_plan = subscription_plan_id
         .as_deref()
         .map(|s| !s.trim().is_empty())

@@ -475,6 +475,50 @@ fn now_ms_utc() -> i64 {
         .as_millis() as i64
 }
 
+async fn reset_user_api_outbound_if_new_month<'e, E>(
+    executor: E,
+    user_id: i64,
+    now_ms_utc: i64,
+) -> Result<(), sqlx::Error>
+where
+    E: Executor<'e, Database = Sqlite>,
+{
+    // `api_outbound_bytes` is tracked per UTC month. When the month rolls over, reset usage to 0.
+    sqlx::query(
+        r#"UPDATE users
+           SET api_outbound_bytes = 0,
+               api_outbound_month_utc = CAST(strftime('%Y%m', ? / 1000, 'unixepoch') AS INTEGER)
+           WHERE id = ?
+             AND api_outbound_month_utc != CAST(strftime('%Y%m', ? / 1000, 'unixepoch') AS INTEGER)"#,
+    )
+    .bind(now_ms_utc)
+    .bind(user_id)
+    .bind(now_ms_utc)
+    .execute(executor)
+    .await?;
+    Ok(())
+}
+
+async fn reset_all_users_api_outbound_if_new_month<'e, E>(
+    executor: E,
+    now_ms_utc: i64,
+) -> Result<(), sqlx::Error>
+where
+    E: Executor<'e, Database = Sqlite>,
+{
+    sqlx::query(
+        r#"UPDATE users
+           SET api_outbound_bytes = 0,
+               api_outbound_month_utc = CAST(strftime('%Y%m', ? / 1000, 'unixepoch') AS INTEGER)
+           WHERE api_outbound_month_utc != CAST(strftime('%Y%m', ? / 1000, 'unixepoch') AS INTEGER)"#,
+    )
+    .bind(now_ms_utc)
+    .bind(now_ms_utc)
+    .execute(executor)
+    .await?;
+    Ok(())
+}
+
 fn normalize_database_url(url: String) -> String {
     if url == "sqlite::memory:" {
         return url;
@@ -586,6 +630,9 @@ async fn get_key_bundle(
             bundle["bundleVersion"] = serde_json::Value::from(bundle_version);
 
             let (resp, bytes_len) = json_bytes(&bundle)?;
+            reset_user_api_outbound_if_new_month(&state.db, user.user_id, now_ms)
+                .await
+                .ok();
             sqlx::query(
                 r#"UPDATE users SET api_outbound_bytes = api_outbound_bytes + ? WHERE id = ?"#,
             )
@@ -654,6 +701,9 @@ async fn put_key_bundle(
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
     let (resp, bytes_len) = json_bytes(&bundle)?;
+    reset_user_api_outbound_if_new_month(&state.db, user.user_id, now_ms)
+        .await
+        .ok();
     sqlx::query(r#"UPDATE users SET api_outbound_bytes = api_outbound_bytes + ? WHERE id = ?"#)
         .bind(bytes_len)
         .bind(user.user_id)
@@ -764,6 +814,10 @@ async fn push_sync(
     let mut tx = state
         .db
         .begin()
+        .await
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+    reset_user_api_outbound_if_new_month(&mut *tx, user.user_id, now_ms)
         .await
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
@@ -1052,6 +1106,10 @@ async fn pull_sync(
     let limit = q.limit.unwrap_or(200).clamp(1, MAX_PULL_LIMIT) as i64;
 
     let now_ms = now_ms_utc();
+
+    reset_user_api_outbound_if_new_month(&state.db, user.user_id, now_ms)
+        .await
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
     let billing_row = sqlx::query(
         r#"SELECT

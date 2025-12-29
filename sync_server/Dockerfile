@@ -1,4 +1,5 @@
-FROM rust:1.82-bookworm AS builder
+# Rust 1.85+ includes stable support for Rust 2024 edition crates.
+FROM rust:1.85-bookworm AS builder
 
 WORKDIR /app
 

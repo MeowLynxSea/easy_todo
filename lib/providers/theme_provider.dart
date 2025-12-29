@@ -6,18 +6,25 @@ import 'package:easy_todo/services/hive_service.dart';
 import 'package:easy_todo/models/user_preferences_model.dart';
 
 class ThemeProvider extends ChangeNotifier {
-  ThemeMode _themeMode = ThemeMode.system;
-  Map<String, Color> _themeColors = {
-    'primary': AppTheme.primaryColor,
-    'primaryVariant': AppTheme.primaryVariant,
-    'secondary': AppTheme.secondaryColor,
+  static const String _primaryKey = 'primary';
+  static const String _primaryVariantKey = 'primaryVariant';
+  static const String _secondaryKey = 'secondary';
+
+  static const Map<String, Color> _defaultThemeColors = {
+    _primaryKey: AppTheme.primaryColor,
+    _primaryVariantKey: AppTheme.primaryVariant,
+    _secondaryKey: AppTheme.secondaryColor,
   };
+
+  ThemeMode _themeMode = ThemeMode.system;
+  Map<String, Color> _themeColors = {..._defaultThemeColors};
   Map<String, Color>? _customThemeColors;
   int _themeVersion = 0;
-  final UserPreferencesRepository _preferencesRepository =
-      UserPreferencesRepository();
+  final UserPreferencesRepository _preferencesRepository;
 
-  ThemeProvider() {
+  ThemeProvider({UserPreferencesRepository? preferencesRepository})
+    : _preferencesRepository =
+          preferencesRepository ?? UserPreferencesRepository() {
     _loadFromUserPreferences();
   }
 
@@ -34,7 +41,7 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   void setThemeColors(Map<String, Color> colors) {
-    _themeColors = colors;
+    _themeColors = _ensureRequiredThemeColors(colors);
     _themeVersion++;
     debugPrint('Setting theme colors: $colors');
     debugPrint('Theme version updated to: $_themeVersion');
@@ -43,7 +50,14 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   void setCustomThemeColors(Map<String, Color> colors) {
-    _customThemeColors = colors.isNotEmpty ? colors : null;
+    final normalized = Map<String, Color>.from(colors);
+    if (normalized.containsKey(_primaryKey) &&
+        !normalized.containsKey(_primaryVariantKey)) {
+      normalized[_primaryVariantKey] = _derivePrimaryVariant(
+        normalized[_primaryKey]!,
+      );
+    }
+    _customThemeColors = normalized.isNotEmpty ? normalized : null;
     _themeVersion++;
     debugPrint('Setting custom theme colors: $_customThemeColors');
     _persistTheme();
@@ -58,11 +72,7 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   void resetToDefaultTheme() {
-    _themeColors = {
-      'primary': AppTheme.primaryColor,
-      'primaryVariant': AppTheme.primaryVariant,
-      'secondary': AppTheme.secondaryColor,
-    };
+    _themeColors = {..._defaultThemeColors};
     _customThemeColors = null;
     _themeVersion++;
     _persistTheme();
@@ -87,15 +97,15 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   ThemeData _getLightTheme(BuildContext? context) {
-    final colors = _customThemeColors ?? _themeColors;
+    final colors = _effectiveThemeColors();
     // debugPrint('Building light theme with colors: $colors');
     // debugPrint('Custom theme: $_customThemeColors, Theme colors: $_themeColors');
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: colors['primary']!,
-        primary: colors['primary'],
-        secondary: colors['secondary'],
+        seedColor: colors[_primaryKey]!,
+        primary: colors[_primaryKey],
+        secondary: colors[_secondaryKey],
         surface: AppTheme.surface,
         surfaceContainer: AppTheme.background,
         error: AppTheme.error,
@@ -125,13 +135,13 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   ThemeData _getDarkTheme(BuildContext? context) {
-    final colors = _customThemeColors ?? _themeColors;
+    final colors = _effectiveThemeColors();
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: colors['primary']!,
-        primary: colors['primary'],
-        secondary: colors['secondary'],
+        seedColor: colors[_primaryKey]!,
+        primary: colors[_primaryKey],
+        secondary: colors[_secondaryKey],
         surface: const Color(0xFF1E1E1E),
         surfaceContainer: const Color(0xFF121212),
         error: AppTheme.error,
@@ -175,12 +185,13 @@ class ThemeProvider extends ChangeNotifier {
       try {
         final parsed = _parseColorsFromString(prefs.themeColorsString);
         if (parsed.isNotEmpty) {
-          _themeColors = parsed;
+          _themeColors = _ensureRequiredThemeColors(parsed);
         }
       } catch (e) {
         debugPrint('Error parsing theme colors: $e');
       }
     }
+    _themeColors = _ensureRequiredThemeColors(_themeColors);
 
     if (prefs.customThemeColorsString.isNotEmpty) {
       try {
@@ -237,13 +248,13 @@ class ThemeProvider extends ChangeNotifier {
       try {
         final parsed = _parseColorsFromString(prefs.themeColorsString);
         if (parsed.isNotEmpty) {
-          nextThemeColors = parsed;
+          nextThemeColors = _ensureRequiredThemeColors(parsed);
         }
       } catch (e) {
         debugPrint('Error parsing theme colors: $e');
       }
     }
-    _themeColors = nextThemeColors;
+    _themeColors = _ensureRequiredThemeColors(nextThemeColors);
 
     Map<String, Color>? nextCustom;
     if (prefs.customThemeColorsString.isNotEmpty) {
@@ -291,6 +302,36 @@ class ThemeProvider extends ChangeNotifier {
     }
 
     return colorsMap;
+  }
+
+  static Map<String, Color> _ensureRequiredThemeColors(
+    Map<String, Color> colors,
+  ) {
+    final primary = colors[_primaryKey] ?? _defaultThemeColors[_primaryKey]!;
+    final secondary =
+        colors[_secondaryKey] ?? _defaultThemeColors[_secondaryKey]!;
+    final primaryVariant =
+        colors[_primaryVariantKey] ?? _derivePrimaryVariant(primary);
+
+    return {
+      ...colors,
+      _primaryKey: primary,
+      _secondaryKey: secondary,
+      _primaryVariantKey: primaryVariant,
+    };
+  }
+
+  static Color _derivePrimaryVariant(Color primary) {
+    final hslColor = HSLColor.fromColor(primary);
+    final nextLightness = (hslColor.lightness * 0.8).clamp(0.0, 1.0);
+    return hslColor.withLightness(nextLightness).toColor();
+  }
+
+  Map<String, Color> _effectiveThemeColors() {
+    final base = _ensureRequiredThemeColors(_themeColors);
+    final custom = _customThemeColors;
+    if (custom == null || custom.isEmpty) return base;
+    return _ensureRequiredThemeColors({...base, ...custom});
   }
 
   String getThemeModeText(BuildContext context) {

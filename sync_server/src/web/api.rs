@@ -169,6 +169,8 @@ pub(super) async fn web_activate_cdkey(
         .await
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
+    state.metrics.record_cdkey_activation(now_ms);
+
     let mut resp = Json(ActivateCdkeyResponse {
         ok: true,
         plan_id: plan.id.clone(),

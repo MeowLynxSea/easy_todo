@@ -21,6 +21,7 @@ use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 mod auth;
+mod metrics;
 mod web;
 
 const MAX_RECORD_B64_LEN: usize = 512 * 1024; // per-field b64 string length cap
@@ -163,6 +164,7 @@ struct AppState {
     max_records_per_user: Option<i64>,
     billing: Arc<BillingConfig>,
     admin: AdminConfig,
+    metrics: Arc<metrics::Metrics>,
     started_at: Instant,
     site_created_at_ms_utc: Option<i64>,
 }
@@ -258,6 +260,51 @@ struct ErrorBody {
 
 fn json_error(status: StatusCode, msg: impl Into<String>) -> (StatusCode, Json<ErrorBody>) {
     (status, Json(ErrorBody { error: msg.into() }))
+}
+
+async fn track_api_metrics(
+    State(state): State<AppState>,
+    req: axum::http::Request<axum::body::Body>,
+    next: axum::middleware::Next,
+) -> Response {
+    let method = req.method().clone();
+    let path = req.uri().path().to_string();
+    let at_ms = now_ms_utc();
+    let in_bytes = req
+        .headers()
+        .get(header::CONTENT_LENGTH)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.parse::<i64>().ok())
+        .unwrap_or(0)
+        .max(0);
+
+    let should_track = path.starts_with("/v1/")
+        && path != "/v1/health"
+        && method != Method::OPTIONS
+        && method != Method::HEAD;
+
+    let resp = next.run(req).await;
+
+    if should_track {
+        let out_bytes = resp
+            .headers()
+            .get(header::CONTENT_LENGTH)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|s| s.parse::<i64>().ok())
+            .unwrap_or_else(|| {
+                use axum::body::HttpBody as _;
+                resp.body()
+                    .size_hint()
+                    .exact()
+                    .or_else(|| resp.body().size_hint().upper())
+                    .unwrap_or(0) as i64
+            })
+            .max(0);
+
+        state.metrics.record_api_request(at_ms, in_bytes, out_bytes);
+    }
+
+    resp
 }
 
 fn json_bytes<T: Serialize>(value: &T) -> Result<(Response, i64), (StatusCode, Json<ErrorBody>)> {
@@ -396,7 +443,7 @@ async fn ensure_user(
     oauth_provider: &str,
     oauth_sub: &str,
     now_ms_utc: i64,
-) -> anyhow::Result<i64> {
+) -> anyhow::Result<(i64, bool)> {
     let existing: Option<i64> =
         sqlx::query_scalar(r#"SELECT id FROM users WHERE oauth_provider = ? AND oauth_sub = ?"#)
             .bind(oauth_provider)
@@ -404,7 +451,7 @@ async fn ensure_user(
             .fetch_optional(&mut **tx)
             .await?;
     if let Some(id) = existing {
-        return Ok(id);
+        return Ok((id, false));
     }
 
     let created = sqlx::query(
@@ -417,7 +464,7 @@ async fn ensure_user(
     .execute(&mut **tx)
     .await?;
 
-    Ok(created.last_insert_rowid())
+    Ok((created.last_insert_rowid(), true))
 }
 
 fn now_ms_utc() -> i64 {
@@ -514,6 +561,7 @@ async fn get_key_bundle(
     State(state): State<AppState>,
     user: auth::AuthedUser,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorBody>)> {
+    let now_ms = now_ms_utc();
     let row = sqlx::query(
         r#"SELECT bundle_version, bundle_json
        FROM key_bundles WHERE user_id = ?"#,
@@ -547,6 +595,7 @@ async fn get_key_bundle(
             .await
             .ok();
 
+            state.metrics.record_active_user(now_ms, user.user_id);
             Ok(resp)
         }
     }
@@ -612,6 +661,7 @@ async fn put_key_bundle(
         .await
         .ok();
 
+    state.metrics.record_active_user(now_ms, user.user_id);
     Ok(resp)
 }
 
@@ -976,6 +1026,7 @@ async fn push_sync(
         .await
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
+    state.metrics.record_active_user(now_ms, user.user_id);
     Ok(resp)
 }
 
@@ -1155,6 +1206,7 @@ async fn pull_sync(
             .await
             .ok();
         }
+        state.metrics.record_active_user(now_ms, user.user_id);
         return Ok(resp);
     }
 
@@ -1237,6 +1289,7 @@ async fn pull_sync(
             .ok();
     }
 
+    state.metrics.record_active_user(now_ms, user.user_id);
     Ok(resp)
 }
 
@@ -1303,6 +1356,8 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("run migrations")?;
 
+    let metrics = metrics::Metrics::start(pool.clone());
+
     let state = AppState {
         db: pool,
         limiter: Arc::new(tokio::sync::Mutex::new(RateLimiter::new(
@@ -1320,6 +1375,7 @@ async fn main() -> anyhow::Result<()> {
         max_records_per_user,
         billing,
         admin,
+        metrics,
         started_at: Instant::now(),
         site_created_at_ms_utc,
     };
@@ -1351,6 +1407,10 @@ async fn main() -> anyhow::Result<()> {
                 )
             }),
         )
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            track_api_metrics,
+        ))
         .with_state(state);
 
     let addr: SocketAddr = format!("{host}:{port}").parse().context("parse addr")?;

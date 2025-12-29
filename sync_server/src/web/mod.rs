@@ -1,6 +1,9 @@
 mod admin_api;
+mod admin_cdkeys;
 mod admin_pages;
 mod admin_session;
+mod admin_stats;
+mod admin_users;
 mod api;
 mod layout;
 mod pages;

@@ -1080,7 +1080,7 @@ async fn auth_callback(
         .begin()
         .await
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
-    let user_id = crate::ensure_user(&mut tx, &provider, &sub, now_ms)
+    let (user_id, created_user) = crate::ensure_user(&mut tx, &provider, &sub, now_ms)
         .await
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
@@ -1094,6 +1094,10 @@ async fn auth_callback(
         tx.commit()
             .await
             .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+        if created_user {
+            state.metrics.record_new_user(now_ms);
+        }
 
         let mut return_to = app_redirect;
         if !is_allowed_web_return_to(&return_to) {
@@ -1162,6 +1166,10 @@ async fn auth_callback(
     tx.commit()
         .await
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+    if created_user {
+        state.metrics.record_new_user(now_ms);
+    }
 
     let return_url = state.auth.append_ticket(&app_redirect, &ticket);
     Ok(state

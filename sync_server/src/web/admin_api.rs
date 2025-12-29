@@ -1,10 +1,10 @@
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use axum::Json;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
-use sqlx::Row;
+use sqlx::{QueryBuilder, Row, Sqlite};
 
 use crate::{
     clear_subscription_if_expired, compute_effective_quota, json_error, now_ms_utc, AppState,
@@ -97,11 +97,92 @@ pub(super) async fn admin_generate_cdkeys(
 pub(super) struct AdminDeleteCdkeysRequest {
     #[serde(rename = "planId")]
     plan_id: String,
+    count: Option<i64>,
 }
 
 #[derive(Debug, Serialize)]
 struct AdminDeleteCdkeysResponse {
     deleted: i64,
+    codes: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(super) struct AdminListCdkeysQuery {
+    #[serde(rename = "planId")]
+    plan_id: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct AdminCdkeyRow {
+    code: String,
+    #[serde(rename = "planId")]
+    plan_id: String,
+    #[serde(rename = "createdAtMsUtc")]
+    created_at_ms_utc: i64,
+}
+
+#[derive(Debug, Serialize)]
+struct AdminListCdkeysResponse {
+    cdkeys: Vec<AdminCdkeyRow>,
+    total: i64,
+}
+
+pub(super) async fn admin_list_cdkeys(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<AdminListCdkeysQuery>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorBody>)> {
+    authenticate_admin(&state, &headers)?;
+    if !check_same_origin(&state, &headers) {
+        return Err(json_error(StatusCode::FORBIDDEN, "forbidden"));
+    }
+
+    let plan_id = q
+        .plan_id
+        .as_deref()
+        .map(|s| s.trim().to_lowercase())
+        .filter(|s| !s.is_empty());
+
+    let rows = if let Some(plan_id) = &plan_id {
+        sqlx::query(
+            r#"SELECT code, plan_id, created_at_ms_utc
+               FROM cdkeys
+               WHERE plan_id = ?
+               ORDER BY created_at_ms_utc DESC, code ASC"#,
+        )
+        .bind(plan_id)
+        .fetch_all(&state.db)
+        .await
+    } else {
+        sqlx::query(
+            r#"SELECT code, plan_id, created_at_ms_utc
+               FROM cdkeys
+               ORDER BY created_at_ms_utc DESC, code ASC"#,
+        )
+        .fetch_all(&state.db)
+        .await
+    }
+    .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+    let mut cdkeys = Vec::with_capacity(rows.len());
+    for row in rows {
+        let code: String = row.try_get("code").unwrap_or_default();
+        let plan_id: String = row.try_get("plan_id").unwrap_or_default();
+        let created_at_ms_utc: i64 = row.try_get("created_at_ms_utc").unwrap_or(0);
+        if code.trim().is_empty() {
+            continue;
+        }
+        cdkeys.push(AdminCdkeyRow {
+            code,
+            plan_id,
+            created_at_ms_utc,
+        });
+    }
+
+    Ok(Json(AdminListCdkeysResponse {
+        total: cdkeys.len() as i64,
+        cdkeys,
+    }))
 }
 
 pub(super) async fn admin_delete_cdkeys(
@@ -118,14 +199,80 @@ pub(super) async fn admin_delete_cdkeys(
         return Err(json_error(StatusCode::BAD_REQUEST, "plan_id required"));
     };
 
-    let deleted = sqlx::query(r#"DELETE FROM cdkeys WHERE plan_id = ?"#)
+    let count = req.count.unwrap_or(0);
+    if count < 0 {
+        return Err(json_error(StatusCode::BAD_REQUEST, "invalid_count"));
+    }
+    let count = count.clamp(0, 2000);
+
+    let mut tx = state
+        .db
+        .begin()
+        .await
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+    let mut codes: Vec<String> = if count == 0 {
+        sqlx::query_scalar(
+            r#"SELECT code
+               FROM cdkeys
+               WHERE plan_id = ?
+               ORDER BY created_at_ms_utc DESC, code ASC"#,
+        )
         .bind(&plan_id)
-        .execute(&state.db)
+        .fetch_all(&mut *tx)
         .await
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?
-        .rows_affected() as i64;
+    } else {
+        sqlx::query_scalar(
+            r#"SELECT code
+               FROM cdkeys
+               WHERE plan_id = ?
+               ORDER BY created_at_ms_utc DESC, code ASC
+               LIMIT ?"#,
+        )
+        .bind(&plan_id)
+        .bind(count)
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?
+    };
+    codes.retain(|s| !s.trim().is_empty());
 
-    Ok(Json(AdminDeleteCdkeysResponse { deleted }))
+    let deleted = if codes.is_empty() {
+        0i64
+    } else if count == 0 {
+        sqlx::query(r#"DELETE FROM cdkeys WHERE plan_id = ?"#)
+            .bind(&plan_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?
+            .rows_affected() as i64
+    } else {
+        let mut deleted_total: i64 = 0;
+        for chunk in codes.chunks(400) {
+            let mut qb = QueryBuilder::<Sqlite>::new("DELETE FROM cdkeys WHERE code IN (");
+            {
+                let mut sep = qb.separated(", ");
+                for code in chunk {
+                    sep.push_bind(code);
+                }
+            }
+            qb.push(")");
+            let res = qb
+                .build()
+                .execute(&mut *tx)
+                .await
+                .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+            deleted_total = deleted_total.saturating_add(res.rows_affected() as i64);
+        }
+        deleted_total
+    };
+
+    tx.commit()
+        .await
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+    Ok(Json(AdminDeleteCdkeysResponse { deleted, codes }))
 }
 
 #[derive(Debug, Serialize)]

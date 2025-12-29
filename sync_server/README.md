@@ -124,6 +124,12 @@ Env vars:
 
 Once enabled, open: `BASE_URL + ADMIN_ENTRY_PATH`
 
+Admin stats page:
+
+- `BASE_URL + ADMIN_ENTRY_PATH + /stats` (UTC daily/monthly/yearly trends for API requests/traffic, new users, CDKEY activations, active users)
+- `BASE_URL + ADMIN_ENTRY_PATH + /users` (user management)
+- `BASE_URL + ADMIN_ENTRY_PATH + /cdkeys` (CDKEY management)
+
 ## Notes
 
 - Server stores only plaintext metadata + encrypted payload (`nonce`/`ciphertext`).

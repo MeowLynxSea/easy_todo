@@ -1267,6 +1267,9 @@ class SyncProvider extends ChangeNotifier {
       } else if (e is SyncApiException) {
         if (e.statusCode == null) {
           _lastErrorCode = SyncErrorCode.network;
+        } else if (e.statusCode == 402) {
+          _lastErrorCode = SyncErrorCode.quotaExceeded;
+          _lastErrorDetail = e.message;
         } else if (e.statusCode == 401 || e.statusCode == 403) {
           _lastErrorCode = SyncErrorCode.unauthorized;
         } else if (e.statusCode == 404) {

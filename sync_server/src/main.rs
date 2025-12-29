@@ -4,16 +4,16 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use anyhow::Context;
+use anyhow::{bail, Context};
 use axum::extract::{Query, State};
-use axum::http::{Method, StatusCode};
-use axum::response::IntoResponse;
+use axum::http::{header, HeaderValue, Method, StatusCode};
+use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::sqlite::SqlitePoolOptions;
-use sqlx::{Pool, Row, Sqlite, Transaction};
+use sqlx::{Executor, Pool, Row, Sqlite, Transaction};
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
@@ -28,6 +28,131 @@ const MAX_PULL_LIMIT: i64 = 500;
 const BODY_LIMIT_BYTES: usize = 5 * 1024 * 1024;
 const DEFAULT_MAX_PUSH_RECORDS: usize = 500;
 
+#[derive(Debug, Clone)]
+struct BillingConfig {
+    default_base_storage_b64: Option<i64>,
+    default_base_outbound_bytes: Option<i64>,
+    plans: HashMap<String, SubscriptionPlan>,
+}
+
+impl BillingConfig {
+    fn load_from_env() -> anyhow::Result<Self> {
+        let default_base_storage_b64 = env_i64("BASE_USER_STORAGE_B64")
+            .or_else(|| env_i64("MAX_TOTAL_B64_PER_USER"))
+            .filter(|v| *v >= 0);
+
+        let default_base_outbound_bytes = env_i64("BASE_USER_OUTBOUND_BYTES").filter(|v| *v >= 0);
+
+        let plans = load_subscription_plans_from_env().context("load SUBSCRIPTION_PLANS_JSON")?;
+
+        Ok(Self {
+            default_base_storage_b64,
+            default_base_outbound_bytes,
+            plans,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct SubscriptionPlanConfig {
+    id: String,
+    name: String,
+    #[serde(rename = "durationDays")]
+    duration_days: Option<i64>,
+    #[serde(rename = "durationSeconds")]
+    duration_seconds: Option<i64>,
+    #[serde(rename = "durationMs")]
+    duration_ms: Option<i64>,
+    #[serde(rename = "extraStorageB64")]
+    extra_storage_b64: Option<i64>,
+    #[serde(rename = "extraOutboundBytes")]
+    extra_outbound_bytes: Option<i64>,
+}
+
+#[derive(Debug, Clone)]
+struct SubscriptionPlan {
+    id: String,
+    name: String,
+    duration_ms: i64,
+    extra_storage_b64: i64,
+    extra_outbound_bytes: i64,
+}
+
+impl SubscriptionPlan {
+    fn from_config(cfg: SubscriptionPlanConfig) -> anyhow::Result<Self> {
+        let id = cfg.id.trim().to_lowercase();
+        if id.is_empty() {
+            bail!("subscription plan id is required");
+        }
+
+        let name = cfg.name.trim().to_string();
+        if name.is_empty() {
+            bail!("subscription plan name is required: {id}");
+        }
+
+        let duration_ms = cfg
+            .duration_ms
+            .or_else(|| cfg.duration_seconds.map(|v| v.saturating_mul(1000)))
+            .or_else(|| {
+                cfg.duration_days
+                    .map(|v| v.saturating_mul(24 * 60 * 60 * 1000))
+            })
+            .unwrap_or(0);
+        if duration_ms <= 0 {
+            bail!("subscription plan duration is required: {id}");
+        }
+
+        let extra_storage_b64 = cfg.extra_storage_b64.unwrap_or(0).max(0);
+        let extra_outbound_bytes = cfg.extra_outbound_bytes.unwrap_or(0).max(0);
+
+        Ok(Self {
+            id,
+            name,
+            duration_ms,
+            extra_storage_b64,
+            extra_outbound_bytes,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+struct AdminConfig {
+    entry_path: String,
+    username: Option<String>,
+    password: Option<String>,
+    session_ttl_secs: i64,
+}
+
+impl AdminConfig {
+    fn load_from_env() -> Self {
+        let entry_path = normalize_path_prefix(
+            std::env::var("ADMIN_ENTRY_PATH").unwrap_or_else(|_| "/admin".to_string()),
+        );
+        let username = std::env::var("ADMIN_USERNAME")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+        let password = std::env::var("ADMIN_PASSWORD")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+        let session_ttl_secs = env_i64("ADMIN_SESSION_TTL_SECS")
+            .unwrap_or(12 * 60 * 60)
+            .max(60);
+
+        Self {
+            entry_path,
+            username,
+            password,
+            session_ttl_secs,
+        }
+    }
+
+    fn enabled(&self) -> bool {
+        self.username.is_some() && self.password.is_some()
+    }
+}
+
 #[derive(Clone)]
 struct AppState {
     db: Pool<Sqlite>,
@@ -36,7 +161,8 @@ struct AppState {
     auth: Arc<auth::AuthService>,
     max_push_records: usize,
     max_records_per_user: Option<i64>,
-    max_total_b64_per_user: Option<i64>,
+    billing: Arc<BillingConfig>,
+    admin: AdminConfig,
     started_at: Instant,
     site_created_at_ms_utc: Option<i64>,
 }
@@ -134,6 +260,137 @@ fn json_error(status: StatusCode, msg: impl Into<String>) -> (StatusCode, Json<E
     (status, Json(ErrorBody { error: msg.into() }))
 }
 
+fn json_bytes<T: Serialize>(value: &T) -> Result<(Response, i64), (StatusCode, Json<ErrorBody>)> {
+    let bytes = serde_json::to_vec(value)
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "serialize error"))?;
+    let len = bytes.len() as i64;
+    let mut resp = Response::new(axum::body::Body::from(bytes));
+    resp.headers_mut().insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("application/json"),
+    );
+    Ok((resp, len))
+}
+
+#[derive(Debug, Clone)]
+struct UserBillingRow {
+    base_storage_b64: Option<i64>,
+    base_outbound_bytes: Option<i64>,
+    subscription_plan_id: Option<String>,
+    subscription_expires_at_ms_utc: Option<i64>,
+    banned_at_ms_utc: Option<i64>,
+    stored_b64: i64,
+    api_outbound_bytes: i64,
+}
+
+#[derive(Debug, Clone)]
+struct EffectiveQuota {
+    base_storage_b64: Option<i64>,
+    base_outbound_bytes: Option<i64>,
+    bonus_storage_b64: i64,
+    bonus_outbound_bytes: i64,
+    allowed_storage_b64: Option<i64>,
+    allowed_outbound_bytes: Option<i64>,
+    active_plan_id: Option<String>,
+    active_plan_name: Option<String>,
+    active_plan_expires_at_ms_utc: Option<i64>,
+}
+
+fn compute_effective_quota(
+    billing: &BillingConfig,
+    user: &UserBillingRow,
+    now_ms_utc: i64,
+) -> EffectiveQuota {
+    let base_storage_b64 = user
+        .base_storage_b64
+        .or(billing.default_base_storage_b64)
+        .filter(|v| *v >= 0);
+    let base_outbound_bytes = user
+        .base_outbound_bytes
+        .or(billing.default_base_outbound_bytes)
+        .filter(|v| *v >= 0);
+
+    let mut bonus_storage_b64 = 0i64;
+    let mut bonus_outbound_bytes = 0i64;
+    let mut active_plan_id = None;
+    let mut active_plan_name = None;
+
+    let expires_at = user.subscription_expires_at_ms_utc.unwrap_or(0);
+    if expires_at > now_ms_utc {
+        if let Some(plan_id) = user
+            .subscription_plan_id
+            .as_deref()
+            .map(|s| s.trim().to_lowercase())
+            .filter(|s| !s.is_empty())
+        {
+            if let Some(plan) = billing.plans.get(&plan_id) {
+                bonus_storage_b64 = plan.extra_storage_b64.max(0);
+                bonus_outbound_bytes = plan.extra_outbound_bytes.max(0);
+                active_plan_id = Some(plan.id.clone());
+                active_plan_name = Some(plan.name.clone());
+            }
+        }
+    }
+
+    let allowed_storage_b64 = base_storage_b64.map(|v| v.saturating_add(bonus_storage_b64));
+    let allowed_outbound_bytes =
+        base_outbound_bytes.map(|v| v.saturating_add(bonus_outbound_bytes));
+
+    EffectiveQuota {
+        base_storage_b64,
+        base_outbound_bytes,
+        bonus_storage_b64,
+        bonus_outbound_bytes,
+        allowed_storage_b64,
+        allowed_outbound_bytes,
+        active_plan_id,
+        active_plan_name,
+        active_plan_expires_at_ms_utc: user
+            .subscription_expires_at_ms_utc
+            .filter(|v| *v > now_ms_utc),
+    }
+}
+
+async fn clear_subscription_if_expired<'e, E>(
+    executor: E,
+    user_id: i64,
+    subscription_plan_id: &Option<String>,
+    subscription_expires_at_ms_utc: Option<i64>,
+    now_ms_utc: i64,
+) -> Result<bool, sqlx::Error>
+where
+    E: Executor<'e, Database = Sqlite>,
+{
+    let has_plan = subscription_plan_id
+        .as_deref()
+        .map(|s| !s.trim().is_empty())
+        .unwrap_or(false);
+    if !has_plan {
+        return Ok(false);
+    }
+
+    let expires_at = subscription_expires_at_ms_utc.unwrap_or(0);
+    if expires_at > now_ms_utc {
+        return Ok(false);
+    }
+
+    let updated = sqlx::query(
+        r#"UPDATE users
+           SET subscription_plan_id = NULL,
+               subscription_expires_at_ms_utc = NULL
+           WHERE id = ?
+             AND subscription_plan_id IS NOT NULL
+             AND TRIM(subscription_plan_id) != ''
+             AND (subscription_expires_at_ms_utc IS NULL OR subscription_expires_at_ms_utc <= ?)"#,
+    )
+    .bind(user_id)
+    .bind(now_ms_utc)
+    .execute(executor)
+    .await?;
+
+    Ok(updated.rows_affected() > 0)
+}
+
 async fn ensure_user(
     tx: &mut Transaction<'_, Sqlite>,
     oauth_provider: &str,
@@ -201,6 +458,51 @@ fn normalize_database_url(url: String) -> String {
     url
 }
 
+fn env_i64(key: &str) -> Option<i64> {
+    std::env::var(key).ok().and_then(|s| s.trim().parse().ok())
+}
+
+fn unquote_env_json(raw: &str) -> String {
+    let trimmed = raw.trim();
+    trimmed
+        .strip_prefix('\'')
+        .and_then(|s| s.strip_suffix('\''))
+        .or_else(|| trimmed.strip_prefix('"').and_then(|s| s.strip_suffix('"')))
+        .unwrap_or(trimmed)
+        .to_string()
+}
+
+fn load_subscription_plans_from_env() -> anyhow::Result<HashMap<String, SubscriptionPlan>> {
+    let raw = std::env::var("SUBSCRIPTION_PLANS_JSON").unwrap_or_else(|_| "[]".to_string());
+    let json = unquote_env_json(&raw);
+    let list: Vec<SubscriptionPlanConfig> =
+        serde_json::from_str(&json).context("parse SUBSCRIPTION_PLANS_JSON")?;
+
+    let mut out = HashMap::new();
+    for cfg in list {
+        let plan = SubscriptionPlan::from_config(cfg)?;
+        if out.contains_key(&plan.id) {
+            bail!("duplicate subscription plan id: {}", plan.id);
+        }
+        out.insert(plan.id.clone(), plan);
+    }
+    Ok(out)
+}
+
+fn normalize_path_prefix(raw: String) -> String {
+    let mut s = raw.trim().to_string();
+    if s.is_empty() {
+        s = "/admin".to_string();
+    }
+    if !s.starts_with('/') {
+        s.insert(0, '/');
+    }
+    while s.ends_with('/') && s.len() > 1 {
+        s.pop();
+    }
+    s
+}
+
 #[derive(Debug, Deserialize)]
 struct PutKeyBundleRequest {
     #[serde(rename = "expectedBundleVersion")]
@@ -234,7 +536,18 @@ async fn get_key_bundle(
             let mut bundle: serde_json::Value = serde_json::from_str(&bundle_json)
                 .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "corrupt key bundle"))?;
             bundle["bundleVersion"] = serde_json::Value::from(bundle_version);
-            Ok(Json(bundle))
+
+            let (resp, bytes_len) = json_bytes(&bundle)?;
+            sqlx::query(
+                r#"UPDATE users SET api_outbound_bytes = api_outbound_bytes + ? WHERE id = ?"#,
+            )
+            .bind(bytes_len)
+            .bind(user.user_id)
+            .execute(&state.db)
+            .await
+            .ok();
+
+            Ok(resp)
         }
     }
 }
@@ -291,7 +604,15 @@ async fn put_key_bundle(
         .await
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
-    Ok(Json(bundle))
+    let (resp, bytes_len) = json_bytes(&bundle)?;
+    sqlx::query(r#"UPDATE users SET api_outbound_bytes = api_outbound_bytes + ? WHERE id = ?"#)
+        .bind(bytes_len)
+        .bind(user.user_id)
+        .execute(&state.db)
+        .await
+        .ok();
+
+    Ok(resp)
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -385,6 +706,8 @@ async fn push_sync(
         return Err(json_error(StatusCode::BAD_REQUEST, "too many records"));
     }
 
+    let now_ms = now_ms_utc();
+
     let mut accepted = Vec::new();
     let mut rejected = Vec::new();
 
@@ -393,6 +716,80 @@ async fn push_sync(
         .begin()
         .await
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+    let billing_row = sqlx::query(
+        r#"SELECT
+             base_storage_b64,
+             base_outbound_bytes,
+             subscription_plan_id,
+             subscription_expires_at_ms_utc,
+             banned_at_ms_utc,
+             stored_b64,
+             api_outbound_bytes
+           FROM users
+           WHERE id = ?"#,
+    )
+    .bind(user.user_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+    let Some(billing_row) = billing_row else {
+        tx.rollback().await.ok();
+        return Err(json_error(StatusCode::UNAUTHORIZED, "unauthorized"));
+    };
+
+    let mut subscription_plan_id: Option<String> = billing_row
+        .try_get("subscription_plan_id")
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+    let mut subscription_expires_at_ms_utc: Option<i64> = billing_row
+        .try_get("subscription_expires_at_ms_utc")
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+    let has_plan = subscription_plan_id
+        .as_deref()
+        .map(|s| !s.trim().is_empty())
+        .unwrap_or(false);
+    let expires_at = subscription_expires_at_ms_utc.unwrap_or(0);
+    if has_plan && expires_at <= now_ms {
+        clear_subscription_if_expired(
+            &mut *tx,
+            user.user_id,
+            &subscription_plan_id,
+            subscription_expires_at_ms_utc,
+            now_ms,
+        )
+        .await
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+        subscription_plan_id = None;
+        subscription_expires_at_ms_utc = None;
+    }
+
+    let user_billing = UserBillingRow {
+        base_storage_b64: billing_row
+            .try_get("base_storage_b64")
+            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?,
+        base_outbound_bytes: billing_row
+            .try_get("base_outbound_bytes")
+            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?,
+        subscription_plan_id,
+        subscription_expires_at_ms_utc,
+        banned_at_ms_utc: billing_row
+            .try_get("banned_at_ms_utc")
+            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?,
+        stored_b64: billing_row
+            .try_get("stored_b64")
+            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?,
+        api_outbound_bytes: billing_row
+            .try_get("api_outbound_bytes")
+            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?,
+    };
+
+    if user_billing.banned_at_ms_utc.is_some_and(|ms| ms > 0) {
+        tx.rollback().await.ok();
+        return Err(json_error(StatusCode::FORBIDDEN, "banned"));
+    }
+
+    let quota = compute_effective_quota(&state.billing, &user_billing, now_ms);
 
     let mut record_count: i64 =
         sqlx::query_scalar(r#"SELECT COUNT(*) FROM records WHERE user_id = ?"#)
@@ -408,6 +805,19 @@ async fn push_sync(
     .fetch_one(&mut *tx)
     .await
     .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+    if let Some(max) = quota.allowed_storage_b64 {
+        if total_b64 > max {
+            tx.rollback().await.ok();
+            return Err(json_error(StatusCode::PAYMENT_REQUIRED, "quota_exceeded"));
+        }
+    }
+    if let Some(max) = quota.allowed_outbound_bytes {
+        if user_billing.api_outbound_bytes > max {
+            tx.rollback().await.ok();
+            return Err(json_error(StatusCode::PAYMENT_REQUIRED, "quota_exceeded"));
+        }
+    }
 
     for r in req.records {
         if r.nonce.len() > MAX_RECORD_B64_LEN || r.ciphertext.len() > MAX_RECORD_B64_LEN {
@@ -484,7 +894,7 @@ async fn push_sync(
                 continue;
             }
         }
-        if let Some(max) = state.max_total_b64_per_user {
+        if let Some(max) = quota.allowed_storage_b64 {
             if new_total_b64 > max {
                 rejected.push(PushRejected {
                     r#type: r.r#type,
@@ -551,11 +961,22 @@ async fn push_sync(
         record_count = new_record_count;
     }
 
+    let body = PushResponse { accepted, rejected };
+    let (resp, bytes_len) = json_bytes(&body)?;
+
+    sqlx::query(r#"UPDATE users SET stored_b64 = ?, api_outbound_bytes = api_outbound_bytes + ? WHERE id = ?"#)
+        .bind(total_b64)
+        .bind(bytes_len)
+        .bind(user.user_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
     tx.commit()
         .await
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
-    Ok(Json(PushResponse { accepted, rejected }))
+    Ok(resp)
 }
 
 #[derive(Debug, Deserialize)]
@@ -578,6 +999,90 @@ async fn pull_sync(
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorBody>)> {
     let since = q.since.unwrap_or(0).max(0);
     let limit = q.limit.unwrap_or(200).clamp(1, MAX_PULL_LIMIT) as i64;
+
+    let now_ms = now_ms_utc();
+
+    let billing_row = sqlx::query(
+        r#"SELECT
+             base_storage_b64,
+             base_outbound_bytes,
+             subscription_plan_id,
+             subscription_expires_at_ms_utc,
+             banned_at_ms_utc,
+             stored_b64,
+             api_outbound_bytes
+           FROM users
+           WHERE id = ?"#,
+    )
+    .bind(user.user_id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+    let Some(billing_row) = billing_row else {
+        return Err(json_error(StatusCode::UNAUTHORIZED, "unauthorized"));
+    };
+
+    let mut subscription_plan_id: Option<String> = billing_row
+        .try_get("subscription_plan_id")
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+    let mut subscription_expires_at_ms_utc: Option<i64> = billing_row
+        .try_get("subscription_expires_at_ms_utc")
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+    let has_plan = subscription_plan_id
+        .as_deref()
+        .map(|s| !s.trim().is_empty())
+        .unwrap_or(false);
+    let expires_at = subscription_expires_at_ms_utc.unwrap_or(0);
+    if has_plan && expires_at <= now_ms {
+        clear_subscription_if_expired(
+            &state.db,
+            user.user_id,
+            &subscription_plan_id,
+            subscription_expires_at_ms_utc,
+            now_ms,
+        )
+        .await
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+        subscription_plan_id = None;
+        subscription_expires_at_ms_utc = None;
+    }
+
+    let user_billing = UserBillingRow {
+        base_storage_b64: billing_row
+            .try_get("base_storage_b64")
+            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?,
+        base_outbound_bytes: billing_row
+            .try_get("base_outbound_bytes")
+            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?,
+        subscription_plan_id,
+        subscription_expires_at_ms_utc,
+        banned_at_ms_utc: billing_row
+            .try_get("banned_at_ms_utc")
+            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?,
+        stored_b64: billing_row
+            .try_get("stored_b64")
+            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?,
+        api_outbound_bytes: billing_row
+            .try_get("api_outbound_bytes")
+            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?,
+    };
+
+    if user_billing.banned_at_ms_utc.is_some_and(|ms| ms > 0) {
+        return Err(json_error(StatusCode::FORBIDDEN, "banned"));
+    }
+
+    let quota = compute_effective_quota(&state.billing, &user_billing, now_ms);
+    if let Some(max) = quota.allowed_storage_b64 {
+        if user_billing.stored_b64 > max {
+            return Err(json_error(StatusCode::PAYMENT_REQUIRED, "quota_exceeded"));
+        }
+    }
+    if let Some(max) = quota.allowed_outbound_bytes {
+        if user_billing.api_outbound_bytes > max {
+            return Err(json_error(StatusCode::PAYMENT_REQUIRED, "quota_exceeded"));
+        }
+    }
 
     let rows = sqlx::query(
         r#"SELECT
@@ -619,10 +1124,38 @@ async fn pull_sync(
         .await
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
-        return Ok(Json(PullResponse {
+        let body = PullResponse {
             records: Vec::new(),
             next_since: head,
-        }));
+        };
+        let (resp, bytes_len) = json_bytes(&body)?;
+        if let Some(limit) = quota.allowed_outbound_bytes {
+            let updated = sqlx::query(
+                r#"UPDATE users
+                   SET api_outbound_bytes = api_outbound_bytes + ?
+                   WHERE id = ? AND api_outbound_bytes + ? <= ?"#,
+            )
+            .bind(bytes_len)
+            .bind(user.user_id)
+            .bind(bytes_len)
+            .bind(limit)
+            .execute(&state.db)
+            .await
+            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+            if updated.rows_affected() == 0 {
+                return Err(json_error(StatusCode::PAYMENT_REQUIRED, "quota_exceeded"));
+            }
+        } else {
+            sqlx::query(
+                r#"UPDATE users SET api_outbound_bytes = api_outbound_bytes + ? WHERE id = ?"#,
+            )
+            .bind(bytes_len)
+            .bind(user.user_id)
+            .execute(&state.db)
+            .await
+            .ok();
+        }
+        return Ok(resp);
     }
 
     let mut next_since = since;
@@ -673,10 +1206,38 @@ async fn pull_sync(
         });
     }
 
-    Ok(Json(PullResponse {
+    let body = PullResponse {
         records,
         next_since,
-    }))
+    };
+    let (resp, bytes_len) = json_bytes(&body)?;
+
+    if let Some(limit) = quota.allowed_outbound_bytes {
+        let updated = sqlx::query(
+            r#"UPDATE users
+               SET api_outbound_bytes = api_outbound_bytes + ?
+               WHERE id = ? AND api_outbound_bytes + ? <= ?"#,
+        )
+        .bind(bytes_len)
+        .bind(user.user_id)
+        .bind(bytes_len)
+        .bind(limit)
+        .execute(&state.db)
+        .await
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+        if updated.rows_affected() == 0 {
+            return Err(json_error(StatusCode::PAYMENT_REQUIRED, "quota_exceeded"));
+        }
+    } else {
+        sqlx::query(r#"UPDATE users SET api_outbound_bytes = api_outbound_bytes + ? WHERE id = ?"#)
+            .bind(bytes_len)
+            .bind(user.user_id)
+            .execute(&state.db)
+            .await
+            .ok();
+    }
+
+    Ok(resp)
 }
 
 async fn health() -> impl IntoResponse {
@@ -718,9 +1279,8 @@ async fn main() -> anyhow::Result<()> {
         .ok()
         .and_then(|s| s.parse().ok());
 
-    let max_total_b64_per_user: Option<i64> = std::env::var("MAX_TOTAL_B64_PER_USER")
-        .ok()
-        .and_then(|s| s.parse().ok());
+    let billing = Arc::new(BillingConfig::load_from_env().context("load billing config")?);
+    let admin = AdminConfig::load_from_env();
 
     let site_created_at_ms_utc: Option<i64> = std::env::var("SITE_CREATED_AT_MS_UTC")
         .ok()
@@ -758,13 +1318,16 @@ async fn main() -> anyhow::Result<()> {
         auth: auth_service,
         max_push_records,
         max_records_per_user,
-        max_total_b64_per_user,
+        billing,
+        admin,
         started_at: Instant::now(),
         site_created_at_ms_utc,
     };
 
+    let admin_entry_path = state.admin.entry_path.clone();
+
     let app = Router::new()
-        .merge(web::web_router())
+        .merge(web::web_router(admin_entry_path))
         .route("/v1/health", get(health))
         .nest("/v1/auth", auth::AuthService::auth_router())
         .route("/v1/key-bundle", get(get_key_bundle).put(put_key_bundle))

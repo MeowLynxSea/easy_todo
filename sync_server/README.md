@@ -69,6 +69,36 @@ Sync endpoints (require `Authorization: Bearer <accessToken>`):
 - `POST /v1/sync/push`
 - `GET /v1/sync/pull?since=<serverSeq>&limit=<n>`
 
+## Quotas, outbound traffic, subscriptions
+
+The server tracks **per-user API outbound bytes** (responses for `/v1/*`; web pages like `/dashboard` are not counted).
+
+Quota-related env vars:
+
+- `BASE_USER_STORAGE_B64=<int>`: default base storage quota per user (counts `LENGTH(nonce)+LENGTH(ciphertext)` across records).
+  - Backward compatible: if unset, falls back to `MAX_TOTAL_B64_PER_USER`.
+- `BASE_USER_OUTBOUND_BYTES=<int>`: default base outbound quota per user (API-only).
+- `SUBSCRIPTION_PLANS_JSON=[{...}, {...}]`: subscription plan definitions.
+
+`SUBSCRIPTION_PLANS_JSON` example:
+
+```json
+[
+  {
+    "id": "pro_30d",
+    "name": "Pro 30 Days",
+    "durationDays": 30,
+    "extraStorageB64": 1073741824,
+    "extraOutboundBytes": 10737418240
+  }
+]
+```
+
+Behavior notes:
+
+- Users can only activate a CDKEY when they have **no active subscription**. If they already have an active subscription, activation is rejected and the CDKEY remains valid.
+- If a subscription expires and the user’s current usage exceeds the now-effective quota, the server rejects sync `push`/`pull` with `402 quota_exceeded` (no data is deleted automatically).
+
 ## Web UI
 
 - `GET /` renders a minimal home page with the configured `BASE_URL` to copy into the app’s sync server setting.
@@ -80,6 +110,19 @@ Notes:
 - Set `BASE_URL` to your actual public origin (scheme + host + optional port). If you deploy behind a proxy, make sure it matches what users see in the browser.
 - If `BASE_URL` is `https://...`, dashboard cookies are marked `Secure`.
 - Optional: set `SITE_CREATED_AT_MS_UTC=<unix_ms>` to show “service age” on the home page (otherwise it shows process uptime).
+
+## Admin UI
+
+Admin UI is a separate username/password login (cookie-based).
+
+Env vars:
+
+- `ADMIN_ENTRY_PATH=/admin` (recommend using a non-guessable path in production)
+- `ADMIN_USERNAME=...`
+- `ADMIN_PASSWORD=...`
+- `ADMIN_SESSION_TTL_SECS=43200` (optional; default 12h)
+
+Once enabled, open: `BASE_URL + ADMIN_ENTRY_PATH`
 
 ## Notes
 

@@ -75,21 +75,6 @@ pub(super) fn format_uptime(d: Duration) -> String {
     }
 }
 
-pub(super) fn quota_summary(state: &AppState) -> String {
-    let mut parts = Vec::new();
-    if let Some(v) = state.max_records_per_user {
-        parts.push(format!("MAX_RECORDS_PER_USER={}", v));
-    }
-    if let Some(v) = state.max_total_b64_per_user {
-        parts.push(format!("MAX_TOTAL_B64_PER_USER={}", v));
-    }
-    if parts.is_empty() {
-        "未配置".to_string()
-    } else {
-        parts.join(" · ")
-    }
-}
-
 pub(super) fn provider_display_name(state: &AppState, provider: &str) -> String {
     let key = provider.trim().to_lowercase();
     state

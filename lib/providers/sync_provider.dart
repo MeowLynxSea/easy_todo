@@ -16,6 +16,7 @@ import 'package:easy_todo/models/user_preferences_model.dart';
 import 'package:easy_todo/services/crypto/sync_crypto.dart';
 import 'package:easy_todo/services/dek_storage_service.dart';
 import 'package:easy_todo/services/hive_service.dart';
+import 'package:easy_todo/services/notification_service.dart';
 import 'package:easy_todo/services/secure_storage_service.dart';
 import 'package:easy_todo/services/repositories/pomodoro_repository.dart';
 import 'package:easy_todo/services/repositories/ai_settings_repository.dart';
@@ -1499,6 +1500,7 @@ class SyncProvider extends ChangeNotifier {
 
     var cursor = sinceBefore;
     var sawRollback = false;
+    var touchedTodos = false;
 
     final clock = HlcClock(
       deviceId: deviceId,
@@ -1549,6 +1551,9 @@ class SyncProvider extends ChangeNotifier {
         if (!shouldApply) continue;
 
         nowMsUtc = DateTime.now().toUtc().millisecondsSinceEpoch;
+        if (remote.type == SyncTypes.todo) {
+          touchedTodos = true;
+        }
 
         if (remote.deletedAtMsUtc == null) {
           if (state.dekId != null && remote.dekId != state.dekId) {
@@ -1606,6 +1611,14 @@ class SyncProvider extends ChangeNotifier {
     );
     await _hiveService.syncStateBox.put(SyncWriteService.stateKey, updated);
     _state = updated;
+
+    if (touchedTodos) {
+      try {
+        await NotificationService.instance.rescheduleAllReminders();
+      } catch (e) {
+        debugPrint('[Sync] Failed to reschedule reminders after pull: $e');
+      }
+    }
   }
 
   Future<void> _applyRemotePayload({

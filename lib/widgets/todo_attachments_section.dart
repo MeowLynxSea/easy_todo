@@ -37,6 +37,8 @@ class _TodoAttachmentsSectionState extends State<TodoAttachmentsSection> {
       AttachmentStorageService();
 
   bool _busy = false;
+  double? _addProgress;
+  int? _lastProgressUpdateMs;
 
   @override
   Widget build(BuildContext context) {
@@ -82,10 +84,13 @@ class _TodoAttachmentsSectionState extends State<TodoAttachmentsSection> {
                   tooltip: l10n.todoAttachmentAdd,
                   onPressed: !_busy ? () => _addAttachment() : null,
                   icon: _busy
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            value: _addProgress,
+                          ),
                         )
                       : const Icon(Icons.attach_file),
                 ),
@@ -220,6 +225,7 @@ class _TodoAttachmentsSectionState extends State<TodoAttachmentsSection> {
 
     setState(() => _busy = true);
     try {
+      _setAddProgress(0);
       final mimeType = _guessMimeType(file.name);
       if (kIsWeb) {
         final bytes = file.bytes;
@@ -231,6 +237,7 @@ class _TodoAttachmentsSectionState extends State<TodoAttachmentsSection> {
           fileName: file.name,
           bytes: bytes,
           mimeType: mimeType,
+          onProgress: _setAddProgress,
         );
       } else {
         final path = file.path;
@@ -242,6 +249,7 @@ class _TodoAttachmentsSectionState extends State<TodoAttachmentsSection> {
             fileName: file.name,
             sourcePath: path,
             mimeType: mimeType,
+            onProgress: _setAddProgress,
           );
         } else if (stream != null) {
           await _attachmentService.addAttachment(
@@ -249,6 +257,7 @@ class _TodoAttachmentsSectionState extends State<TodoAttachmentsSection> {
             fileName: file.name,
             readStream: stream,
             mimeType: mimeType,
+            onProgress: _setAddProgress,
           );
         } else if (bytes != null) {
           await _attachmentService.addAttachment(
@@ -256,6 +265,7 @@ class _TodoAttachmentsSectionState extends State<TodoAttachmentsSection> {
             fileName: file.name,
             bytes: bytes,
             mimeType: mimeType,
+            onProgress: _setAddProgress,
           );
         } else {
           messenger.showSnackBar(
@@ -287,8 +297,36 @@ class _TodoAttachmentsSectionState extends State<TodoAttachmentsSection> {
         ),
       );
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _addProgress = null;
+          _lastProgressUpdateMs = null;
+        });
+      }
     }
+  }
+
+  void _setAddProgress(double value) {
+    if (!mounted) return;
+    final next = value.clamp(0, 1).toDouble();
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final lastMs = _lastProgressUpdateMs;
+
+    final shouldUpdate =
+        _addProgress == null ||
+        (next - (_addProgress ?? 0)).abs() >= 0.01 ||
+        next == 0 ||
+        next == 1 ||
+        lastMs == null ||
+        nowMs - lastMs >= 120;
+
+    if (!shouldUpdate) return;
+
+    setState(() {
+      _addProgress = next;
+      _lastProgressUpdateMs = nowMs;
+    });
   }
 
   String _guessMimeType(String fileName) {

@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:easy_todo/models/todo_attachment_model.dart';
 import 'package:easy_todo/services/attachment_storage_service.dart';
 import 'package:easy_todo/services/hive_service.dart';
@@ -7,10 +5,12 @@ import 'package:easy_todo/services/repositories/todo_attachment_repository.dart'
 import 'package:easy_todo/services/sync_write_service.dart';
 import 'package:easy_todo/utils/base64_utils.dart';
 import 'package:easy_todo/utils/random_id.dart';
+import 'package:flutter/foundation.dart';
 import 'package:pointycastle/digests/sha256.dart';
 
 class TodoAttachmentService {
   static const int chunkSizeBytes = 256 * 1024;
+  static const int _yieldEveryChunks = 4;
 
   final HiveService _hiveService;
   final TodoAttachmentRepository _repository;
@@ -30,6 +30,7 @@ class TodoAttachmentService {
     String? sourcePath,
     Uint8List? bytes,
     Stream<List<int>>? readStream,
+    ValueChanged<double>? onProgress,
     String mimeType = 'application/octet-stream',
   }) async {
     if (bytes == null) {
@@ -45,18 +46,28 @@ class TodoAttachmentService {
 
     final size = bytes.length;
     final chunkCount = ((size + chunkSizeBytes - 1) / chunkSizeBytes).floor();
-    final sha256B64 = _sha256B64(bytes);
+
+    final digest = SHA256Digest();
 
     for (var i = 0; i < chunkCount; i++) {
       final start = i * chunkSizeBytes;
       final end = (start + chunkSizeBytes).clamp(0, size);
-      final chunk = Uint8List.fromList(bytes.sublist(start, end));
+      final chunk = Uint8List.sublistView(bytes, start, end);
+      digest.update(chunk, 0, chunk.length);
       await _storage.writeChunk(
         filePath: localPath,
         offset: start,
         bytes: chunk,
       );
+      onProgress?.call(((i + 1) / chunkCount).clamp(0, 1));
+      if ((i + 1) % _yieldEveryChunks == 0) {
+        await Future<void>.delayed(Duration.zero);
+      }
     }
+
+    final out = Uint8List(digest.digestSize);
+    digest.doFinal(out, 0);
+    final sha256B64 = base64UrlNoPadEncode(out);
 
     final attachment = TodoAttachmentModel(
       id: attachmentId,
@@ -79,6 +90,7 @@ class TodoAttachmentService {
       chunkCount: chunkCount,
     );
 
+    onProgress?.call(1);
     return attachment;
   }
 
@@ -111,13 +123,5 @@ class TodoAttachmentService {
       await _storage.deleteFileIfExists(staging);
     }
     await _hiveService.todoAttachmentsBox.delete(attachmentId);
-  }
-
-  String _sha256B64(Uint8List bytes) {
-    final digest = SHA256Digest();
-    digest.update(bytes, 0, bytes.length);
-    final out = Uint8List(digest.digestSize);
-    digest.doFinal(out, 0);
-    return base64UrlNoPadEncode(out);
   }
 }

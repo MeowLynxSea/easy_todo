@@ -1,4 +1,6 @@
 import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
@@ -19,6 +21,8 @@ class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
+
+  bool _isPluginInitialized = false;
 
   AIProvider? _aiProvider;
   BuildContext? _context;
@@ -83,7 +87,18 @@ class NotificationService {
 
   Future<void> initialize() async {
     await _initializeTimeZone();
-    await _initializeNotifications();
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      debugPrint('Notifications are not supported on Windows, skipping init');
+      _isPluginInitialized = false;
+    } else {
+      try {
+        await _initializeNotifications();
+        _isPluginInitialized = true;
+      } catch (e) {
+        debugPrint('Notification plugin initialization failed: $e');
+        _isPluginInitialized = false;
+      }
+    }
     await _loadSettings();
     _debugTimeZoneInfo();
   }
@@ -438,9 +453,15 @@ class NotificationService {
       presentSound: true,
     );
 
+    const LinuxNotificationDetails linuxDetails = LinuxNotificationDetails(
+      defaultActionName: 'Open notification',
+    );
+
     const NotificationDetails platformDetails = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
+      macOS: iosDetails,
+      linux: linuxDetails,
     );
 
     final now = DateTime.now();
@@ -517,9 +538,15 @@ class NotificationService {
         presentSound: true,
       );
 
+      const LinuxNotificationDetails linuxDetails = LinuxNotificationDetails(
+        defaultActionName: 'Open notification',
+      );
+
       const NotificationDetails platformDetails = NotificationDetails(
         android: androidDetails,
         iOS: iosDetails,
+        macOS: iosDetails,
+        linux: linuxDetails,
       );
 
       await _notificationsPlugin.show(
@@ -558,9 +585,15 @@ class NotificationService {
         presentSound: true,
       );
 
+      const LinuxNotificationDetails linuxDetails = LinuxNotificationDetails(
+        defaultActionName: 'Open notification',
+      );
+
       const NotificationDetails platformDetails = NotificationDetails(
         android: androidDetails,
         iOS: iosDetails,
+        macOS: iosDetails,
+        linux: linuxDetails,
       );
 
       // Try to get AI-generated content if smart notifications are enabled
@@ -1104,9 +1137,15 @@ class NotificationService {
         presentSound: true,
       );
 
+      const LinuxNotificationDetails linuxDetails = LinuxNotificationDetails(
+        defaultActionName: 'Open notification',
+      );
+
       const NotificationDetails platformDetails = NotificationDetails(
         android: androidDetails,
         iOS: iosDetails,
+        macOS: iosDetails,
+        linux: linuxDetails,
       );
 
       await _notificationsPlugin.show(
@@ -1256,6 +1295,11 @@ class NotificationService {
   Future<void> rescheduleAllReminders() async {
     if (_settings?.notificationsEnabled == false) {
       debugPrint('Notifications disabled, skipping reschedule');
+      return;
+    }
+
+    if (!_isPluginInitialized) {
+      debugPrint('Notification plugin not initialized, skipping reschedule');
       return;
     }
 
@@ -1518,9 +1562,15 @@ class NotificationService {
         presentSound: true,
       );
 
+      const LinuxNotificationDetails linuxDetails = LinuxNotificationDetails(
+        defaultActionName: 'Open notification',
+      );
+
       const NotificationDetails platformDetails = NotificationDetails(
         android: androidDetails,
         iOS: iosDetails,
+        macOS: iosDetails,
+        linux: linuxDetails,
       );
 
       await _notificationsPlugin.show(

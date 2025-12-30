@@ -2,7 +2,6 @@ import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:easy_todo/models/todo_model.dart';
 import 'package:easy_todo/utils/responsive.dart';
 import 'package:easy_todo/widgets/todo_attachments_section.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 Future<void> showTodoDetails(BuildContext context, TodoModel todo) async {
@@ -49,13 +48,7 @@ Future<void> showTodoDetails(BuildContext context, TodoModel todo) async {
 }
 
 bool _shouldUseDialog(BuildContext context) {
-  if (kIsWeb) return isWebDesktop(context);
-  return switch (defaultTargetPlatform) {
-    TargetPlatform.macOS ||
-    TargetPlatform.windows ||
-    TargetPlatform.linux => true,
-    _ => false,
-  };
+  return isWebDesktop(context);
 }
 
 class TodoDetailsPanel extends StatelessWidget {

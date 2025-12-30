@@ -611,6 +611,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       SyncErrorCode.disabled => l10n.cloudSyncErrorDisabled,
       SyncErrorCode.locked => l10n.cloudSyncErrorLocked,
       SyncErrorCode.invalidPassphrase => l10n.cloudSyncInvalidPassphrase,
+      SyncErrorCode.accountChanged => l10n.cloudSyncErrorAccountChanged,
       SyncErrorCode.unauthorized => l10n.cloudSyncErrorUnauthorized,
       SyncErrorCode.keyBundleNotFound => l10n.cloudSyncErrorKeyBundleNotFound,
       SyncErrorCode.network => l10n.cloudSyncErrorNetwork,

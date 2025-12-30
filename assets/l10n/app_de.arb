@@ -91,6 +91,7 @@
   "cloudSyncErrorNotConfigured": "Sync nicht konfiguriert",
   "cloudSyncErrorDisabled": "Sync ist deaktiviert",
   "cloudSyncErrorLocked": "Sync ist gesperrt (DEK fehlt)",
+  "cloudSyncErrorAccountChanged": "Konto gewechselt – bitte Sync erneut aktivieren",
   "cloudSyncErrorUnauthorized": "Nicht autorisiert (Token prüfen)",
   "cloudSyncErrorKeyBundleNotFound": "Key-Bundle auf dem Server nicht gefunden",
   "cloudSyncErrorNetwork": "Netzwerkfehler",

@@ -46,6 +46,7 @@ enum SyncErrorCode {
   disabled,
   locked,
   invalidPassphrase,
+  accountChanged,
   unauthorized,
   keyBundleNotFound,
   network,
@@ -196,8 +197,17 @@ class SyncProvider extends ChangeNotifier {
       SyncState.defaultAutoSyncIntervalSeconds;
 
   Future<void> _init() async {
-    final state = await _ensureStateLoaded();
+    var state = await _ensureStateLoaded();
     _authTokens = await _authStorage.read();
+    final reconcile = await _reconcileAuthUserFromTokensIfNeeded(
+      state: state,
+      tokens: _authTokens,
+    );
+    state = reconcile.state;
+    if (reconcile.didResetForAccountChange) {
+      _lastErrorCode = SyncErrorCode.accountChanged;
+      _lastErrorDetail = null;
+    }
 
     if (state.serverUrl.trim().isNotEmpty) {
       unawaited(refreshProviders());
@@ -217,6 +227,40 @@ class SyncProvider extends ChangeNotifier {
   void onAppResumed() {
     _appActive = true;
     _scheduleDebouncedAutoSync(reason: 'resume');
+  }
+
+  Future<({SyncState state, bool didResetForAccountChange})>
+  _reconcileAuthUserFromTokensIfNeeded({
+    required SyncState state,
+    required SyncAuthTokens? tokens,
+  }) async {
+    final accessToken = tokens?.accessToken.trim();
+    if (accessToken == null || accessToken.isEmpty) {
+      return (state: state, didResetForAccountChange: false);
+    }
+
+    final newUserId = _tryParseJwtSub(accessToken)?.trim();
+    if (newUserId == null || newUserId.isEmpty) {
+      return (state: state, didResetForAccountChange: false);
+    }
+
+    final prevUserId = state.authUserId.trim();
+    if (prevUserId.isNotEmpty && prevUserId != newUserId) {
+      await _resetForAccountChange(state: state, newUserId: newUserId);
+      return (
+        state: await _ensureStateLoaded(),
+        didResetForAccountChange: true,
+      );
+    }
+
+    if (prevUserId.isEmpty) {
+      final updated = state.copyWith(authUserId: newUserId);
+      await _hiveService.syncStateBox.put(SyncWriteService.stateKey, updated);
+      _state = updated;
+      return (state: updated, didResetForAccountChange: false);
+    }
+
+    return (state: state, didResetForAccountChange: false);
   }
 
   void onAppPaused() {
@@ -794,12 +838,20 @@ class SyncProvider extends ChangeNotifier {
     bool allowRollback = false,
     SyncRunTrigger trigger = SyncRunTrigger.manual,
   }) async {
-    await _ensureStateLoaded();
+    final state = await _ensureStateLoaded();
+    _authTokens = await _authStorage.read();
+    final reconcile = await _reconcileAuthUserFromTokensIfNeeded(
+      state: state,
+      tokens: _authTokens,
+    );
+    if (reconcile.didResetForAccountChange) {
+      _setError(SyncErrorCode.accountChanged);
+      return;
+    }
     if (!syncEnabled) {
       _setError(SyncErrorCode.disabled);
       return;
     }
-    _authTokens = await _authStorage.read();
     if (!isConfigured) {
       _setError(SyncErrorCode.notConfigured);
       return;

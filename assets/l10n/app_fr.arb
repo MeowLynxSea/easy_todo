@@ -91,6 +91,7 @@
   "cloudSyncErrorNotConfigured": "Sync non configurée",
   "cloudSyncErrorDisabled": "La sync est désactivée",
   "cloudSyncErrorLocked": "La sync est verrouillée (DEK manquant)",
+  "cloudSyncErrorAccountChanged": "Compte changé — réactivez la synchronisation",
   "cloudSyncErrorUnauthorized": "Non autorisé (vérifiez le jeton)",
   "cloudSyncErrorKeyBundleNotFound": "Key bundle introuvable sur le serveur",
   "cloudSyncErrorNetwork": "Erreur réseau",

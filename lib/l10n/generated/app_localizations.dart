@@ -660,6 +660,12 @@ abstract class AppLocalizations {
   /// **'Sync is locked (missing DEK)'**
   String get cloudSyncErrorLocked;
 
+  /// No description provided for @cloudSyncErrorAccountChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Account changed — please re-enable sync'**
+  String get cloudSyncErrorAccountChanged;
+
   /// No description provided for @cloudSyncErrorUnauthorized.
   ///
   /// In en, this message translates to:

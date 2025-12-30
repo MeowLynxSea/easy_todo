@@ -285,6 +285,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cloudSyncErrorLocked => '同步未解锁（缺少 DEK）';
 
   @override
+  String get cloudSyncErrorAccountChanged => '检测到账号已切换，请重新启用同步';
+
+  @override
   String get cloudSyncErrorUnauthorized => '未授权（请检查 token）';
 
   @override

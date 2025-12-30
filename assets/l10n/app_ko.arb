@@ -91,6 +91,7 @@
   "cloudSyncErrorNotConfigured": "동기화가 설정되지 않았습니다",
   "cloudSyncErrorDisabled": "동기화가 비활성화되었습니다",
   "cloudSyncErrorLocked": "동기화가 잠겨 있습니다(DEK 없음)",
+  "cloudSyncErrorAccountChanged": "계정이 변경되었습니다. 동기화를 다시 활성화하세요",
   "cloudSyncErrorUnauthorized": "인증되지 않았습니다(토큰 확인)",
   "cloudSyncErrorKeyBundleNotFound": "서버에서 keyBundle을 찾을 수 없습니다",
   "cloudSyncErrorNetwork": "네트워크 오류",

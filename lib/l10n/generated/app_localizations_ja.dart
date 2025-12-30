@@ -291,6 +291,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get cloudSyncErrorLocked => '同期がロックされています（DEK 不足）';
 
   @override
+  String get cloudSyncErrorAccountChanged => 'アカウントが変更されました。同期を再度有効にしてください';
+
+  @override
   String get cloudSyncErrorUnauthorized => '認証されていません（トークンを確認）';
 
   @override

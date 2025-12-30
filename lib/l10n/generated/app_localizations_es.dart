@@ -297,6 +297,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get cloudSyncErrorLocked => 'Sync está bloqueado (falta DEK)';
 
   @override
+  String get cloudSyncErrorAccountChanged =>
+      'Cuenta cambiada: vuelve a activar la sincronización';
+
+  @override
   String get cloudSyncErrorUnauthorized => 'No autorizado (verifique el token)';
 
   @override

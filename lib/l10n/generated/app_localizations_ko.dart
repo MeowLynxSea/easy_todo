@@ -291,6 +291,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get cloudSyncErrorLocked => '동기화가 잠겨 있습니다(DEK 없음)';
 
   @override
+  String get cloudSyncErrorAccountChanged => '계정이 변경되었습니다. 동기화를 다시 활성화하세요';
+
+  @override
   String get cloudSyncErrorUnauthorized => '인증되지 않았습니다(토큰 확인)';
 
   @override

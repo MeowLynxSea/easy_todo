@@ -294,6 +294,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cloudSyncErrorLocked => 'Sync is locked (missing DEK)';
 
   @override
+  String get cloudSyncErrorAccountChanged =>
+      'Account changed — please re-enable sync';
+
+  @override
   String get cloudSyncErrorUnauthorized => 'Unauthorized (check token)';
 
   @override

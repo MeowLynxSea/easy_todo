@@ -91,6 +91,7 @@
   "cloudSyncErrorNotConfigured": "同期が設定されていません",
   "cloudSyncErrorDisabled": "同期は無効です",
   "cloudSyncErrorLocked": "同期がロックされています（DEK 不足）",
+  "cloudSyncErrorAccountChanged": "アカウントが変更されました。同期を再度有効にしてください",
   "cloudSyncErrorUnauthorized": "認証されていません（トークンを確認）",
   "cloudSyncErrorKeyBundleNotFound": "サーバーに keyBundle が見つかりません",
   "cloudSyncErrorNetwork": "ネットワークエラー",

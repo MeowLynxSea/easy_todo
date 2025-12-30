@@ -297,6 +297,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get cloudSyncErrorLocked => 'Sync ist gesperrt (DEK fehlt)';
 
   @override
+  String get cloudSyncErrorAccountChanged =>
+      'Konto gewechselt – bitte Sync erneut aktivieren';
+
+  @override
   String get cloudSyncErrorUnauthorized => 'Nicht autorisiert (Token prüfen)';
 
   @override

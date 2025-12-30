@@ -91,6 +91,7 @@
   "cloudSyncErrorNotConfigured": "Sync not configured",
   "cloudSyncErrorDisabled": "Sync is disabled",
   "cloudSyncErrorLocked": "Sync is locked (missing DEK)",
+  "cloudSyncErrorAccountChanged": "Account changed — please re-enable sync",
   "cloudSyncErrorUnauthorized": "Unauthorized (check token)",
   "cloudSyncErrorKeyBundleNotFound": "Key bundle not found on server",
   "cloudSyncErrorNetwork": "Network error",

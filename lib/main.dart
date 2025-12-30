@@ -29,6 +29,7 @@ import 'package:easy_todo/widgets/sync_auto_refresh_handler.dart';
 import 'package:easy_todo/services/timezone_service.dart';
 import 'package:easy_todo/utils/app_scroll_behavior.dart';
 import 'package:easy_todo/utils/responsive.dart';
+import 'package:easy_todo/utils/platform_utils.dart';
 import 'package:easy_todo/widgets/responsive_web_frame.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -309,7 +310,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    if (!kIsWeb) {
+    if (PlatformUtils.shouldShowUpdateFeatures) {
       _checkForUpdates();
     }
     _checkRepeatTodos();

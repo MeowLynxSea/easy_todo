@@ -26,6 +26,7 @@ import 'package:easy_todo/screens/sync_settings_screen.dart';
 import 'package:easy_todo/providers/ai_provider.dart';
 import 'package:easy_todo/widgets/web_desktop_content.dart';
 import 'package:easy_todo/utils/responsive.dart';
+import 'package:easy_todo/utils/platform_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -75,6 +76,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final appSettingsProvider = Provider.of<AppSettingsProvider>(context);
     final aiProvider = Provider.of<AIProvider>(context);
+    final showUpdateFeatures = PlatformUtils.shouldShowUpdateFeatures;
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.preferences), centerTitle: true),
@@ -159,8 +161,10 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                     if (!kIsWeb) ...[
                       const Divider(),
                       _buildFingerprintLockItem(appSettingsProvider, l10n),
-                      const Divider(),
-                      _buildAutoUpdateItem(appSettingsProvider, l10n),
+                      if (showUpdateFeatures) ...[
+                        const Divider(),
+                        _buildAutoUpdateItem(appSettingsProvider, l10n),
+                      ],
                     ],
                   ],
                 ),
@@ -288,7 +292,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                         );
                       },
                     ),
-                    if (!kIsWeb) ...[
+                    if (showUpdateFeatures) ...[
                       const Divider(),
                       _buildUpdateSection(l10n),
                     ],

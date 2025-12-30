@@ -97,14 +97,20 @@ class AppSettingsProvider extends ChangeNotifier {
         }
       }
 
-      if (kIsWeb) {
-        final needsDisable =
-            _deviceSettings.autoUpdateEnabled ||
-            _deviceSettings.biometricLockEnabled;
-        if (needsDisable) {
+      final isDesktop =
+          !kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.macOS ||
+              defaultTargetPlatform == TargetPlatform.windows ||
+              defaultTargetPlatform == TargetPlatform.linux);
+
+      if (kIsWeb || isDesktop) {
+        final needsDisableAutoUpdate = _deviceSettings.autoUpdateEnabled;
+        final needsDisableBiometric =
+            kIsWeb && _deviceSettings.biometricLockEnabled;
+        if (needsDisableAutoUpdate || needsDisableBiometric) {
           _deviceSettings = _deviceSettings.copyWith(
             autoUpdateEnabled: false,
-            biometricLockEnabled: false,
+            biometricLockEnabled: kIsWeb ? false : null,
           );
         }
       }
@@ -149,14 +155,19 @@ class AppSettingsProvider extends ChangeNotifier {
         UserPreferencesModel.create();
     _preferences = prefs;
 
-    if (kIsWeb) {
-      final needsDisable =
-          _deviceSettings.autoUpdateEnabled ||
-          _deviceSettings.biometricLockEnabled;
-      if (needsDisable) {
+    final isDesktop =
+        !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.macOS ||
+            defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.linux);
+
+    if (kIsWeb || isDesktop) {
+      final needsDisableAutoUpdate = _deviceSettings.autoUpdateEnabled;
+      final needsDisableBiometric = kIsWeb && _deviceSettings.biometricLockEnabled;
+      if (needsDisableAutoUpdate || needsDisableBiometric) {
         _deviceSettings = _deviceSettings.copyWith(
           autoUpdateEnabled: false,
-          biometricLockEnabled: false,
+          biometricLockEnabled: kIsWeb ? false : null,
         );
       }
     }

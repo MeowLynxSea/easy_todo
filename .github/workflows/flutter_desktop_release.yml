@@ -64,7 +64,7 @@ jobs:
         run: |
           rm -rf dist/macos
           mkdir -p dist/macos
-          rsync -aL build/macos/Build/Products/Release/easy_todo.app dist/macos/
+          rsync -a --copy-unsafe-links build/macos/Build/Products/Release/easy_todo.app dist/macos/
           codesign --force --deep --sign - dist/macos/easy_todo.app
 
       - name: Upload artifact

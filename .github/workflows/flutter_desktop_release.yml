@@ -64,7 +64,7 @@ jobs:
         run: |
           rm -rf dist/macos
           mkdir -p dist/macos
-          APP_BUNDLE="$(ls -1 build/macos/Build/Products/Release/*.app | head -n 1)"
+          APP_BUNDLE="$(ls -1d build/macos/Build/Products/Release/*.app | head -n 1)"
           echo "Packaging: ${APP_BUNDLE}"
           rsync -a --copy-unsafe-links "${APP_BUNDLE}" dist/macos/
 

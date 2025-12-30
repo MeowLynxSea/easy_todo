@@ -14,6 +14,34 @@ struct _MyApplication {
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
 
+static void set_app_window_icon(GtkWindow* window) {
+  GError* error = nullptr;
+  gchar* executable_path = g_file_read_link("/proc/self/exe", &error);
+  if (executable_path == nullptr) {
+    if (error != nullptr) {
+      g_warning("Failed to resolve executable path: %s", error->message);
+      g_clear_error(&error);
+    }
+    return;
+  }
+
+  gchar* executable_dir = g_path_get_dirname(executable_path);
+  g_free(executable_path);
+
+  gchar* icon_path = g_build_filename(
+      executable_dir, "data", "flutter_assets", "assets", "images", "logo.png",
+      nullptr);
+  g_free(executable_dir);
+
+  gtk_window_set_icon_from_file(window, icon_path, &error);
+  if (error != nullptr) {
+    g_warning("Failed to set window icon from %s: %s", icon_path,
+              error->message);
+    g_clear_error(&error);
+  }
+  g_free(icon_path);
+}
+
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
@@ -46,6 +74,8 @@ static void my_application_activate(GApplication* application) {
   } else {
     gtk_window_set_title(window, "easy_todo");
   }
+
+  set_app_window_icon(window);
 
   gtk_window_set_default_size(window, 1280, 720);
   gtk_widget_show(GTK_WIDGET(window));

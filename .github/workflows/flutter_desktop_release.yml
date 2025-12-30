@@ -25,7 +25,7 @@ jobs:
           - os: macos-latest
             target: macos
             artifact_name: flutter-macos-release
-            artifact_path: build/macos/Build/Products/Release
+            artifact_path: build/macos/Build/Products/Release/easy_todo.app
 
     steps:
       - name: Checkout

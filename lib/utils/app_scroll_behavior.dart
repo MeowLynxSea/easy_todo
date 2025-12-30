@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
@@ -22,7 +21,7 @@ class AppScrollBehavior extends MaterialScrollBehavior {
     Widget child,
     ScrollableDetails details,
   ) {
-    if (kIsWeb && isWebDesktop(context)) {
+    if (isWebDesktop(context)) {
       return Scrollbar(
         controller: details.controller,
         thumbVisibility: true,

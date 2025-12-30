@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -7,8 +8,15 @@ class AttachmentStorageService {
   static const String _attachmentsFolder = 'easy_todo_attachments';
   static const String _stagingSuffix = '.part';
 
+  final Future<Directory> Function() _getDocumentsDirectory;
+
+  AttachmentStorageService({
+    Future<Directory> Function()? getDocumentsDirectory,
+  }) : _getDocumentsDirectory =
+           getDocumentsDirectory ?? getApplicationDocumentsDirectory;
+
   Future<Directory> _ensureAttachmentsDir() async {
-    final appDocDir = await getApplicationDocumentsDirectory();
+    final appDocDir = await _getDocumentsDirectory();
     final dir = Directory(
       '${appDocDir.path}${Platform.pathSeparator}$_attachmentsFolder',
     );
@@ -54,6 +62,45 @@ class AttachmentStorageService {
       await dest.delete();
     }
     await source.copy(destPath);
+    return dest.path;
+  }
+
+  Future<String> importBytes({
+    required Uint8List bytes,
+    required String attachmentId,
+    required String fileName,
+  }) async {
+    final destPath = await buildAttachmentFilePath(
+      attachmentId: attachmentId,
+      fileName: fileName,
+    );
+    final dest = File(destPath);
+    if (await dest.exists()) {
+      await dest.delete();
+    }
+    await dest.writeAsBytes(bytes, flush: true);
+    return dest.path;
+  }
+
+  Future<String> importStream({
+    required Stream<List<int>> sourceStream,
+    required String attachmentId,
+    required String fileName,
+  }) async {
+    final destPath = await buildAttachmentFilePath(
+      attachmentId: attachmentId,
+      fileName: fileName,
+    );
+    final dest = File(destPath);
+    if (await dest.exists()) {
+      await dest.delete();
+    }
+    final sink = dest.openWrite();
+    try {
+      await sink.addStream(sourceStream);
+    } finally {
+      await sink.close();
+    }
     return dest.path;
   }
 

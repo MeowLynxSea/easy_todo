@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:easy_todo/services/attachment_storage_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -62,6 +63,58 @@ void main() {
       expect(await File(fromPath).exists(), isFalse);
       expect(await File(toPath).readAsBytes(), [7, 7]);
     });
+
+    test('importBytes writes into attachments dir', () async {
+      final dir = await Directory.systemTemp.createTemp(
+        'easy_todo_attachment_storage_',
+      );
+      addTearDown(() async {
+        if (await dir.exists()) {
+          await dir.delete(recursive: true);
+        }
+      });
+
+      final storage = AttachmentStorageService(
+        getDocumentsDirectory: () async => dir,
+      );
+      final path = await storage.importBytes(
+        bytes: Uint8List.fromList([1, 2, 3]),
+        attachmentId: 'att1',
+        fileName: 'hello.txt',
+      );
+
+      expect(await File(path).exists(), isTrue);
+      expect(await File(path).readAsBytes(), [1, 2, 3]);
+      expect(path.contains('${dir.path}${Platform.pathSeparator}'), isTrue);
+      expect(path.contains('easy_todo_attachments'), isTrue);
+    });
+
+    test('importStream writes into attachments dir', () async {
+      final dir = await Directory.systemTemp.createTemp(
+        'easy_todo_attachment_storage_',
+      );
+      addTearDown(() async {
+        if (await dir.exists()) {
+          await dir.delete(recursive: true);
+        }
+      });
+
+      final storage = AttachmentStorageService(
+        getDocumentsDirectory: () async => dir,
+      );
+      final path = await storage.importStream(
+        sourceStream: Stream<List<int>>.fromIterable([
+          [9, 8],
+          [7],
+        ]),
+        attachmentId: 'att2',
+        fileName: 'stream.bin',
+      );
+
+      expect(await File(path).exists(), isTrue);
+      expect(await File(path).readAsBytes(), [9, 8, 7]);
+      expect(path.contains('${dir.path}${Platform.pathSeparator}'), isTrue);
+      expect(path.contains('easy_todo_attachments'), isTrue);
+    });
   });
 }
-

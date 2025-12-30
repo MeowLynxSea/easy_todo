@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -30,20 +31,39 @@ class TodoAttachmentService {
     required String fileName,
     String? sourcePath,
     Uint8List? bytes,
+    Stream<List<int>>? readStream,
     String mimeType = 'application/octet-stream',
   }) async {
-    if (sourcePath == null || sourcePath.trim().isEmpty) {
-      throw ArgumentError('sourcePath is required on IO');
+    final normalizedSourcePath = sourcePath?.trim();
+    if ((normalizedSourcePath == null || normalizedSourcePath.isEmpty) &&
+        bytes == null &&
+        readStream == null) {
+      throw ArgumentError('sourcePath/bytes/readStream is required on IO');
     }
 
     final nowMsUtc = DateTime.now().toUtc().millisecondsSinceEpoch;
     final attachmentId = generateUrlSafeRandomId(byteLength: 18);
 
-    final localPath = await _storage.importFile(
-      sourcePath: sourcePath,
-      attachmentId: attachmentId,
-      fileName: fileName,
-    );
+    late final String localPath;
+    if (normalizedSourcePath != null && normalizedSourcePath.isNotEmpty) {
+      localPath = await _storage.importFile(
+        sourcePath: normalizedSourcePath,
+        attachmentId: attachmentId,
+        fileName: fileName,
+      );
+    } else if (readStream != null) {
+      localPath = await _storage.importStream(
+        sourceStream: readStream,
+        attachmentId: attachmentId,
+        fileName: fileName,
+      );
+    } else {
+      localPath = await _storage.importBytes(
+        bytes: bytes!,
+        attachmentId: attachmentId,
+        fileName: fileName,
+      );
+    }
 
     final file = File(localPath);
     final size = await file.length();

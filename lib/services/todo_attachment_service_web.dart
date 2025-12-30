@@ -29,6 +29,7 @@ class TodoAttachmentService {
     required String fileName,
     String? sourcePath,
     Uint8List? bytes,
+    Stream<List<int>>? readStream,
     String mimeType = 'application/octet-stream',
   }) async {
     if (bytes == null) {

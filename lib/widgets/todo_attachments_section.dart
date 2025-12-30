@@ -211,6 +211,7 @@ class _TodoAttachmentsSectionState extends State<TodoAttachmentsSection> {
       type: FileType.any,
       allowMultiple: false,
       withData: kIsWeb,
+      withReadStream: !kIsWeb,
     );
     if (!mounted) return;
     if (result == null || result.files.isEmpty) return;
@@ -233,7 +234,30 @@ class _TodoAttachmentsSectionState extends State<TodoAttachmentsSection> {
         );
       } else {
         final path = file.path;
-        if (path == null || path.trim().isEmpty) {
+        final stream = file.readStream;
+        final bytes = file.bytes;
+        if (path != null && path.trim().isNotEmpty) {
+          await _attachmentService.addAttachment(
+            todoId: widget.todoId,
+            fileName: file.name,
+            sourcePath: path,
+            mimeType: mimeType,
+          );
+        } else if (stream != null) {
+          await _attachmentService.addAttachment(
+            todoId: widget.todoId,
+            fileName: file.name,
+            readStream: stream,
+            mimeType: mimeType,
+          );
+        } else if (bytes != null) {
+          await _attachmentService.addAttachment(
+            todoId: widget.todoId,
+            fileName: file.name,
+            bytes: bytes,
+            mimeType: mimeType,
+          );
+        } else {
           messenger.showSnackBar(
             SnackBar(
               content: Text(l10n.cannotAccessFile),
@@ -242,16 +266,18 @@ class _TodoAttachmentsSectionState extends State<TodoAttachmentsSection> {
           );
           return;
         }
-        await _attachmentService.addAttachment(
-          todoId: widget.todoId,
-          fileName: file.name,
-          sourcePath: path,
-          mimeType: mimeType,
-        );
       }
 
       if (!mounted) return;
-      unawaited(_retrySync());
+      final sync = context.read<SyncProvider>();
+      final canSyncNow =
+          sync.isConfigured &&
+          sync.syncEnabled &&
+          sync.isUnlocked &&
+          sync.status != SyncStatus.running;
+      if (canSyncNow) {
+        unawaited(_retrySync());
+      }
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(
@@ -447,7 +473,15 @@ class _TodoAttachmentsSectionState extends State<TodoAttachmentsSection> {
     try {
       await _attachmentService.removeAttachment(attachment.id);
       if (!mounted) return;
-      unawaited(_retrySync());
+      final sync = context.read<SyncProvider>();
+      final canSyncNow =
+          sync.isConfigured &&
+          sync.syncEnabled &&
+          sync.isUnlocked &&
+          sync.status != SyncStatus.running;
+      if (canSyncNow) {
+        unawaited(_retrySync());
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

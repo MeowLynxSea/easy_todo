@@ -19,7 +19,25 @@ class TodoAttachmentRepository {
   }) : _hiveService = hiveService ?? HiveService(),
        _syncWriteService = syncWriteService ?? SyncWriteService();
 
+  Future<bool> _shouldWriteSyncMeta(String type, String recordId) async {
+    final state = await _syncWriteService.ensureState();
+    if (state.syncEnabled) return true;
+
+    return _hiveService.syncMetaBox.containsKey(
+      SyncWriteService.metaKeyOf(type, recordId),
+    );
+  }
+
   Future<void> upsertAttachment(TodoAttachmentModel attachment) async {
+    final shouldSync = await _shouldWriteSyncMeta(
+      SyncTypes.todoAttachment,
+      attachment.id,
+    );
+    if (!shouldSync) {
+      await _hiveService.todoAttachmentsBox.put(attachment.id, attachment);
+      return;
+    }
+
     await _syncWriteService.upsertRecord(
       type: SyncTypes.todoAttachment,
       recordId: attachment.id,
@@ -31,6 +49,12 @@ class TodoAttachmentRepository {
   }
 
   Future<void> tombstoneAttachment(String attachmentId) async {
+    final shouldSync = await _shouldWriteSyncMeta(
+      SyncTypes.todoAttachment,
+      attachmentId,
+    );
+    if (!shouldSync) return;
+
     await _syncWriteService.tombstoneRecord(
       type: SyncTypes.todoAttachment,
       recordId: attachmentId,
@@ -39,6 +63,12 @@ class TodoAttachmentRepository {
   }
 
   Future<void> upsertAttachmentCommit(String attachmentId) async {
+    final shouldSync = await _shouldWriteSyncMeta(
+      SyncTypes.todoAttachmentCommit,
+      attachmentId,
+    );
+    if (!shouldSync) return;
+
     await _syncWriteService.upsertRecord(
       type: SyncTypes.todoAttachmentCommit,
       recordId: attachmentId,
@@ -48,6 +78,12 @@ class TodoAttachmentRepository {
   }
 
   Future<void> tombstoneAttachmentCommit(String attachmentId) async {
+    final shouldSync = await _shouldWriteSyncMeta(
+      SyncTypes.todoAttachmentCommit,
+      attachmentId,
+    );
+    if (!shouldSync) return;
+
     await _syncWriteService.tombstoneRecord(
       type: SyncTypes.todoAttachmentCommit,
       recordId: attachmentId,
@@ -82,6 +118,9 @@ class TodoAttachmentRepository {
     required String attachmentId,
     required int chunkCount,
   }) async {
+    final state = await _syncWriteService.ensureState();
+    if (!state.syncEnabled) return;
+
     for (var i = 0; i < chunkCount; i++) {
       await upsertChunk(attachmentId: attachmentId, chunkIndex: i);
     }
@@ -91,6 +130,9 @@ class TodoAttachmentRepository {
     required String attachmentId,
     required int chunkCount,
   }) async {
+    final state = await _syncWriteService.ensureState();
+    if (!state.syncEnabled) return;
+
     for (var i = 0; i < chunkCount; i++) {
       await tombstoneChunk(attachmentId: attachmentId, chunkIndex: i);
     }

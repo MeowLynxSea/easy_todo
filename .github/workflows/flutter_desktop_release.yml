@@ -25,7 +25,7 @@ jobs:
           - os: macos-latest
             target: macos
             artifact_name: flutter-macos-release
-            artifact_path: build/macos/Build/Products/Release
+            artifact_path: dist/macos
 
     steps:
       - name: Checkout
@@ -58,6 +58,14 @@ jobs:
       - name: Strip macOS dSYM
         if: matrix.target == 'macos'
         run: rm -rf build/macos/Build/Products/Release/*.dSYM
+
+      - name: Package macOS app bundle (resolve symlinks)
+        if: matrix.target == 'macos'
+        run: |
+          rm -rf dist/macos
+          mkdir -p dist/macos
+          rsync -aL build/macos/Build/Products/Release/easy_todo.app dist/macos/
+          codesign --force --deep --sign - dist/macos/easy_todo.app
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

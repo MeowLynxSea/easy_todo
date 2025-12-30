@@ -2789,4 +2789,44 @@ class AppLocalizationsKo extends AppLocalizations {
   String cloudSyncMinutesSecondsFormat(Object minutes, Object seconds) {
     return '$minutes분 $seconds초';
   }
+
+  @override
+  String get todoAttachments => 'Attachments';
+
+  @override
+  String get todoAttachmentsEmpty => 'No attachments yet';
+
+  @override
+  String get todoAttachmentAdd => 'Add file';
+
+  @override
+  String todoAttachmentAddFailed(Object error) {
+    return 'Failed to add attachment: $error';
+  }
+
+  @override
+  String get todoAttachmentExport => 'Export';
+
+  @override
+  String get todoAttachmentNotAvailable => 'File not available yet';
+
+  @override
+  String get todoAttachmentRemoveConfirmTitle => 'Remove attachment?';
+
+  @override
+  String get todoAttachmentRemoveConfirmMessage =>
+      'This will remove the attachment from all devices after sync.';
+
+  @override
+  String get todoAttachmentUploading => 'Uploading';
+
+  @override
+  String get todoAttachmentDownloading => 'Downloading';
+
+  @override
+  String get todoAttachmentReady => 'Ready';
+
+  @override
+  String get todoAttachmentWebNotSupported =>
+      'Attachments are not supported on web';
 }

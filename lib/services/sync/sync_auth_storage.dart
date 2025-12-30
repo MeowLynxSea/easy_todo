@@ -72,10 +72,7 @@ class SyncAuthStorage {
       return;
     }
 
-    await _secureStorage.write(
-      key: _accessTokenKey,
-      value: tokens.accessToken,
-    );
+    await _secureStorage.write(key: _accessTokenKey, value: tokens.accessToken);
     if (tokens.refreshToken != null) {
       await _secureStorage.write(
         key: _refreshTokenKey,

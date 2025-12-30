@@ -955,5 +955,18 @@
   "cloudSyncAutoSyncIntervalSubtitle": "当前：{interval}",
   "cloudSyncSecondsFormat": "{count} 秒",
   "cloudSyncMinutesFormat": "{count} 分钟",
-  "cloudSyncMinutesSecondsFormat": "{minutes} 分 {seconds} 秒"
+  "cloudSyncMinutesSecondsFormat": "{minutes} 分 {seconds} 秒",
+
+  "todoAttachments": "附件",
+  "todoAttachmentsEmpty": "暂无附件",
+  "todoAttachmentAdd": "添加文件",
+  "todoAttachmentAddFailed": "添加附件失败：{error}",
+  "todoAttachmentExport": "导出",
+  "todoAttachmentNotAvailable": "文件尚未下载完成",
+  "todoAttachmentRemoveConfirmTitle": "删除附件？",
+  "todoAttachmentRemoveConfirmMessage": "同步后将从所有设备删除该附件。",
+  "todoAttachmentUploading": "上传中",
+  "todoAttachmentDownloading": "下载中",
+  "todoAttachmentReady": "可用",
+  "todoAttachmentWebNotSupported": "Web 暂不支持附件"
 }

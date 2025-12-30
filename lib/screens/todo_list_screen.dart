@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -5,6 +7,7 @@ import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:easy_todo/providers/todo_provider.dart';
 import 'package:easy_todo/providers/filter_provider.dart';
 import 'package:easy_todo/models/todo_model.dart';
+import 'package:easy_todo/widgets/todo_details_presenter.dart';
 import 'package:easy_todo/widgets/stacking_todo_list.dart';
 import 'package:easy_todo/widgets/optimized_todo_list.dart';
 import 'package:easy_todo/widgets/add_todo_dialog.dart';
@@ -1069,41 +1072,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
   }
 
   void _showTodoDetails(TodoModel todo) {
-    final l10n = AppLocalizations.of(context)!;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(todo.title),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (todo.description != null && todo.description!.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(todo.description!),
-              const SizedBox(height: 16),
-            ],
-            Text(
-              '${l10n.createdLabel}${_formatDate(todo.createdAt)}',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
-            if (todo.completedAt != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                '${l10n.completedLabel}${_formatDate(todo.completedAt!)}',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-              ),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(l10n.close),
-          ),
-        ],
-      ),
-    );
+    unawaited(showTodoDetails(context, todo));
   }
 
   Future<void> _toggleTodoCompletion(String id) async {
@@ -1209,10 +1178,5 @@ class _TodoListScreenState extends State<TodoListScreen> {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (context) => const RepeatTasksScreen()));
-  }
-
-  String _formatDate(DateTime date) {
-    final localDate = date.toLocal();
-    return '${localDate.day.toString().padLeft(2, '0')}/${localDate.month.toString().padLeft(2, '0')}/${localDate.year} ${localDate.hour.toString().padLeft(2, '0')}:${localDate.minute.toString().padLeft(2, '0')}';
   }
 }

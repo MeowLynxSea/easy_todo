@@ -8,6 +8,9 @@ import 'package:hive/hive.dart';
 
 class SyncTypes {
   static const String todo = 'todo';
+  static const String todoAttachment = 'todo_attachment';
+  static const String todoAttachmentChunk = 'todo_attachment_chunk';
+  static const String todoAttachmentCommit = 'todo_attachment_commit';
   static const String repeatTodo = 'repeat_todo';
   static const String statisticsData = 'statistics_data';
   static const String pomodoro = 'pomodoro';

@@ -19,6 +19,8 @@ import 'package:easy_todo/utils/hlc_clock.dart';
 import 'package:easy_todo/services/repositories/todo_repository.dart';
 import 'package:easy_todo/services/repositories/repeat_todo_repository.dart';
 import 'package:easy_todo/services/repositories/statistics_data_repository.dart';
+import 'package:easy_todo/services/repositories/todo_attachment_repository.dart';
+import 'package:easy_todo/services/attachment_storage_service.dart';
 
 class TodoProvider extends ChangeNotifier {
   final HiveService _hiveService = HiveService();
@@ -29,6 +31,10 @@ class TodoProvider extends ChangeNotifier {
   final RepeatTodoRepository _repeatTodoRepository = RepeatTodoRepository();
   final StatisticsDataRepository _statisticsDataRepository =
       StatisticsDataRepository();
+  final TodoAttachmentRepository _todoAttachmentRepository =
+      TodoAttachmentRepository();
+  final AttachmentStorageService _attachmentStorage =
+      AttachmentStorageService();
   AIProvider? _aiProvider;
   LanguageProvider? _languageProvider;
   List<TodoModel> _todos = [];
@@ -1098,6 +1104,7 @@ class TodoProvider extends ChangeNotifier {
       // Cancel notification before deleting
       await _notificationService.cancelTodoReminder(id);
 
+      await _tombstoneTodoAttachments(id);
       await _tombstoneTodo(id);
 
       _todos.removeWhere((todo) => todo.id == id);
@@ -1114,6 +1121,30 @@ class TodoProvider extends ChangeNotifier {
       await Future.delayed(const Duration(milliseconds: 100));
     } catch (e) {
       debugPrint('Error deleting todo: $e');
+    }
+  }
+
+  Future<void> _tombstoneTodoAttachments(String todoId) async {
+    final attachments = _hiveService.todoAttachmentsBox.values
+        .where((a) => a.todoId == todoId)
+        .toList(growable: false);
+
+    for (final a in attachments) {
+      await _todoAttachmentRepository.tombstoneAttachment(a.id);
+      if (a.chunkCount > 0) {
+        await _todoAttachmentRepository.tombstoneAllChunks(
+          attachmentId: a.id,
+          chunkCount: a.chunkCount,
+        );
+      }
+      await _attachmentStorage.deleteFileIfExists(a.localPath);
+      final staging = a.localPath == null
+          ? null
+          : _attachmentStorage.stagingFilePathFor(a.localPath!);
+      if (staging != null && staging != a.localPath) {
+        await _attachmentStorage.deleteFileIfExists(staging);
+      }
+      await _hiveService.todoAttachmentsBox.delete(a.id);
     }
   }
 

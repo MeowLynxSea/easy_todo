@@ -5380,6 +5380,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{minutes}m {seconds}s'**
   String cloudSyncMinutesSecondsFormat(Object minutes, Object seconds);
+
+  /// No description provided for @todoAttachments.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachments'**
+  String get todoAttachments;
+
+  /// No description provided for @todoAttachmentsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No attachments yet'**
+  String get todoAttachmentsEmpty;
+
+  /// No description provided for @todoAttachmentAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add file'**
+  String get todoAttachmentAdd;
+
+  /// No description provided for @todoAttachmentAddFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to add attachment: {error}'**
+  String todoAttachmentAddFailed(Object error);
+
+  /// No description provided for @todoAttachmentExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get todoAttachmentExport;
+
+  /// No description provided for @todoAttachmentNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'File not available yet'**
+  String get todoAttachmentNotAvailable;
+
+  /// No description provided for @todoAttachmentRemoveConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove attachment?'**
+  String get todoAttachmentRemoveConfirmTitle;
+
+  /// No description provided for @todoAttachmentRemoveConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This will remove the attachment from all devices after sync.'**
+  String get todoAttachmentRemoveConfirmMessage;
+
+  /// No description provided for @todoAttachmentUploading.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading'**
+  String get todoAttachmentUploading;
+
+  /// No description provided for @todoAttachmentDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading'**
+  String get todoAttachmentDownloading;
+
+  /// No description provided for @todoAttachmentReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get todoAttachmentReady;
+
+  /// No description provided for @todoAttachmentWebNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachments are not supported on web'**
+  String get todoAttachmentWebNotSupported;
 }
 
 class _AppLocalizationsDelegate

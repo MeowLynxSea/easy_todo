@@ -91,6 +91,8 @@ class PullResponse {
 }
 
 class SyncApiClient {
+  static const Duration _syncTimeout = Duration(minutes: 3);
+
   final Dio _dio;
   final SyncAuthStorage? _authStorage;
   final SyncServerAuthService? _authService;
@@ -290,6 +292,10 @@ class SyncApiClient {
         data: <String, dynamic>{
           'records': records.map((e) => e.toJson()).toList(),
         },
+        options: Options(
+          sendTimeout: _syncTimeout,
+          receiveTimeout: _syncTimeout,
+        ),
       );
       final data = resp.data;
       if (data == null) {
@@ -301,11 +307,21 @@ class SyncApiClient {
     }
   }
 
-  Future<PullResponse> pull({required int since, int limit = 200}) async {
+  Future<PullResponse> pull({
+    required int since,
+    int limit = 200,
+    String? excludeDeviceId,
+  }) async {
     try {
       final resp = await _dio.get<Map<String, dynamic>>(
         '/v1/sync/pull',
-        queryParameters: <String, dynamic>{'since': since, 'limit': limit},
+        queryParameters: <String, dynamic>{
+          'since': since,
+          'limit': limit,
+          if (excludeDeviceId != null && excludeDeviceId.trim().isNotEmpty)
+            'excludeDeviceId': excludeDeviceId.trim(),
+        },
+        options: Options(receiveTimeout: _syncTimeout),
       );
       final data = resp.data;
       if (data == null) {

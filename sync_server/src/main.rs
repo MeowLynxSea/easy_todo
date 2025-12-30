@@ -26,8 +26,12 @@ mod web;
 
 const MAX_RECORD_B64_LEN: usize = 512 * 1024; // per-field b64 string length cap
 const MAX_PULL_LIMIT: i64 = 500;
-const BODY_LIMIT_BYTES: usize = 5 * 1024 * 1024;
+const DEFAULT_BODY_LIMIT_BYTES: usize = 5 * 1024 * 1024;
 const DEFAULT_MAX_PUSH_RECORDS: usize = 500;
+
+const TYPE_TODO_ATTACHMENT: &str = "todo_attachment";
+const TYPE_TODO_ATTACHMENT_CHUNK: &str = "todo_attachment_chunk";
+const TYPE_TODO_ATTACHMENT_COMMIT: &str = "todo_attachment_commit";
 
 #[derive(Debug, Clone)]
 struct BillingConfig {
@@ -774,6 +778,194 @@ fn hlc_is_newer(a: &Hlc, b: &Hlc) -> bool {
     (a.wall_time_ms_utc, a.counter, &a.device_id) > (b.wall_time_ms_utc, b.counter, &b.device_id)
 }
 
+fn is_attachment_staged_type(t: &str) -> bool {
+    t == TYPE_TODO_ATTACHMENT || t == TYPE_TODO_ATTACHMENT_CHUNK
+}
+
+fn parse_chunk_index(record_id: &str) -> Option<i64> {
+    record_id.rsplit_once(':')?.1.parse().ok()
+}
+
+async fn recompute_and_store_user_b64(
+    tx: &mut Transaction<'_, Sqlite>,
+    user_id: i64,
+) -> anyhow::Result<i64> {
+    let total_b64: i64 = sqlx::query_scalar(
+        r#"SELECT
+             (SELECT IFNULL(SUM(LENGTH(nonce) + LENGTH(ciphertext)), 0) FROM records WHERE user_id = ?)
+           + (SELECT IFNULL(SUM(LENGTH(nonce) + LENGTH(ciphertext)), 0) FROM staged_records WHERE user_id = ?)"#,
+    )
+    .bind(user_id)
+    .bind(user_id)
+    .fetch_one(&mut **tx)
+    .await?;
+
+    sqlx::query(r#"UPDATE users SET stored_b64 = ? WHERE id = ?"#)
+        .bind(total_b64)
+        .bind(user_id)
+        .execute(&mut **tx)
+        .await?;
+
+    Ok(total_b64)
+}
+
+async fn gc_staged_records(db: &Pool<Sqlite>, ttl_ms: i64) -> anyhow::Result<i64> {
+    if ttl_ms <= 0 {
+        return Ok(0);
+    }
+
+    let now_ms = now_ms_utc();
+    let cutoff = now_ms.saturating_sub(ttl_ms);
+
+    let mut tx = db.begin().await?;
+
+    let user_ids: Vec<i64> = sqlx::query_scalar(
+        r#"SELECT DISTINCT user_id
+           FROM staged_records
+           WHERE updated_at_ms_utc < ?"#,
+    )
+    .bind(cutoff)
+    .fetch_all(&mut *tx)
+    .await?;
+
+    if user_ids.is_empty() {
+        tx.rollback().await.ok();
+        return Ok(0);
+    }
+
+    let deleted = sqlx::query(
+        r#"DELETE FROM staged_records
+           WHERE updated_at_ms_utc < ?"#,
+    )
+    .bind(cutoff)
+    .execute(&mut *tx)
+    .await?
+    .rows_affected() as i64;
+
+    for user_id in user_ids {
+        let _ = recompute_and_store_user_b64(&mut tx, user_id).await?;
+    }
+
+    tx.commit().await?;
+    Ok(deleted)
+}
+
+async fn delete_staged_attachment(
+    tx: &mut Transaction<'_, Sqlite>,
+    user_id: i64,
+    attachment_id: &str,
+) -> anyhow::Result<(i64, i64)> {
+    let pattern = format!("{attachment_id}:%");
+    let (count, bytes): (i64, i64) = sqlx::query_as(
+        r#"SELECT
+             COUNT(*) AS c,
+             IFNULL(SUM(LENGTH(nonce) + LENGTH(ciphertext)), 0) AS b
+           FROM staged_records
+           WHERE user_id = ?
+             AND (
+               (type = ? AND record_id = ?)
+               OR (type = ? AND record_id LIKE ?)
+             )"#,
+    )
+    .bind(user_id)
+    .bind(TYPE_TODO_ATTACHMENT)
+    .bind(attachment_id)
+    .bind(TYPE_TODO_ATTACHMENT_CHUNK)
+    .bind(&pattern)
+    .fetch_one(&mut **tx)
+    .await?;
+
+    if count > 0 {
+        sqlx::query(
+            r#"DELETE FROM staged_records
+               WHERE user_id = ?
+                 AND (
+                   (type = ? AND record_id = ?)
+                   OR (type = ? AND record_id LIKE ?)
+                 )"#,
+        )
+        .bind(user_id)
+        .bind(TYPE_TODO_ATTACHMENT)
+        .bind(attachment_id)
+        .bind(TYPE_TODO_ATTACHMENT_CHUNK)
+        .bind(pattern)
+        .execute(&mut **tx)
+        .await?;
+    }
+
+    Ok((count, bytes))
+}
+
+async fn compact_committed_attachment_chunks(
+    tx: &mut Transaction<'_, Sqlite>,
+    user_id: i64,
+    attachment_id: &str,
+    deleted_at_ms_utc: i64,
+) -> anyhow::Result<i64> {
+    let now_ms = now_ms_utc();
+    let pattern = format!("{attachment_id}:%");
+
+    let rows = sqlx::query(
+        r#"SELECT
+             record_id,
+             hlc_wall_ms_utc,
+             deleted_at_ms_utc,
+             LENGTH(nonce) AS nonce_len,
+             LENGTH(ciphertext) AS ciphertext_len
+           FROM records
+           WHERE user_id = ? AND type = ? AND record_id LIKE ?"#,
+    )
+    .bind(user_id)
+    .bind(TYPE_TODO_ATTACHMENT_CHUNK)
+    .bind(pattern)
+    .fetch_all(&mut **tx)
+    .await?;
+
+    let mut compacted = 0_i64;
+
+    for row in rows {
+        let record_id: String = row.try_get("record_id")?;
+        let existing_wall: i64 = row.try_get("hlc_wall_ms_utc")?;
+        let existing_deleted: Option<i64> = row.try_get("deleted_at_ms_utc")?;
+        let nonce_len: i64 = row.try_get("nonce_len")?;
+        let ciphertext_len: i64 = row.try_get("ciphertext_len")?;
+
+        // Already compacted tombstone; no need to bump server_seq repeatedly.
+        if existing_deleted.is_some() && nonce_len == 0 && ciphertext_len == 0 {
+            continue;
+        }
+
+        let server_seq = alloc_server_seq(tx, user_id).await?;
+        let new_wall = std::cmp::max(existing_wall, now_ms).saturating_add(1);
+
+        sqlx::query(
+            r#"UPDATE records
+               SET hlc_wall_ms_utc = ?,
+                   hlc_counter = 0,
+                   hlc_device_id = 'server',
+                   deleted_at_ms_utc = ?,
+                   nonce = '',
+                   ciphertext = '',
+                   server_seq = ?,
+                   updated_at_ms_utc = ?
+               WHERE user_id = ? AND type = ? AND record_id = ?"#,
+        )
+        .bind(new_wall)
+        .bind(deleted_at_ms_utc)
+        .bind(server_seq)
+        .bind(now_ms)
+        .bind(user_id)
+        .bind(TYPE_TODO_ATTACHMENT_CHUNK)
+        .bind(record_id)
+        .execute(&mut **tx)
+        .await?;
+
+        compacted += 1;
+    }
+
+    Ok(compacted)
+}
+
 async fn alloc_server_seq(tx: &mut Transaction<'_, Sqlite>, user_id: i64) -> anyhow::Result<i64> {
     sqlx::query(
         r#"INSERT INTO server_seq (user_id, next_seq)
@@ -797,6 +989,212 @@ async fn alloc_server_seq(tx: &mut Transaction<'_, Sqlite>, user_id: i64) -> any
     Ok(next_seq)
 }
 
+#[derive(Debug, Clone)]
+struct StoredRow {
+    r#type: String,
+    record_id: String,
+    hlc: Hlc,
+    deleted_at_ms_utc: Option<i64>,
+    schema_version: i64,
+    dek_id: String,
+    payload_algo: String,
+    nonce: String,
+    ciphertext: String,
+}
+
+async fn commit_staged_attachment(
+    tx: &mut Transaction<'_, Sqlite>,
+    user_id: i64,
+    attachment_id: &str,
+) -> anyhow::Result<()> {
+    let staged_meta = sqlx::query(
+        r#"SELECT
+         type,
+         record_id,
+         hlc_wall_ms_utc,
+         hlc_counter,
+         hlc_device_id,
+         deleted_at_ms_utc,
+         schema_version,
+         dek_id,
+         algo,
+         nonce,
+         ciphertext
+       FROM staged_records
+       WHERE user_id = ? AND type = ? AND record_id = ?"#,
+    )
+    .bind(user_id)
+    .bind(TYPE_TODO_ATTACHMENT)
+    .bind(attachment_id)
+    .fetch_optional(&mut **tx)
+    .await?;
+
+    let pattern = format!("{attachment_id}:%");
+    let staged_chunks = sqlx::query(
+        r#"SELECT
+         type,
+         record_id,
+         hlc_wall_ms_utc,
+         hlc_counter,
+         hlc_device_id,
+         deleted_at_ms_utc,
+         schema_version,
+         dek_id,
+         algo,
+         nonce,
+         ciphertext
+       FROM staged_records
+       WHERE user_id = ? AND type = ? AND record_id LIKE ?"#,
+    )
+    .bind(user_id)
+    .bind(TYPE_TODO_ATTACHMENT_CHUNK)
+    .bind(pattern)
+    .fetch_all(&mut **tx)
+    .await?;
+
+    let mut rows: Vec<StoredRow> = Vec::with_capacity(staged_chunks.len() + 1);
+    if let Some(row) = staged_meta {
+        rows.push(StoredRow {
+            r#type: row.try_get("type")?,
+            record_id: row.try_get("record_id")?,
+            hlc: Hlc {
+                wall_time_ms_utc: row.try_get("hlc_wall_ms_utc")?,
+                counter: row.try_get("hlc_counter")?,
+                device_id: row.try_get("hlc_device_id")?,
+            },
+            deleted_at_ms_utc: row.try_get("deleted_at_ms_utc")?,
+            schema_version: row.try_get("schema_version")?,
+            dek_id: row.try_get("dek_id")?,
+            payload_algo: row.try_get("algo")?,
+            nonce: row.try_get("nonce")?,
+            ciphertext: row.try_get("ciphertext")?,
+        });
+    }
+
+    for row in staged_chunks {
+        rows.push(StoredRow {
+            r#type: row.try_get("type")?,
+            record_id: row.try_get("record_id")?,
+            hlc: Hlc {
+                wall_time_ms_utc: row.try_get("hlc_wall_ms_utc")?,
+                counter: row.try_get("hlc_counter")?,
+                device_id: row.try_get("hlc_device_id")?,
+            },
+            deleted_at_ms_utc: row.try_get("deleted_at_ms_utc")?,
+            schema_version: row.try_get("schema_version")?,
+            dek_id: row.try_get("dek_id")?,
+            payload_algo: row.try_get("algo")?,
+            nonce: row.try_get("nonce")?,
+            ciphertext: row.try_get("ciphertext")?,
+        });
+    }
+
+    // Ensure metadata is committed before chunks so clients can initialize
+    // local state before applying chunk payloads.
+    rows.sort_by(|a, b| {
+        let a_is_chunk = a.r#type == TYPE_TODO_ATTACHMENT_CHUNK;
+        let b_is_chunk = b.r#type == TYPE_TODO_ATTACHMENT_CHUNK;
+        match (a_is_chunk, b_is_chunk) {
+            (false, true) => std::cmp::Ordering::Less,
+            (true, false) => std::cmp::Ordering::Greater,
+            (false, false) => std::cmp::Ordering::Equal,
+            (true, true) => {
+                let ai = parse_chunk_index(&a.record_id).unwrap_or(i64::MAX);
+                let bi = parse_chunk_index(&b.record_id).unwrap_or(i64::MAX);
+                ai.cmp(&bi)
+            }
+        }
+    });
+
+    for row in &rows {
+        let existing = sqlx::query(
+            r#"SELECT
+                 hlc_wall_ms_utc, hlc_counter, hlc_device_id
+         FROM records
+         WHERE user_id = ? AND type = ? AND record_id = ?"#,
+        )
+        .bind(user_id)
+        .bind(&row.r#type)
+        .bind(&row.record_id)
+        .fetch_optional(&mut **tx)
+        .await?;
+
+        if let Some(existing) = existing {
+            let stored = Hlc {
+                wall_time_ms_utc: existing.try_get("hlc_wall_ms_utc")?,
+                counter: existing.try_get("hlc_counter")?,
+                device_id: existing.try_get("hlc_device_id")?,
+            };
+            if !hlc_is_newer(&row.hlc, &stored) {
+                continue;
+            }
+        }
+
+        let server_seq = alloc_server_seq(tx, user_id).await?;
+        let now_ms = now_ms_utc();
+        sqlx::query(
+            r#"INSERT INTO records (
+           user_id, type, record_id,
+           hlc_wall_ms_utc, hlc_counter, hlc_device_id,
+           deleted_at_ms_utc,
+           schema_version, dek_id,
+           algo, nonce, ciphertext,
+           server_seq, updated_at_ms_utc
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(user_id, type, record_id) DO UPDATE SET
+           hlc_wall_ms_utc = excluded.hlc_wall_ms_utc,
+           hlc_counter = excluded.hlc_counter,
+           hlc_device_id = excluded.hlc_device_id,
+           deleted_at_ms_utc = excluded.deleted_at_ms_utc,
+           schema_version = excluded.schema_version,
+           dek_id = excluded.dek_id,
+           algo = excluded.algo,
+           nonce = excluded.nonce,
+           ciphertext = excluded.ciphertext,
+           server_seq = excluded.server_seq,
+           updated_at_ms_utc = excluded.updated_at_ms_utc"#,
+        )
+        .bind(user_id)
+        .bind(&row.r#type)
+        .bind(&row.record_id)
+        .bind(row.hlc.wall_time_ms_utc)
+        .bind(row.hlc.counter)
+        .bind(&row.hlc.device_id)
+        .bind(row.deleted_at_ms_utc)
+        .bind(row.schema_version)
+        .bind(&row.dek_id)
+        .bind(&row.payload_algo)
+        .bind(&row.nonce)
+        .bind(&row.ciphertext)
+        .bind(server_seq)
+        .bind(now_ms)
+        .execute(&mut **tx)
+        .await?;
+    }
+
+    if !rows.is_empty() {
+        // Clean up staged rows even if already committed, to keep commits idempotent.
+        let pattern = format!("{attachment_id}:%");
+        sqlx::query(
+            r#"DELETE FROM staged_records
+               WHERE user_id = ?
+                 AND (
+                   (type = ? AND record_id = ?)
+                   OR (type = ? AND record_id LIKE ?)
+                 )"#,
+        )
+        .bind(user_id)
+        .bind(TYPE_TODO_ATTACHMENT)
+        .bind(attachment_id)
+        .bind(TYPE_TODO_ATTACHMENT_CHUNK)
+        .bind(pattern)
+        .execute(&mut **tx)
+        .await?;
+    }
+
+    Ok(())
+}
+
 async fn push_sync(
     State(state): State<AppState>,
     user: auth::AuthedUser,
@@ -810,6 +1208,7 @@ async fn push_sync(
 
     let mut accepted = Vec::new();
     let mut rejected = Vec::new();
+    let mut did_compact_records = false;
 
     let mut tx = state
         .db
@@ -895,33 +1294,38 @@ async fn push_sync(
 
     let quota = compute_effective_quota(&state.billing, &user_billing, now_ms);
 
-    let mut record_count: i64 =
-        sqlx::query_scalar(r#"SELECT COUNT(*) FROM records WHERE user_id = ?"#)
-            .bind(user.user_id)
-            .fetch_one(&mut *tx)
-            .await
-            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
-
-    let mut total_b64: i64 = sqlx::query_scalar(
-        r#"SELECT IFNULL(SUM(LENGTH(nonce) + LENGTH(ciphertext)), 0) FROM records WHERE user_id = ?"#,
+    // Include staged attachment bytes in quota checks so users can't exceed
+    // storage limits by uploading uncommitted blobs.
+    let mut record_count: i64 = sqlx::query_scalar(
+        r#"SELECT
+             (SELECT COUNT(*) FROM records WHERE user_id = ?)
+           + (SELECT COUNT(*) FROM staged_records WHERE user_id = ?)"#,
     )
+    .bind(user.user_id)
     .bind(user.user_id)
     .fetch_one(&mut *tx)
     .await
     .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
-    if let Some(max) = quota.allowed_storage_b64 {
-        if total_b64 > max {
-            tx.rollback().await.ok();
-            return Err(json_error(StatusCode::PAYMENT_REQUIRED, "quota_exceeded"));
-        }
-    }
+    let mut total_b64: i64 = sqlx::query_scalar(
+        r#"SELECT
+             (SELECT IFNULL(SUM(LENGTH(nonce) + LENGTH(ciphertext)), 0) FROM records WHERE user_id = ?)
+           + (SELECT IFNULL(SUM(LENGTH(nonce) + LENGTH(ciphertext)), 0) FROM staged_records WHERE user_id = ?)"#,
+    )
+    .bind(user.user_id)
+    .bind(user.user_id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
     if let Some(max) = quota.allowed_outbound_bytes {
         if user_billing.api_outbound_bytes > max {
             tx.rollback().await.ok();
             return Err(json_error(StatusCode::PAYMENT_REQUIRED, "quota_exceeded"));
         }
     }
+
+    let mut commit_requests: Vec<(String, Option<i64>)> = Vec::new();
 
     for r in req.records {
         if r.nonce.len() > MAX_RECORD_B64_LEN || r.ciphertext.len() > MAX_RECORD_B64_LEN {
@@ -933,7 +1337,12 @@ async fn push_sync(
             continue;
         }
 
-        let existing = sqlx::query(
+        if r.r#type == TYPE_TODO_ATTACHMENT_COMMIT {
+            commit_requests.push((r.record_id, r.deleted_at_ms_utc));
+            continue;
+        }
+
+        let committed_existing = sqlx::query(
             r#"SELECT
                  hlc_wall_ms_utc, hlc_counter, hlc_device_id,
                  LENGTH(nonce) AS nonce_len,
@@ -948,23 +1357,112 @@ async fn push_sync(
         .await
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
-        let should_accept = match &existing {
-            None => true,
-            Some(row) => {
-                let stored = Hlc {
-                    wall_time_ms_utc: row
-                        .try_get("hlc_wall_ms_utc")
-                        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?,
-                    counter: row
-                        .try_get("hlc_counter")
-                        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?,
-                    device_id: row
-                        .try_get("hlc_device_id")
-                        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?,
-                };
-                hlc_is_newer(&r.hlc, &stored)
+        let is_staged_type = is_attachment_staged_type(&r.r#type);
+
+        // Once an attachment is deleted (tombstoned metadata in `records`), the
+        // server must reject any subsequent chunk/meta uploads regardless of
+        // HLC, otherwise stale/out-of-order clients could recreate staged data.
+        if is_staged_type && r.deleted_at_ms_utc.is_none() {
+            let attachment_id = if r.r#type == TYPE_TODO_ATTACHMENT {
+                Some(r.record_id.as_str())
+            } else {
+                r.record_id.rsplit_once(':').map(|(a, _)| a)
+            };
+
+            if let Some(attachment_id) = attachment_id {
+                let deleted: Option<i64> = sqlx::query_scalar(
+                    r#"SELECT deleted_at_ms_utc
+                       FROM records
+                       WHERE user_id = ? AND type = ? AND record_id = ?"#,
+                )
+                .bind(user.user_id)
+                .bind(TYPE_TODO_ATTACHMENT)
+                .bind(attachment_id)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+                if deleted.is_some_and(|ms| ms > 0) {
+                    rejected.push(PushRejected {
+                        r#type: r.r#type,
+                        record_id: r.record_id,
+                        reason: "attachment_deleted".to_string(),
+                    });
+                    continue;
+                }
             }
+        }
+
+        let staged_existing = if committed_existing.is_none() && is_staged_type {
+            sqlx::query(
+                r#"SELECT
+                     hlc_wall_ms_utc, hlc_counter, hlc_device_id,
+                     LENGTH(nonce) AS nonce_len,
+                     LENGTH(ciphertext) AS ciphertext_len
+             FROM staged_records
+             WHERE user_id = ? AND type = ? AND record_id = ?"#,
+            )
+            .bind(user.user_id)
+            .bind(&r.r#type)
+            .bind(&r.record_id)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?
+        } else {
+            None
         };
+
+        let mut existing_hlc: Option<Hlc> = None;
+        let mut existing_size: i64 = 0;
+        let mut exists_committed = false;
+        let mut exists_staged = false;
+
+        if let Some(row) = &committed_existing {
+            exists_committed = true;
+            existing_hlc = Some(Hlc {
+                wall_time_ms_utc: row
+                    .try_get("hlc_wall_ms_utc")
+                    .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?,
+                counter: row
+                    .try_get("hlc_counter")
+                    .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?,
+                device_id: row
+                    .try_get("hlc_device_id")
+                    .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?,
+            });
+            let nonce_len: i64 = row
+                .try_get("nonce_len")
+                .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+            let ciphertext_len: i64 = row
+                .try_get("ciphertext_len")
+                .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+            existing_size = nonce_len + ciphertext_len;
+        } else if let Some(row) = &staged_existing {
+            exists_staged = true;
+            existing_hlc = Some(Hlc {
+                wall_time_ms_utc: row
+                    .try_get("hlc_wall_ms_utc")
+                    .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?,
+                counter: row
+                    .try_get("hlc_counter")
+                    .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?,
+                device_id: row
+                    .try_get("hlc_device_id")
+                    .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?,
+            });
+            let nonce_len: i64 = row
+                .try_get("nonce_len")
+                .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+            let ciphertext_len: i64 = row
+                .try_get("ciphertext_len")
+                .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+            existing_size = nonce_len + ciphertext_len;
+        }
+
+        let should_accept = existing_hlc
+            .as_ref()
+            .map(|stored| hlc_is_newer(&r.hlc, stored))
+            .unwrap_or(true);
 
         if !should_accept {
             rejected.push(PushRejected {
@@ -975,18 +1473,56 @@ async fn push_sync(
             continue;
         }
 
-        let existing_size: i64 = existing
-            .as_ref()
-            .and_then(|row| {
-                let nonce_len: i64 = row.try_get("nonce_len").ok()?;
-                let ciphertext_len: i64 = row.try_get("ciphertext_len").ok()?;
-                Some(nonce_len + ciphertext_len)
-            })
-            .unwrap_or(0);
+        // For attachments/chunks, a tombstone before commit should simply
+        // remove any staged data and remain invisible to other devices.
+        if is_staged_type && r.deleted_at_ms_utc.is_some() && !exists_committed {
+            if r.r#type == TYPE_TODO_ATTACHMENT {
+                let attachment_id = r.record_id.clone();
+                let (deleted_count, deleted_bytes) =
+                    delete_staged_attachment(&mut tx, user.user_id, &attachment_id)
+                        .await
+                        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+                if deleted_count > 0 {
+                    total_b64 = (total_b64 - deleted_bytes).max(0);
+                    record_count = (record_count - deleted_count).max(0);
+                    did_compact_records = true;
+                }
+
+                accepted.push(PushAccepted {
+                    r#type: r.r#type,
+                    record_id: r.record_id,
+                    server_seq: 0,
+                });
+                continue;
+            }
+
+            if exists_staged {
+                sqlx::query(
+                    r#"DELETE FROM staged_records WHERE user_id = ? AND type = ? AND record_id = ?"#,
+                )
+                .bind(user.user_id)
+                .bind(&r.r#type)
+                .bind(&r.record_id)
+                .execute(&mut *tx)
+                .await
+                .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+                total_b64 = (total_b64 - existing_size).max(0);
+                record_count = (record_count - 1).max(0);
+            }
+
+            accepted.push(PushAccepted {
+                r#type: r.r#type,
+                record_id: r.record_id,
+                server_seq: 0,
+            });
+            continue;
+        }
+
         let new_size: i64 = (r.nonce.len() + r.ciphertext.len()) as i64;
 
         let new_total_b64 = total_b64 + (new_size - existing_size);
-        let new_record_count = record_count + if existing.is_none() { 1 } else { 0 };
+        let new_record_count = record_count + if !exists_committed && !exists_staged { 1 } else { 0 };
 
         if let Some(max) = state.max_records_per_user {
             if new_record_count > max {
@@ -999,7 +1535,11 @@ async fn push_sync(
             }
         }
         if let Some(max) = quota.allowed_storage_b64 {
-            if new_total_b64 > max {
+            // Allow deletes/size reductions even when the user is already over
+            // quota, so they can free space. Block only mutations that would
+            // increase stored bytes while remaining above the limit.
+            let increases_storage = new_total_b64 > total_b64;
+            if new_total_b64 > max && increases_storage {
                 rejected.push(PushRejected {
                     r#type: r.r#type,
                     record_id: r.record_id,
@@ -1009,64 +1549,226 @@ async fn push_sync(
             }
         }
 
-        let server_seq = alloc_server_seq(&mut tx, user.user_id).await.map_err(|e| {
-            error!(error = %e, "alloc_server_seq failed");
-            json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error")
-        })?;
+        let should_stage = is_staged_type && !exists_committed;
+        if should_stage {
+            let now_ms = now_ms_utc();
+            sqlx::query(
+                r#"INSERT INTO staged_records (
+               user_id, type, record_id,
+               hlc_wall_ms_utc, hlc_counter, hlc_device_id,
+               deleted_at_ms_utc,
+               schema_version, dek_id,
+               algo, nonce, ciphertext,
+               updated_at_ms_utc
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(user_id, type, record_id) DO UPDATE SET
+               hlc_wall_ms_utc = excluded.hlc_wall_ms_utc,
+               hlc_counter = excluded.hlc_counter,
+               hlc_device_id = excluded.hlc_device_id,
+               deleted_at_ms_utc = excluded.deleted_at_ms_utc,
+               schema_version = excluded.schema_version,
+               dek_id = excluded.dek_id,
+               algo = excluded.algo,
+               nonce = excluded.nonce,
+               ciphertext = excluded.ciphertext,
+               updated_at_ms_utc = excluded.updated_at_ms_utc"#,
+            )
+            .bind(user.user_id)
+            .bind(&r.r#type)
+            .bind(&r.record_id)
+            .bind(r.hlc.wall_time_ms_utc)
+            .bind(r.hlc.counter)
+            .bind(&r.hlc.device_id)
+            .bind(r.deleted_at_ms_utc)
+            .bind(r.schema_version)
+            .bind(&r.dek_id)
+            .bind(&r.payload_algo)
+            .bind(&r.nonce)
+            .bind(&r.ciphertext)
+            .bind(now_ms)
+            .execute(&mut *tx)
+            .await
+            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
-        let now_ms = now_ms_utc();
-        sqlx::query(
-            r#"INSERT INTO records (
-           user_id, type, record_id,
-           hlc_wall_ms_utc, hlc_counter, hlc_device_id,
-           deleted_at_ms_utc,
-           schema_version, dek_id,
-           algo, nonce, ciphertext,
-           server_seq, updated_at_ms_utc
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(user_id, type, record_id) DO UPDATE SET
-           hlc_wall_ms_utc = excluded.hlc_wall_ms_utc,
-           hlc_counter = excluded.hlc_counter,
-           hlc_device_id = excluded.hlc_device_id,
-           deleted_at_ms_utc = excluded.deleted_at_ms_utc,
-           schema_version = excluded.schema_version,
-           dek_id = excluded.dek_id,
-           algo = excluded.algo,
-           nonce = excluded.nonce,
-           ciphertext = excluded.ciphertext,
-           server_seq = excluded.server_seq,
-           updated_at_ms_utc = excluded.updated_at_ms_utc"#,
-        )
-        .bind(user.user_id)
-        .bind(&r.r#type)
-        .bind(&r.record_id)
-        .bind(r.hlc.wall_time_ms_utc)
-        .bind(r.hlc.counter)
-        .bind(&r.hlc.device_id)
-        .bind(r.deleted_at_ms_utc)
-        .bind(r.schema_version)
-        .bind(&r.dek_id)
-        .bind(&r.payload_algo)
-        .bind(&r.nonce)
-        .bind(&r.ciphertext)
-        .bind(server_seq)
-        .bind(now_ms)
-        .execute(&mut *tx)
-        .await
-        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+            accepted.push(PushAccepted {
+                r#type: r.r#type,
+                record_id: r.record_id,
+                server_seq: 0,
+            });
+        } else {
+            let server_seq = alloc_server_seq(&mut tx, user.user_id).await.map_err(|e| {
+                error!(error = %e, "alloc_server_seq failed");
+                json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error")
+            })?;
 
-        accepted.push(PushAccepted {
-            r#type: r.r#type,
-            record_id: r.record_id,
-            server_seq,
-        });
+            let now_ms = now_ms_utc();
+            sqlx::query(
+                r#"INSERT INTO records (
+               user_id, type, record_id,
+               hlc_wall_ms_utc, hlc_counter, hlc_device_id,
+               deleted_at_ms_utc,
+               schema_version, dek_id,
+               algo, nonce, ciphertext,
+               server_seq, updated_at_ms_utc
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(user_id, type, record_id) DO UPDATE SET
+               hlc_wall_ms_utc = excluded.hlc_wall_ms_utc,
+               hlc_counter = excluded.hlc_counter,
+               hlc_device_id = excluded.hlc_device_id,
+               deleted_at_ms_utc = excluded.deleted_at_ms_utc,
+               schema_version = excluded.schema_version,
+               dek_id = excluded.dek_id,
+               algo = excluded.algo,
+               nonce = excluded.nonce,
+               ciphertext = excluded.ciphertext,
+               server_seq = excluded.server_seq,
+               updated_at_ms_utc = excluded.updated_at_ms_utc"#,
+            )
+            .bind(user.user_id)
+            .bind(&r.r#type)
+            .bind(&r.record_id)
+            .bind(r.hlc.wall_time_ms_utc)
+            .bind(r.hlc.counter)
+            .bind(&r.hlc.device_id)
+            .bind(r.deleted_at_ms_utc)
+            .bind(r.schema_version)
+            .bind(&r.dek_id)
+            .bind(&r.payload_algo)
+            .bind(&r.nonce)
+            .bind(&r.ciphertext)
+            .bind(server_seq)
+            .bind(now_ms)
+            .execute(&mut *tx)
+            .await
+            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+            let record_type = r.r#type.clone();
+            let record_id = r.record_id.clone();
+            let is_attachment_delete =
+                r.r#type == TYPE_TODO_ATTACHMENT && r.deleted_at_ms_utc.is_some();
+            let deleted_at_ms_utc = r.deleted_at_ms_utc.unwrap_or(now_ms);
+
+            accepted.push(PushAccepted {
+                r#type: record_type,
+                record_id,
+                server_seq,
+            });
+
+            // Attachment deletion should compact all committed chunk payloads
+            // (so future pulls don't transfer old ciphertext) and clear any
+            // in-flight staged data without requiring per-chunk tombstones
+            // from the client.
+            if is_attachment_delete {
+                let attachment_id = r.record_id;
+
+                let _ = delete_staged_attachment(&mut tx, user.user_id, &attachment_id)
+                    .await
+                    .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+                compact_committed_attachment_chunks(
+                    &mut tx,
+                    user.user_id,
+                    &attachment_id,
+                    deleted_at_ms_utc,
+                )
+                .await
+                .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+                did_compact_records = true;
+            }
+        }
 
         total_b64 = new_total_b64;
         record_count = new_record_count;
     }
 
+    for (attachment_id, deleted_at_ms_utc) in commit_requests {
+        if deleted_at_ms_utc.is_some() {
+            // Tombstoning the commit marker is used by clients to cancel a
+            // pending commit while deleting an in-progress attachment upload.
+            accepted.push(PushAccepted {
+                r#type: TYPE_TODO_ATTACHMENT_COMMIT.to_string(),
+                record_id: attachment_id,
+                server_seq: 0,
+            });
+            continue;
+        }
+
+        let committed_deleted: Option<i64> = sqlx::query_scalar(
+            r#"SELECT deleted_at_ms_utc
+               FROM records
+               WHERE user_id = ? AND type = ? AND record_id = ?"#,
+        )
+        .bind(user.user_id)
+        .bind(TYPE_TODO_ATTACHMENT)
+        .bind(&attachment_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+        if committed_deleted.is_some_and(|ms| ms > 0) {
+            rejected.push(PushRejected {
+                r#type: TYPE_TODO_ATTACHMENT_COMMIT.to_string(),
+                record_id: attachment_id,
+                reason: "attachment_deleted".to_string(),
+            });
+            continue;
+        }
+
+        let has_committed_meta: Option<i64> = sqlx::query_scalar(
+            r#"SELECT 1
+               FROM records
+               WHERE user_id = ? AND type = ? AND record_id = ? AND deleted_at_ms_utc IS NULL
+               LIMIT 1"#,
+        )
+        .bind(user.user_id)
+        .bind(TYPE_TODO_ATTACHMENT)
+        .bind(&attachment_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+        let has_staged_meta: Option<i64> = sqlx::query_scalar(
+            r#"SELECT 1 FROM staged_records WHERE user_id = ? AND type = ? AND record_id = ? LIMIT 1"#,
+        )
+        .bind(user.user_id)
+        .bind(TYPE_TODO_ATTACHMENT)
+        .bind(&attachment_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+        if has_committed_meta.is_none() && has_staged_meta.is_none() {
+            rejected.push(PushRejected {
+                r#type: TYPE_TODO_ATTACHMENT_COMMIT.to_string(),
+                record_id: attachment_id,
+                reason: "missing_attachment_meta".to_string(),
+            });
+            continue;
+        }
+
+        commit_staged_attachment(&mut tx, user.user_id, &attachment_id)
+            .await
+            .map_err(|e| {
+                error!(error = %e, "commit_staged_attachment failed");
+                json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error")
+            })?;
+
+        accepted.push(PushAccepted {
+            r#type: TYPE_TODO_ATTACHMENT_COMMIT.to_string(),
+            record_id: attachment_id,
+            server_seq: 0,
+        });
+    }
+
     let body = PushResponse { accepted, rejected };
     let (resp, bytes_len) = json_bytes(&body)?;
+
+    if did_compact_records {
+        total_b64 = recompute_and_store_user_b64(&mut tx, user.user_id)
+            .await
+            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+    }
 
     sqlx::query(r#"UPDATE users SET stored_b64 = ?, api_outbound_bytes = api_outbound_bytes + ? WHERE id = ?"#)
         .bind(total_b64)
@@ -1088,6 +1790,8 @@ async fn push_sync(
 struct PullQuery {
     since: Option<i64>,
     limit: Option<i64>,
+    #[serde(rename = "excludeDeviceId")]
+    exclude_device_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -1104,6 +1808,12 @@ async fn pull_sync(
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorBody>)> {
     let since = q.since.unwrap_or(0).max(0);
     let limit = q.limit.unwrap_or(200).clamp(1, MAX_PULL_LIMIT) as i64;
+    let exclude_device_id = q
+        .exclude_device_id
+        .as_deref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string());
 
     let now_ms = now_ms_utc();
 
@@ -1208,12 +1918,14 @@ async fn pull_sync(
          ciphertext,
          server_seq
        FROM records
-       WHERE user_id = ? AND server_seq > ?
+       WHERE user_id = ? AND server_seq > ? AND (? IS NULL OR hlc_device_id != ?)
        ORDER BY server_seq ASC
        LIMIT ?"#,
     )
     .bind(user.user_id)
     .bind(since)
+    .bind(&exclude_device_id)
+    .bind(&exclude_device_id)
     .bind(limit)
     .fetch_all(&state.db)
     .await
@@ -1390,6 +2102,11 @@ async fn main() -> anyhow::Result<()> {
         .ok()
         .and_then(|s| s.parse().ok());
 
+    let body_limit_bytes: usize = std::env::var("BODY_LIMIT_BYTES")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(DEFAULT_BODY_LIMIT_BYTES);
+
     let billing = Arc::new(BillingConfig::load_from_env().context("load billing config")?);
     let admin = AdminConfig::load_from_env();
 
@@ -1438,6 +2155,30 @@ async fn main() -> anyhow::Result<()> {
         site_created_at_ms_utc,
     };
 
+    let staged_record_ttl_ms: i64 =
+        env_i64("STAGED_RECORD_TTL_MS").unwrap_or(24 * 60 * 60 * 1000);
+    let staged_gc_interval_secs: i64 = env_i64("STAGED_GC_INTERVAL_SECS").unwrap_or(60 * 60);
+    if staged_record_ttl_ms > 0 && staged_gc_interval_secs > 0 {
+        let db = state.db.clone();
+        tokio::spawn(async move {
+            let mut ticker =
+                tokio::time::interval(Duration::from_secs(staged_gc_interval_secs as u64));
+            loop {
+                ticker.tick().await;
+                match gc_staged_records(&db, staged_record_ttl_ms).await {
+                    Ok(deleted) => {
+                        if deleted > 0 {
+                            info!(deleted, "staged_records GC");
+                        }
+                    }
+                    Err(e) => {
+                        error!(error = %e, "staged_records GC failed");
+                    }
+                }
+            }
+        });
+    }
+
     let admin_entry_path = state.admin.entry_path.clone();
 
     let app = Router::new()
@@ -1455,7 +2196,7 @@ async fn main() -> anyhow::Result<()> {
                 .allow_methods([Method::GET, Method::POST, Method::PUT, Method::OPTIONS])
                 .allow_headers(Any),
         )
-        .layer(RequestBodyLimitLayer::new(BODY_LIMIT_BYTES))
+        .layer(RequestBodyLimitLayer::new(body_limit_bytes))
         .layer(
             TraceLayer::new_for_http().make_span_with(|req: &axum::http::Request<_>| {
                 tracing::info_span!(

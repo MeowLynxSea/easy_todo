@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:provider/provider.dart';
@@ -9,6 +11,7 @@ import 'package:easy_todo/widgets/calendar_widget.dart';
 import 'package:easy_todo/providers/app_settings_provider.dart';
 import 'package:easy_todo/utils/date_utils.dart';
 import 'package:easy_todo/screens/day_detail_screen.dart';
+import 'package:easy_todo/widgets/todo_details_presenter.dart';
 import 'package:easy_todo/widgets/web_desktop_content.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -342,130 +345,7 @@ class _HistoryScreenState extends State<HistoryScreen>
   }
 
   void _showTodoDetails(TodoModel todo) {
-    final l10n = AppLocalizations.of(context)!;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(todo.title),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (todo.description != null && todo.description!.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(todo.description!),
-              const SizedBox(height: 16),
-            ],
-            _buildDetailRow(l10n.createdLabel, todo.createdAt),
-            if (todo.completedAt != null) ...[
-              const SizedBox(height: 8),
-              _buildDetailRow(
-                l10n.completedLabel,
-                todo.completedAt!,
-                isCompleted: true,
-              ),
-            ],
-            if (todo.timeSpent != null && todo.timeSpent! > 0) ...[
-              const SizedBox(height: 8),
-              _buildTimeSpentRow(l10n.timeSpent, todo.timeSpent!),
-            ],
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: todo.isCompleted
-                    ? AppTheme.secondaryColor.withValues(alpha: 0.1)
-                    : AppTheme.primaryColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    todo.isCompleted
-                        ? Icons.check_circle
-                        : Icons.radio_button_unchecked,
-                    color: todo.isCompleted
-                        ? AppTheme.secondaryColor
-                        : AppTheme.primaryColor,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    todo.isCompleted ? l10n.complete : l10n.incomplete,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      color: todo.isCompleted
-                          ? AppTheme.secondaryColor
-                          : AppTheme.primaryColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(l10n.close),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(
-    String label,
-    DateTime date, {
-    bool isCompleted = false,
-  }) {
-    return Row(
-      children: [
-        Text(
-          '$label: ',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: isCompleted ? AppTheme.secondaryColor : Colors.grey[600],
-          ),
-        ),
-        Text(
-          _formatDate(date),
-          style: TextStyle(
-            fontSize: 12,
-            color: isCompleted ? AppTheme.secondaryColor : Colors.grey[600],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTimeSpentRow(String label, int timeSpent) {
-    final minutes = (timeSpent ~/ 60).toString().padLeft(2, '0');
-    final seconds = (timeSpent % 60).toString().padLeft(2, '0');
-    final formattedTime = '$minutes:$seconds';
-
-    return Row(
-      children: [
-        Icon(Icons.timer_outlined, size: 16, color: AppTheme.primaryColor),
-        const SizedBox(width: 8),
-        Text(
-          '$label: ',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: AppTheme.primaryColor,
-          ),
-        ),
-        Text(
-          formattedTime,
-          style: TextStyle(
-            fontSize: 12,
-            color: AppTheme.primaryColor,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
+    unawaited(showTodoDetails(context, todo));
   }
 
   String _formatDate(DateTime date) {

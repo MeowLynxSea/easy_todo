@@ -47,8 +47,9 @@ class NotificationService {
 
   Future<String> _getCurrentLanguageCode() async {
     try {
-      final prefs =
-          _hiveService.userPreferencesBox.get(UserPreferencesRepository.hiveKey);
+      final prefs = _hiveService.userPreferencesBox.get(
+        UserPreferencesRepository.hiveKey,
+      );
       final languageCode = prefs?.languageCode ?? '';
       if (languageCode.isNotEmpty) return languageCode;
     } catch (_) {}

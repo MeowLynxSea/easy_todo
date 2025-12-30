@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
-
 import 'package:easy_todo/models/ai_settings_model.dart';
 import 'package:easy_todo/models/pomodoro_model.dart';
 import 'package:easy_todo/models/repeat_todo_model.dart';
@@ -11,8 +10,10 @@ import 'package:easy_todo/models/sync_meta.dart';
 import 'package:easy_todo/models/sync/sync_record_envelope.dart';
 import 'package:easy_todo/models/sync_outbox_item.dart';
 import 'package:easy_todo/models/sync_state.dart';
+import 'package:easy_todo/models/todo_attachment_model.dart';
 import 'package:easy_todo/models/todo_model.dart';
 import 'package:easy_todo/models/user_preferences_model.dart';
+import 'package:easy_todo/services/attachment_storage_service.dart';
 import 'package:easy_todo/services/crypto/sync_crypto.dart';
 import 'package:easy_todo/services/dek_storage_service.dart';
 import 'package:easy_todo/services/hive_service.dart';
@@ -22,14 +23,17 @@ import 'package:easy_todo/services/repositories/pomodoro_repository.dart';
 import 'package:easy_todo/services/repositories/ai_settings_repository.dart';
 import 'package:easy_todo/services/repositories/repeat_todo_repository.dart';
 import 'package:easy_todo/services/repositories/statistics_data_repository.dart';
+import 'package:easy_todo/services/repositories/todo_attachment_repository.dart';
 import 'package:easy_todo/services/repositories/todo_repository.dart';
 import 'package:easy_todo/services/repositories/user_preferences_repository.dart';
 import 'package:easy_todo/services/sync/sync_api_client.dart';
 import 'package:easy_todo/services/sync/sync_auth_storage.dart';
 import 'package:easy_todo/services/sync/sync_server_auth_service.dart';
 import 'package:easy_todo/services/sync_write_service.dart';
+import 'package:easy_todo/utils/todo_attachment_record_id.dart';
 import 'package:easy_todo/utils/hlc_clock.dart';
 import 'package:flutter/foundation.dart';
+import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 
 enum SyncStatus { idle, running, error }
@@ -72,8 +76,16 @@ class SyncPushRejectedException implements Exception {
 }
 
 class SyncProvider extends ChangeNotifier {
-  static const int _pullPageLimit = 200;
+  // Keep pull pages small because attachment chunk ciphertext is large (base64
+  // in JSON). Large pages can easily time out on mobile networks.
+  static const int _pullPageLimit = 20;
   static const int _pushBatchLimit = 50;
+  // Attachments are large (base64 ciphertext in JSON). Keep the batch small to
+  // avoid common reverse-proxy defaults (often ~1MB) returning 413.
+  static const int _pushChunkBatchLimit = 2;
+  static const int _defaultAttachmentChunkSizeBytes = 256 * 1024;
+
+  static const int _attachmentCommitSchemaVersion = 1;
 
   static const Duration _autoSyncIndicatorMinVisible = Duration(
     milliseconds: 800,
@@ -84,11 +96,28 @@ class SyncProvider extends ChangeNotifier {
 
   static final Random _jitterRandom = Random.secure();
 
+  static int _bitCountByte(int v) {
+    var x = v & 0xff;
+    x = x - ((x >> 1) & 0x55);
+    x = (x & 0x33) + ((x >> 2) & 0x33);
+    x = (x + (x >> 4)) & 0x0f;
+    return x;
+  }
+
+  static int _countBits(Uint8List bytes) {
+    var count = 0;
+    for (final b in bytes) {
+      count += _bitCountByte(b);
+    }
+    return count;
+  }
+
   final HiveService _hiveService;
   final SyncWriteService _syncWriteService;
   final SyncCrypto _crypto;
   final DekStorageService _dekStorage;
   final SecureStorageService _secureStorage;
+  final AttachmentStorageService _attachmentStorage;
   final SyncAuthStorage _authStorage;
   final SyncServerAuthService _authService;
 
@@ -127,6 +156,7 @@ class SyncProvider extends ChangeNotifier {
     SyncCrypto? crypto,
     DekStorageService? dekStorage,
     SecureStorageService? secureStorage,
+    AttachmentStorageService? attachmentStorage,
     SyncAuthStorage? authStorage,
     SyncServerAuthService? authService,
   }) : _hiveService = hiveService ?? HiveService(),
@@ -134,6 +164,7 @@ class SyncProvider extends ChangeNotifier {
        _crypto = crypto ?? SyncCrypto(),
        _dekStorage = dekStorage ?? DekStorageService(),
        _secureStorage = secureStorage ?? SecureStorageService(),
+       _attachmentStorage = attachmentStorage ?? AttachmentStorageService(),
        _authStorage = authStorage ?? SyncAuthStorage(),
        _authService = authService ?? createSyncServerAuthService() {
     unawaited(_init());
@@ -814,8 +845,7 @@ class SyncProvider extends ChangeNotifier {
         final stateBefore = await _ensureStateLoaded();
         if (_isFreshSyncState(stateBefore)) {
           final probe = await client.pull(since: 0, limit: 1);
-          final serverHasData =
-              probe.records.isNotEmpty || probe.nextSince > 0;
+          final serverHasData = probe.records.isNotEmpty || probe.nextSince > 0;
           if (serverHasData) {
             _debugLog('fresh sync: server has data, adopting server state');
             await _clearLocalBusinessDataForServerAdoption();
@@ -900,6 +930,7 @@ class SyncProvider extends ChangeNotifier {
     final nowMsUtc = DateTime.now().toUtc().millisecondsSinceEpoch;
 
     int enqueued = 0;
+    final deviceId = state.deviceId;
 
     Future<void> enqueueIfNeeded(
       String type,
@@ -956,6 +987,35 @@ class SyncProvider extends ChangeNotifier {
         PomodoroRepository.schemaVersion,
       );
     }
+    for (final attachment in _hiveService.todoAttachmentsBox.values) {
+      await enqueueIfNeeded(
+        SyncTypes.todoAttachment,
+        attachment.id,
+        TodoAttachmentRepository.attachmentSchemaVersion,
+      );
+
+      final meta = metaBox.get(
+        SyncWriteService.metaKeyOf(SyncTypes.todoAttachment, attachment.id),
+      );
+      final localPath = attachment.localPath;
+      final hasLocalFile =
+          attachment.isComplete &&
+          localPath != null &&
+          localPath.trim().isNotEmpty &&
+          await _attachmentStorage.fileExists(localPath);
+      final isLocalOrigin =
+          meta != null && meta.hlcDeviceId == deviceId && hasLocalFile;
+      if (!isLocalOrigin) continue;
+
+      final chunkCount = attachment.chunkCount;
+      for (var i = 0; i < chunkCount; i++) {
+        await enqueueIfNeeded(
+          SyncTypes.todoAttachmentChunk,
+          TodoAttachmentChunkRecordId.build(attachment.id, i),
+          TodoAttachmentRepository.chunkSchemaVersion,
+        );
+      }
+    }
 
     // Also enqueue tombstones that may have been lost from outbox.
     for (final key in metaBox.keys.cast<String>()) {
@@ -1003,6 +1063,37 @@ class SyncProvider extends ChangeNotifier {
         }
       }
       if (!hasMissingMeta) {
+        for (final attachment in _hiveService.todoAttachmentsBox.values) {
+          if (isMetaMissing(SyncTypes.todoAttachment, attachment.id)) {
+            hasMissingMeta = true;
+            break;
+          }
+
+          final chunkCount = attachment.chunkCount;
+          if (chunkCount <= 0) continue;
+
+          final firstChunkId = TodoAttachmentChunkRecordId.build(
+            attachment.id,
+            0,
+          );
+          if (isMetaMissing(SyncTypes.todoAttachmentChunk, firstChunkId)) {
+            hasMissingMeta = true;
+            break;
+          }
+
+          if (chunkCount > 1) {
+            final lastChunkId = TodoAttachmentChunkRecordId.build(
+              attachment.id,
+              chunkCount - 1,
+            );
+            if (isMetaMissing(SyncTypes.todoAttachmentChunk, lastChunkId)) {
+              hasMissingMeta = true;
+              break;
+            }
+          }
+        }
+      }
+      if (!hasMissingMeta) {
         for (final repeat in _hiveService.repeatTodosBox.values) {
           if (isMetaMissing(SyncTypes.repeatTodo, repeat.id)) {
             hasMissingMeta = true;
@@ -1032,6 +1123,7 @@ class SyncProvider extends ChangeNotifier {
 
     _debugLog(
       'bootstrapLocalRecords: todos=${_hiveService.todosBox.length} '
+      'attach=${_hiveService.todoAttachmentsBox.length} '
       'repeat=${_hiveService.repeatTodosBox.length} '
       'stats=${_hiveService.statisticsDataBox.length} '
       'pomodoro=${_hiveService.pomodoroBox.length} '
@@ -1040,6 +1132,7 @@ class SyncProvider extends ChangeNotifier {
 
     final nowMsUtc = DateTime.now().toUtc().millisecondsSinceEpoch;
     final outbox = _hiveService.syncOutboxBox;
+    final deviceId = state.deviceId;
 
     Future<void> enqueue({
       required String type,
@@ -1096,6 +1189,36 @@ class SyncProvider extends ChangeNotifier {
         recordId: session.id,
         schemaVersion: PomodoroRepository.schemaVersion,
       );
+    }
+
+    for (final attachment in _hiveService.todoAttachmentsBox.values) {
+      await enqueue(
+        type: SyncTypes.todoAttachment,
+        recordId: attachment.id,
+        schemaVersion: TodoAttachmentRepository.attachmentSchemaVersion,
+      );
+
+      final meta = metaBox.get(
+        SyncWriteService.metaKeyOf(SyncTypes.todoAttachment, attachment.id),
+      );
+      final localPath = attachment.localPath;
+      final hasLocalFile =
+          attachment.isComplete &&
+          localPath != null &&
+          localPath.trim().isNotEmpty &&
+          await _attachmentStorage.fileExists(localPath);
+      final isLocalOrigin =
+          meta != null && meta.hlcDeviceId == deviceId && hasLocalFile;
+      if (!isLocalOrigin) continue;
+
+      final chunkCount = attachment.chunkCount;
+      for (var i = 0; i < chunkCount; i++) {
+        await enqueue(
+          type: SyncTypes.todoAttachmentChunk,
+          recordId: TodoAttachmentChunkRecordId.build(attachment.id, i),
+          schemaVersion: TodoAttachmentRepository.chunkSchemaVersion,
+        );
+      }
     }
 
     // Ensure tombstones are not lost (e.g. deleted before enabling sync).
@@ -1234,6 +1357,25 @@ class SyncProvider extends ChangeNotifier {
   }
 
   Future<void> _clearLocalBusinessDataForServerAdoption() async {
+    final attachments = _hiveService.todoAttachmentsBox.values.toList(
+      growable: false,
+    );
+    for (final a in attachments) {
+      try {
+        await _attachmentStorage.deleteFileIfExists(a.localPath);
+        final staging = a.localPath == null
+            ? null
+            : _attachmentStorage.stagingFilePathFor(a.localPath!);
+        if (staging != null && staging != a.localPath) {
+          await _attachmentStorage.deleteFileIfExists(staging);
+        }
+      } catch (e) {
+        _debugLog('delete attachment file failed id=${a.id}: $e');
+      }
+    }
+    await _hiveService.todoAttachmentsBox.clear();
+    await _hiveService.todoAttachmentChunksBox.clear();
+
     await _hiveService.todosBox.clear();
     await _hiveService.repeatTodosBox.clear();
     await _hiveService.statisticsDataBox.clear();
@@ -1313,19 +1455,70 @@ class SyncProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _pushOutbox(SyncApiClient client) async {
-    final dek = _dek!;
-    final state = await _ensureStateLoaded();
-    final dekId = _bundle?.dekId ?? state.dekId;
-    if (dekId == null) throw StateError('Missing dekId');
+  Future<void> _pruneOutboxInvalidAttachmentChunks() async {
+    final outbox = _hiveService.syncOutboxBox;
+    if (outbox.isEmpty) return;
 
+    final metaBox = _hiveService.syncMetaBox;
+    final state = await _ensureStateLoaded();
+    final deviceId = state.deviceId;
+
+    final keys = outbox.keys.whereType<String>().toList(growable: false);
+    for (final key in keys) {
+      final sep = key.indexOf(':');
+      if (sep <= 0 || sep >= key.length - 1) continue;
+      final type = key.substring(0, sep);
+      if (type != SyncTypes.todoAttachmentChunk) continue;
+
+      final meta = metaBox.get(key);
+      if (meta == null) {
+        await outbox.delete(key);
+        continue;
+      }
+      if (meta.deletedAtMsUtc != null) continue;
+
+      // Never try to push non-local chunk records: these are either pulled from
+      // other devices or corrupted/migrated outbox state.
+      if (meta.hlcDeviceId != deviceId) {
+        await outbox.delete(key);
+        continue;
+      }
+
+      final recordId = key.substring(sep + 1);
+      final parsed = TodoAttachmentChunkRecordId.tryParse(recordId);
+      if (parsed == null) {
+        await outbox.delete(key);
+        continue;
+      }
+
+      final attachment = _hiveService.todoAttachmentsBox.get(
+        parsed.attachmentId,
+      );
+      if (attachment == null) {
+        await outbox.delete(key);
+        continue;
+      }
+
+      final localPath = attachment.localPath;
+      final hasLocalFile =
+          attachment.isComplete &&
+          localPath != null &&
+          localPath.trim().isNotEmpty &&
+          await _attachmentStorage.fileExists(localPath);
+      if (!hasLocalFile) {
+        await outbox.delete(key);
+        continue;
+      }
+    }
+  }
+
+  Future<void> _pushOutbox(SyncApiClient client) async {
+    await _pruneOutboxInvalidAttachmentChunks();
     final outbox = _hiveService.syncOutboxBox;
     if (outbox.isEmpty) {
       _debugLog('pushOutbox: empty');
       return;
     }
-
-    final metaBox = _hiveService.syncMetaBox;
 
     final items = <(String key, SyncOutboxItem item)>[];
     for (final key in outbox.keys.cast<String>()) {
@@ -1343,10 +1536,244 @@ class SyncProvider extends ChangeNotifier {
     }
     _debugLog('pushOutbox: queued=${items.length} byType=$countsByType');
 
-    for (var offset = 0; offset < items.length; offset += _pushBatchLimit) {
-      final batch = items
+    final normal = items
+        .where(
+          (e) =>
+              e.$2.type != SyncTypes.todoAttachmentChunk &&
+              e.$2.type != SyncTypes.todoAttachmentCommit,
+        )
+        .toList(growable: false);
+    final chunks = items
+        .where((e) => e.$2.type == SyncTypes.todoAttachmentChunk)
+        .toList(growable: false);
+
+    await _pushOutboxEntries(
+      client,
+      entries: normal,
+      batchLimit: _pushBatchLimit,
+    );
+
+    await _pushOutboxEntries(
+      client,
+      entries: chunks,
+      batchLimit: _pushChunkBatchLimit,
+    );
+
+    await _maybeEnqueueAttachmentCommits();
+
+    if (outbox.isEmpty) return;
+
+    final commitEntries = <(String key, SyncOutboxItem item)>[];
+    for (final key in outbox.keys.cast<String>()) {
+      final item = outbox.get(key);
+      if (item == null) continue;
+      if (item.type != SyncTypes.todoAttachmentCommit) continue;
+      commitEntries.add((key, item));
+    }
+    commitEntries.sort(
+      (a, b) => a.$2.lastEnqueuedAtMsUtc.compareTo(b.$2.lastEnqueuedAtMsUtc),
+    );
+
+    final eligibleCommitEntries = _filterEligibleAttachmentCommits(
+      commits: commitEntries,
+      outbox: outbox,
+    );
+    if (eligibleCommitEntries.isEmpty) return;
+
+    await _pushOutboxEntries(
+      client,
+      entries: eligibleCommitEntries,
+      batchLimit: _pushBatchLimit,
+    );
+  }
+
+  List<(String key, SyncOutboxItem item)> _filterEligibleAttachmentCommits({
+    required List<(String key, SyncOutboxItem item)> commits,
+    required Box<SyncOutboxItem> outbox,
+  }) {
+    if (commits.isEmpty) return const [];
+
+    final pendingAttachments = _computePendingAttachmentUploads(outbox);
+    if (pendingAttachments.isEmpty) return commits;
+
+    final eligible = <(String key, SyncOutboxItem item)>[];
+    for (final entry in commits) {
+      final attachmentId = entry.$2.recordId;
+      if (pendingAttachments.contains(attachmentId)) continue;
+      eligible.add(entry);
+    }
+    return eligible;
+  }
+
+  Set<String> _computePendingAttachmentUploads(Box<SyncOutboxItem> outbox) {
+    final pending = <String>{};
+    final chunkPrefix = '${SyncTypes.todoAttachmentChunk}:';
+    final attachmentPrefix = '${SyncTypes.todoAttachment}:';
+
+    for (final key in outbox.keys.cast<String>()) {
+      if (key.startsWith(chunkPrefix)) {
+        final recordId = key.substring(chunkPrefix.length);
+        final parsed = TodoAttachmentChunkRecordId.tryParse(recordId);
+        if (parsed == null) continue;
+        pending.add(parsed.attachmentId);
+        continue;
+      }
+      if (key.startsWith(attachmentPrefix)) {
+        final attachmentId = key.substring(attachmentPrefix.length);
+        if (attachmentId.trim().isEmpty) continue;
+        pending.add(attachmentId);
+        continue;
+      }
+    }
+    return pending;
+  }
+
+  Future<void> _maybeEnqueueAttachmentCommits() async {
+    final state = await _ensureStateLoaded();
+    final deviceId = state.deviceId;
+
+    final outbox = _hiveService.syncOutboxBox;
+    final metaBox = _hiveService.syncMetaBox;
+
+    final pendingAttachments = _computePendingAttachmentUploads(outbox);
+
+    for (final attachment in _hiveService.todoAttachmentsBox.values) {
+      final attachmentId = attachment.id;
+
+      final attachmentMetaKey = SyncWriteService.metaKeyOf(
+        SyncTypes.todoAttachment,
+        attachmentId,
+      );
+      final attachmentMeta = metaBox.get(attachmentMetaKey);
+      if (attachmentMeta == null) continue;
+      if (attachmentMeta.deletedAtMsUtc != null) continue;
+
+      final localPath = attachment.localPath;
+      final hasLocalFile =
+          attachment.isComplete &&
+          localPath != null &&
+          localPath.trim().isNotEmpty &&
+          await _attachmentStorage.fileExists(localPath);
+      if (!hasLocalFile) continue;
+
+      // Only the creator device should commit; remote attachments are committed
+      // by their origin device.
+      if (attachmentMeta.hlcDeviceId != deviceId) continue;
+
+      // Wait until attachment metadata + all chunks have been pushed (outbox
+      // cleared) before emitting the commit marker.
+      if (pendingAttachments.contains(attachmentId)) continue;
+
+      final commitKey = SyncWriteService.metaKeyOf(
+        SyncTypes.todoAttachmentCommit,
+        attachmentId,
+      );
+      final existingCommitMeta = metaBox.get(commitKey);
+      if (existingCommitMeta?.deletedAtMsUtc != null) continue;
+      if (metaBox.containsKey(commitKey)) continue;
+      if (outbox.containsKey(commitKey)) continue;
+
+      await _syncWriteService.upsertRecord(
+        type: SyncTypes.todoAttachmentCommit,
+        recordId: attachmentId,
+        schemaVersion: _attachmentCommitSchemaVersion,
+        writeBusinessData: () async {},
+      );
+    }
+  }
+
+  Future<void> _pushOutboxEntries(
+    SyncApiClient client, {
+    required List<(String key, SyncOutboxItem item)> entries,
+    required int batchLimit,
+  }) async {
+    final dek = _dek!;
+    final state = await _ensureStateLoaded();
+    final dekId = _bundle?.dekId ?? state.dekId;
+    if (dekId == null) throw StateError('Missing dekId');
+
+    final outbox = _hiveService.syncOutboxBox;
+    final metaBox = _hiveService.syncMetaBox;
+
+    Future<void> pushWithAutoSplit({
+      required List<SyncRecordEnvelope> records,
+      required List<String> pushedKeys,
+    }) async {
+      if (records.isEmpty) return;
+
+      PushResponse resp;
+      try {
+        _debugLog('pushOutbox: pushing ${records.length} records');
+        resp = await client.push(records: records);
+      } on SyncApiException catch (e) {
+        if (e.statusCode == 413 && records.length > 1) {
+          final mid = records.length ~/ 2;
+          await pushWithAutoSplit(
+            records: records.sublist(0, mid),
+            pushedKeys: pushedKeys.sublist(0, mid),
+          );
+          if (outbox.isEmpty) return;
+          await pushWithAutoSplit(
+            records: records.sublist(mid),
+            pushedKeys: pushedKeys.sublist(mid),
+          );
+          return;
+        }
+        rethrow;
+      }
+
+      // Older HLC is benign (already have a newer version server-side), but
+      // other rejections mean the server did not store the record. If we ignore
+      // this, the UI may show "synced" while another device won't receive data.
+      final rejectedByReason = <String, int>{};
+      final ignorableKeys = <String>{};
+      for (final r in resp.rejected) {
+        if (r.reason == 'older_hlc') continue;
+        if (r.reason == 'quota_exceeded' &&
+            r.type == SyncTypes.todoAttachmentChunk) {
+          final metaKey = SyncWriteService.metaKeyOf(r.type, r.recordId);
+          final localMeta = metaBox.get(metaKey);
+          final isDeleteTombstone = localMeta?.deletedAtMsUtc != null;
+          // When a client deletes an attachment, it may attempt to tombstone
+          // chunk records that were never uploaded. If the user is currently
+          // over quota, the server will reject creating those new tombstones.
+          // Treat these as benign so deletion can still succeed (the chunk
+          // didn't exist server-side).
+          if (isDeleteTombstone) {
+            ignorableKeys.add(metaKey);
+            continue;
+          }
+        }
+        rejectedByReason[r.reason] = (rejectedByReason[r.reason] ?? 0) + 1;
+      }
+      if (rejectedByReason.isNotEmpty) {
+        throw SyncPushRejectedException(rejectedByReason);
+      }
+
+      final acceptedKeys = <String>{};
+      for (final a in resp.accepted) {
+        acceptedKeys.add('${a.type}:${a.recordId}');
+      }
+      final olderKeys = <String>{};
+      for (final r in resp.rejected) {
+        if (r.reason == 'older_hlc') {
+          olderKeys.add('${r.type}:${r.recordId}');
+        }
+      }
+
+      for (final key in pushedKeys) {
+        if (acceptedKeys.contains(key) ||
+            olderKeys.contains(key) ||
+            ignorableKeys.contains(key)) {
+          await outbox.delete(key);
+        }
+      }
+    }
+
+    for (var offset = 0; offset < entries.length; offset += batchLimit) {
+      final batch = entries
           .skip(offset)
-          .take(_pushBatchLimit)
+          .take(batchLimit)
           .toList(growable: false);
 
       final toPush = <SyncRecordEnvelope>[];
@@ -1379,37 +1806,7 @@ class SyncProvider extends ChangeNotifier {
 
       if (toPush.isEmpty) continue;
 
-      _debugLog('pushOutbox: pushing ${toPush.length} records');
-      final resp = await client.push(records: toPush);
-
-      // Older HLC is benign (already have a newer version server-side), but other
-      // rejections mean the server did not store the record. If we ignore this,
-      // the UI may show "synced" while another device won't receive data.
-      final rejectedByReason = <String, int>{};
-      for (final r in resp.rejected) {
-        if (r.reason == 'older_hlc') continue;
-        rejectedByReason[r.reason] = (rejectedByReason[r.reason] ?? 0) + 1;
-      }
-      if (rejectedByReason.isNotEmpty) {
-        throw SyncPushRejectedException(rejectedByReason);
-      }
-
-      final acceptedKeys = <String>{};
-      for (final a in resp.accepted) {
-        acceptedKeys.add('${a.type}:${a.recordId}');
-      }
-      final olderKeys = <String>{};
-      for (final r in resp.rejected) {
-        if (r.reason == 'older_hlc') {
-          olderKeys.add('${r.type}:${r.recordId}');
-        }
-      }
-
-      for (final key in pushedKeys) {
-        if (acceptedKeys.contains(key) || olderKeys.contains(key)) {
-          await outbox.delete(key);
-        }
-      }
+      await pushWithAutoSplit(records: toPush, pushedKeys: pushedKeys);
 
       if (outbox.isEmpty) return;
     }
@@ -1422,12 +1819,13 @@ class SyncProvider extends ChangeNotifier {
     required String dekId,
     required List<int> dek,
   }) async {
-    final payloadJson = await _readLocalPayloadJson(
-      type: type,
-      recordId: recordId,
-    );
-    if (payloadJson == null && meta.deletedAtMsUtc == null) {
-      return null;
+    final List<int> payloadBytes;
+    if (meta.deletedAtMsUtc != null) {
+      payloadBytes = const <int>[];
+    } else {
+      final read = await _readLocalPayloadBytes(type: type, recordId: recordId);
+      if (read == null) return null;
+      payloadBytes = read;
     }
 
     final hlc = HlcJson(
@@ -1436,7 +1834,6 @@ class SyncProvider extends ChangeNotifier {
       deviceId: meta.hlcDeviceId,
     );
 
-    final payloadBytes = utf8.encode(jsonEncode(payloadJson ?? const {}));
     return _crypto.encryptRecord(
       type: type,
       recordId: recordId,
@@ -1447,6 +1844,59 @@ class SyncProvider extends ChangeNotifier {
       dek: dek,
       payloadPlaintext: payloadBytes,
     );
+  }
+
+  Future<List<int>?> _readLocalPayloadBytes({
+    required String type,
+    required String recordId,
+  }) async {
+    switch (type) {
+      case SyncTypes.todoAttachment:
+        final attachment = _hiveService.todoAttachmentsBox.get(recordId);
+        if (attachment == null) return null;
+        return utf8.encode(jsonEncode(attachment.toSyncJson()));
+      case SyncTypes.todoAttachmentCommit:
+        return Uint8List(0);
+      case SyncTypes.todoAttachmentChunk:
+        final parsed = TodoAttachmentChunkRecordId.tryParse(recordId);
+        if (parsed == null) return null;
+        final attachment = _hiveService.todoAttachmentsBox.get(
+          parsed.attachmentId,
+        );
+        final localPath = attachment?.localPath;
+        if (attachment == null ||
+            localPath == null ||
+            localPath.trim().isEmpty) {
+          return null;
+        }
+        final chunkSize = attachment.chunkSize > 0
+            ? attachment.chunkSize
+            : _defaultAttachmentChunkSizeBytes;
+        final offset = parsed.chunkIndex * chunkSize;
+        final remaining = (attachment.size - offset)
+            .clamp(0, chunkSize)
+            .toInt();
+        if (remaining <= 0) return Uint8List(0);
+        try {
+          return await _attachmentStorage.readChunk(
+            filePath: localPath,
+            offset: offset,
+            length: remaining,
+          );
+        } catch (e) {
+          _debugLog(
+            'readChunk failed attachment=${parsed.attachmentId} index=${parsed.chunkIndex}: $e',
+          );
+          return null;
+        }
+      default:
+        final payloadJson = await _readLocalPayloadJson(
+          type: type,
+          recordId: recordId,
+        );
+        if (payloadJson == null) return null;
+        return utf8.encode(jsonEncode(payloadJson));
+    }
   }
 
   Future<Map<String, dynamic>?> _readLocalPayloadJson({
@@ -1533,7 +1983,11 @@ class SyncProvider extends ChangeNotifier {
     );
 
     while (true) {
-      final pull = await client.pull(since: cursor, limit: _pullPageLimit);
+      final pull = await client.pull(
+        since: cursor,
+        limit: _pullPageLimit,
+        excludeDeviceId: sinceBefore == 0 ? null : deviceId,
+      );
       if (pull.nextSince < cursor) {
         sawRollback = true;
       }
@@ -1591,17 +2045,10 @@ class SyncProvider extends ChangeNotifier {
             envelope: remote,
             dek: dek,
           );
-          final decoded = jsonDecode(utf8.decode(payloadBytes));
-          if (decoded is! Map<String, dynamic>) {
-            throw StateError(
-              'invalid record payload json: expected object, got ${decoded.runtimeType} '
-              'type=${remote.type} id=${remote.recordId}',
-            );
-          }
-          await _applyRemotePayload(
+          await _applyRemotePayloadBytes(
             type: remote.type,
             recordId: remote.recordId,
-            payload: decoded,
+            payloadBytes: Uint8List.fromList(payloadBytes),
           );
         }
 
@@ -1623,6 +2070,11 @@ class SyncProvider extends ChangeNotifier {
         }
 
         clock.observe(remoteHlc, nowMsUtc);
+
+        if (remote.deletedAtMsUtc != null &&
+            remote.type == SyncTypes.todoAttachment) {
+          await _handleRemoteAttachmentTombstone(remote.recordId);
+        }
       }
 
       cursor = pull.nextSince;
@@ -1653,6 +2105,12 @@ class SyncProvider extends ChangeNotifier {
     switch (type) {
       case SyncTypes.todo:
         await _hiveService.todosBox.put(recordId, TodoModel.fromJson(payload));
+        return;
+      case SyncTypes.todoAttachment:
+        await _upsertRemoteAttachmentMetadata(
+          recordId: recordId,
+          payload: payload,
+        );
         return;
       case SyncTypes.repeatTodo:
         await _hiveService.repeatTodosBox.put(
@@ -1697,6 +2155,245 @@ class SyncProvider extends ChangeNotifier {
       default:
         return;
     }
+  }
+
+  Future<void> _applyRemotePayloadBytes({
+    required String type,
+    required String recordId,
+    required Uint8List payloadBytes,
+  }) async {
+    if (type == SyncTypes.todoAttachmentChunk) {
+      await _applyRemoteAttachmentChunk(
+        recordId: recordId,
+        bytes: payloadBytes,
+      );
+      return;
+    }
+
+    final decoded = jsonDecode(utf8.decode(payloadBytes));
+    if (decoded is! Map<String, dynamic>) {
+      throw StateError(
+        'invalid record payload json: expected object, got ${decoded.runtimeType} '
+        'type=$type id=$recordId',
+      );
+    }
+    await _applyRemotePayload(type: type, recordId: recordId, payload: decoded);
+  }
+
+  Future<void> _upsertRemoteAttachmentMetadata({
+    required String recordId,
+    required Map<String, dynamic> payload,
+  }) async {
+    final incoming = TodoAttachmentModel.fromSyncJson(payload);
+    final existing = _hiveService.todoAttachmentsBox.get(recordId);
+
+    String? localPath = existing?.localPath;
+    if (localPath == null || localPath.trim().isEmpty) {
+      try {
+        localPath = await _attachmentStorage.buildAttachmentFilePath(
+          attachmentId: recordId,
+          fileName: incoming.fileName,
+        );
+      } on UnsupportedError {
+        localPath = null;
+      }
+    }
+
+    var expectedBitmapLen = (incoming.chunkCount + 7) ~/ 8;
+    if (expectedBitmapLen > (1 << 20)) {
+      expectedBitmapLen = 1 << 20;
+    }
+
+    Uint8List? bitmap;
+    int receivedCount;
+    bool isComplete;
+
+    if (existing == null) {
+      bitmap = Uint8List(expectedBitmapLen);
+      receivedCount = 0;
+      isComplete = false;
+    } else {
+      bitmap = existing.receivedChunkBitmap;
+      receivedCount = existing.receivedChunkCount.clamp(0, incoming.chunkCount);
+      isComplete = existing.isComplete;
+
+      final shouldTrack = bitmap != null || !existing.isComplete;
+      if (shouldTrack) {
+        final prevBitmap = bitmap;
+        bitmap = prevBitmap == null || prevBitmap.length != expectedBitmapLen
+            ? () {
+                final next = Uint8List(expectedBitmapLen);
+                if (prevBitmap != null) {
+                  final copyLen = min(prevBitmap.length, next.length);
+                  next.setRange(0, copyLen, prevBitmap);
+                }
+                return next;
+              }()
+            : prevBitmap;
+
+        receivedCount = _countBits(bitmap).clamp(0, incoming.chunkCount);
+        isComplete =
+            incoming.chunkCount > 0 && receivedCount >= incoming.chunkCount;
+      }
+    }
+
+    final merged = existing == null
+        ? incoming.copyWith(
+            localPath: localPath,
+            receivedChunkCount: receivedCount,
+            receivedChunkBitmap: bitmap,
+            isComplete: isComplete,
+          )
+        : existing.copyWith(
+            todoId: incoming.todoId,
+            fileName: incoming.fileName,
+            mimeType: incoming.mimeType,
+            size: incoming.size,
+            sha256B64: incoming.sha256B64,
+            chunkSize: incoming.chunkSize,
+            chunkCount: incoming.chunkCount,
+            createdAtMsUtc: incoming.createdAtMsUtc,
+            thumbnailAttachmentId: incoming.thumbnailAttachmentId,
+            localPath: localPath,
+            receivedChunkCount: receivedCount,
+            receivedChunkBitmap: bitmap,
+            isComplete: isComplete,
+          );
+
+    await _hiveService.todoAttachmentsBox.put(recordId, merged);
+  }
+
+  Future<void> _applyRemoteAttachmentChunk({
+    required String recordId,
+    required Uint8List bytes,
+  }) async {
+    final parsed = TodoAttachmentChunkRecordId.tryParse(recordId);
+    if (parsed == null) return;
+
+    final attachmentBox = _hiveService.todoAttachmentsBox;
+    final attachment = attachmentBox.get(parsed.attachmentId);
+    if (attachment == null) return;
+    if (attachment.chunkCount <= 0 ||
+        parsed.chunkIndex >= attachment.chunkCount) {
+      return;
+    }
+    if (attachment.isComplete) return;
+
+    var localPath = attachment.localPath;
+    if (localPath == null || localPath.trim().isEmpty) {
+      try {
+        localPath = await _attachmentStorage.buildAttachmentFilePath(
+          attachmentId: attachment.id,
+          fileName: attachment.fileName,
+        );
+      } on UnsupportedError {
+        return;
+      }
+    }
+
+    final chunkSize = attachment.chunkSize > 0
+        ? attachment.chunkSize
+        : _defaultAttachmentChunkSizeBytes;
+    final offset = parsed.chunkIndex * chunkSize;
+    final expectedLen = (attachment.size - offset).clamp(0, chunkSize).toInt();
+    if (expectedLen <= 0) {
+      return;
+    }
+    if (bytes.length != expectedLen) {
+      throw StateError(
+        'Invalid attachment chunk length: expected=$expectedLen got=${bytes.length} '
+        'attachment=${parsed.attachmentId} index=${parsed.chunkIndex}',
+      );
+    }
+
+    final stagingPath = _attachmentStorage.stagingFilePathFor(localPath);
+    if (stagingPath != localPath) {
+      final stagingExists = await _attachmentStorage.fileExists(stagingPath);
+      if (!stagingExists && attachment.receivedChunkCount > 0) {
+        final finalExists = await _attachmentStorage.fileExists(localPath);
+        if (finalExists) {
+          await _attachmentStorage.moveFile(
+            fromPath: localPath,
+            toPath: stagingPath,
+          );
+        }
+      }
+    }
+    await _attachmentStorage.writeChunk(
+      filePath: stagingPath,
+      offset: offset,
+      bytes: bytes,
+    );
+
+    var bitmapLen = (attachment.chunkCount + 7) ~/ 8;
+    if (bitmapLen > (1 << 20)) {
+      bitmapLen = 1 << 20;
+    }
+    final existingBitmap = attachment.receivedChunkBitmap;
+    final bitmapWasResized =
+        existingBitmap == null || existingBitmap.length != bitmapLen;
+    final bitmap = bitmapWasResized
+        ? () {
+            final next = Uint8List(bitmapLen);
+            if (existingBitmap != null) {
+              final copyLen = min(existingBitmap.length, next.length);
+              next.setRange(0, copyLen, existingBitmap);
+            }
+            return next;
+          }()
+        : existingBitmap;
+
+    final byteIndex = parsed.chunkIndex ~/ 8;
+    final bit = 1 << (parsed.chunkIndex % 8);
+    if (byteIndex < 0 || byteIndex >= bitmap.length) {
+      return;
+    }
+    final alreadyReceived = (bitmap[byteIndex] & bit) != 0;
+
+    if (!alreadyReceived) {
+      bitmap[byteIndex] = bitmap[byteIndex] | bit;
+    }
+
+    final currentReceivedCount = bitmapWasResized
+        ? _countBits(bitmap).clamp(0, attachment.chunkCount)
+        : attachment.receivedChunkCount.clamp(0, attachment.chunkCount);
+    final nextReceivedCount = alreadyReceived
+        ? currentReceivedCount
+        : (currentReceivedCount + 1).clamp(0, attachment.chunkCount);
+    final shouldFinalize =
+        attachment.chunkCount > 0 && nextReceivedCount >= attachment.chunkCount;
+
+    if (shouldFinalize) {
+      await _attachmentStorage.finalizeStagingFile(
+        stagingFilePath: stagingPath,
+        finalFilePath: localPath,
+      );
+    }
+
+    final updated = attachment.copyWith(
+      localPath: localPath,
+      receivedChunkCount: nextReceivedCount,
+      receivedChunkBitmap: bitmap,
+      isComplete: shouldFinalize,
+    );
+    await attachmentBox.put(attachment.id, updated);
+  }
+
+  Future<void> _handleRemoteAttachmentTombstone(String attachmentId) async {
+    final attachmentBox = _hiveService.todoAttachmentsBox;
+    final attachment = attachmentBox.get(attachmentId);
+
+    final path = attachment?.localPath;
+    if (path != null && path.trim().isNotEmpty) {
+      await _attachmentStorage.deleteFileIfExists(path);
+      final staging = _attachmentStorage.stagingFilePathFor(path);
+      if (staging != path) {
+        await _attachmentStorage.deleteFileIfExists(staging);
+      }
+    } else {
+      await _attachmentStorage.deleteFileIfExists(attachmentId);
+    }
+    await attachmentBox.delete(attachmentId);
   }
 }
 

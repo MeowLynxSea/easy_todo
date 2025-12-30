@@ -953,5 +953,18 @@
   "cloudSyncAutoSyncIntervalSubtitle": "Current: {interval}",
   "cloudSyncSecondsFormat": "{count}s",
   "cloudSyncMinutesFormat": "{count}m",
-  "cloudSyncMinutesSecondsFormat": "{minutes}m {seconds}s"
+  "cloudSyncMinutesSecondsFormat": "{minutes}m {seconds}s",
+
+  "todoAttachments": "Attachments",
+  "todoAttachmentsEmpty": "No attachments yet",
+  "todoAttachmentAdd": "Add file",
+  "todoAttachmentAddFailed": "Failed to add attachment: {error}",
+  "todoAttachmentExport": "Export",
+  "todoAttachmentNotAvailable": "File not available yet",
+  "todoAttachmentRemoveConfirmTitle": "Remove attachment?",
+  "todoAttachmentRemoveConfirmMessage": "This will remove the attachment from all devices after sync.",
+  "todoAttachmentUploading": "Uploading",
+  "todoAttachmentDownloading": "Downloading",
+  "todoAttachmentReady": "Ready",
+  "todoAttachmentWebNotSupported": "Attachments are not supported on web"
 }

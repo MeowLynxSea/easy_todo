@@ -2776,4 +2776,42 @@ class AppLocalizationsZh extends AppLocalizations {
   String cloudSyncMinutesSecondsFormat(Object minutes, Object seconds) {
     return '$minutes 分 $seconds 秒';
   }
+
+  @override
+  String get todoAttachments => '附件';
+
+  @override
+  String get todoAttachmentsEmpty => '暂无附件';
+
+  @override
+  String get todoAttachmentAdd => '添加文件';
+
+  @override
+  String todoAttachmentAddFailed(Object error) {
+    return '添加附件失败：$error';
+  }
+
+  @override
+  String get todoAttachmentExport => '导出';
+
+  @override
+  String get todoAttachmentNotAvailable => '文件尚未下载完成';
+
+  @override
+  String get todoAttachmentRemoveConfirmTitle => '删除附件？';
+
+  @override
+  String get todoAttachmentRemoveConfirmMessage => '同步后将从所有设备删除该附件。';
+
+  @override
+  String get todoAttachmentUploading => '上传中';
+
+  @override
+  String get todoAttachmentDownloading => '下载中';
+
+  @override
+  String get todoAttachmentReady => '可用';
+
+  @override
+  String get todoAttachmentWebNotSupported => 'Web 暂不支持附件';
 }

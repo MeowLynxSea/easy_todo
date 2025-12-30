@@ -136,3 +136,12 @@ Admin stats page:
 - Server stores only plaintext metadata + encrypted payload (`nonce`/`ciphertext`).
 - Conflict resolution is HLC-based: only accepts updates with strictly newer HLC.
 - `serverSeq` is per-user and increments only for accepted writes.
+
+## Limits
+
+- Per-record `nonce`/`ciphertext` base64 length is capped at **512KB per field** (reject reason: `record_too_large`).
+- Default request body limit is **5MB**. Override with `BODY_LIMIT_BYTES=<bytes>` if you need a higher limit (e.g. for larger push batches).
+
+## Bandwidth Tips
+
+- `GET /v1/sync/pull` supports optional `excludeDeviceId=<deviceId>` to skip returning records written by the same `hlc_device_id` (helps avoid pulling back your own just-pushed attachment chunks).

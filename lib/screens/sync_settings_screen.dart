@@ -838,8 +838,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                                   value: () {
                                     final current = sync.authProvider.trim();
                                     if (current.isEmpty) return null;
-                                    if (!sync.availableProviders
-                                        .contains(current)) {
+                                    if (!sync.availableProviders.contains(
+                                      current,
+                                    )) {
                                       return null;
                                     }
                                     return current;

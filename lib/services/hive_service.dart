@@ -9,6 +9,7 @@ import 'package:easy_todo/models/pomodoro_model.dart';
 import 'package:easy_todo/models/repeat_todo_model.dart';
 import 'package:easy_todo/models/statistics_data_model.dart';
 import 'package:easy_todo/models/ai_settings_model.dart';
+import 'package:easy_todo/models/todo_attachment_model.dart';
 import 'package:easy_todo/models/user_preferences_model.dart';
 import 'package:easy_todo/adapters/time_of_day_adapter.dart';
 import 'package:easy_todo/adapters/repeat_type_adapter.dart';
@@ -25,6 +26,8 @@ import 'package:easy_todo/services/cache_service.dart';
 
 class HiveService {
   static const String _todosBoxName = 'todos';
+  static const String _todoAttachmentsBoxName = 'todoAttachments';
+  static const String _todoAttachmentChunksBoxName = 'todoAttachmentChunks';
   static const String _statisticsBoxName = 'statistics';
   static const String _notificationSettingsBoxName = 'notificationSettings';
   static const String _appSettingsBoxName = 'appSettings';
@@ -59,6 +62,7 @@ class HiveService {
         Hive.registerAdapter(RepeatTodoModelAdapter());
         Hive.registerAdapter(StatisticsDataModelAdapter());
         Hive.registerAdapter(AISettingsModelAdapter());
+        Hive.registerAdapter(TodoAttachmentModelAdapter());
         Hive.registerAdapter(SyncStateAdapter());
         Hive.registerAdapter(SyncMetaAdapter());
         Hive.registerAdapter(SyncOutboxItemAdapter());
@@ -71,6 +75,8 @@ class HiveService {
       // Open boxes with error handling
       try {
         await Hive.openBox<TodoModel>(_todosBoxName);
+        await Hive.openBox<TodoAttachmentModel>(_todoAttachmentsBoxName);
+        await Hive.openBox<Uint8List>(_todoAttachmentChunksBoxName);
         await Hive.openBox<StatisticsModel>(_statisticsBoxName);
         await Hive.openBox<NotificationSettingsModel>(
           _notificationSettingsBoxName,
@@ -89,6 +95,10 @@ class HiveService {
         try {
           await _normalizeBoxKeysById<TodoModel>(
             Hive.box<TodoModel>(_todosBoxName),
+            (t) => t.id,
+          );
+          await _normalizeBoxKeysById<TodoAttachmentModel>(
+            Hive.box<TodoAttachmentModel>(_todoAttachmentsBoxName),
             (t) => t.id,
           );
           await _normalizeBoxKeysById<RepeatTodoModel>(
@@ -183,6 +193,10 @@ class HiveService {
   }
 
   Box<TodoModel> get todosBox => Hive.box<TodoModel>(_todosBoxName);
+  Box<TodoAttachmentModel> get todoAttachmentsBox =>
+      Hive.box<TodoAttachmentModel>(_todoAttachmentsBoxName);
+  Box<Uint8List> get todoAttachmentChunksBox =>
+      Hive.box<Uint8List>(_todoAttachmentChunksBoxName);
   Box<StatisticsModel> get statisticsBox =>
       Hive.box<StatisticsModel>(_statisticsBoxName);
   Box<NotificationSettingsModel> get notificationSettingsBox =>

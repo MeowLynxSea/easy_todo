@@ -1522,7 +1522,12 @@ async fn push_sync(
         let new_size: i64 = (r.nonce.len() + r.ciphertext.len()) as i64;
 
         let new_total_b64 = total_b64 + (new_size - existing_size);
-        let new_record_count = record_count + if !exists_committed && !exists_staged { 1 } else { 0 };
+        let new_record_count = record_count
+            + if !exists_committed && !exists_staged {
+                1
+            } else {
+                0
+            };
 
         if let Some(max) = state.max_records_per_user {
             if new_record_count > max {
@@ -2155,8 +2160,7 @@ async fn main() -> anyhow::Result<()> {
         site_created_at_ms_utc,
     };
 
-    let staged_record_ttl_ms: i64 =
-        env_i64("STAGED_RECORD_TTL_MS").unwrap_or(24 * 60 * 60 * 1000);
+    let staged_record_ttl_ms: i64 = env_i64("STAGED_RECORD_TTL_MS").unwrap_or(24 * 60 * 60 * 1000);
     let staged_gc_interval_secs: i64 = env_i64("STAGED_GC_INTERVAL_SECS").unwrap_or(60 * 60);
     if staged_record_ttl_ms > 0 && staged_gc_interval_secs > 0 {
         let db = state.db.clone();

@@ -93,6 +93,7 @@
   "cloudSyncErrorLocked": "同步未解锁（缺少 DEK）",
   "cloudSyncErrorAccountChanged": "检测到账号已切换，请重新启用同步",
   "cloudSyncErrorUnauthorized": "未授权（请检查 token）",
+  "cloudSyncErrorBanned": "账号已被封禁",
   "cloudSyncErrorKeyBundleNotFound": "服务器未找到 keyBundle",
   "cloudSyncErrorNetwork": "网络错误",
   "cloudSyncErrorConflict": "冲突（bundleVersion 不匹配）",

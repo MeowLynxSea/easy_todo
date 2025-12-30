@@ -93,6 +93,7 @@
   "cloudSyncErrorLocked": "Sync está bloqueado (falta DEK)",
   "cloudSyncErrorAccountChanged": "Cuenta cambiada: vuelve a activar la sincronización",
   "cloudSyncErrorUnauthorized": "No autorizado (verifique el token)",
+  "cloudSyncErrorBanned": "Cuenta bloqueada",
   "cloudSyncErrorKeyBundleNotFound": "Key bundle no encontrado en el servidor",
   "cloudSyncErrorNetwork": "Error de red",
   "cloudSyncErrorConflict": "Conflicto (versiones no coinciden)",

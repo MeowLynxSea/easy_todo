@@ -3,16 +3,46 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use axum::Json;
 use rand::RngCore;
+use serde::de::Deserializer;
 use serde::{Deserialize, Serialize};
 use sqlx::{QueryBuilder, Row, Sqlite};
 
 use crate::{
-    clear_subscription_if_expired, compute_effective_quota, json_error, now_ms_utc, AppState,
-    reset_user_api_outbound_if_new_month, ErrorBody, UserBillingRow,
+    clear_subscription_if_expired, compute_effective_quota, json_error, now_ms_utc,
+    reset_user_api_outbound_if_new_month, AppState, ErrorBody, UserBillingRow,
 };
 
 use super::admin_session::authenticate_admin;
 use super::util::check_same_origin;
+
+#[derive(Debug, Clone, Copy)]
+enum PatchField<T> {
+    Missing,
+    Clear,
+    Value(T),
+}
+
+impl<T> Default for PatchField<T> {
+    fn default() -> Self {
+        Self::Missing
+    }
+}
+
+impl<'de, T> Deserialize<'de> for PatchField<T>
+where
+    T: Deserialize<'de>,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let opt = Option::<T>::deserialize(deserializer)?;
+        Ok(match opt {
+            Some(v) => Self::Value(v),
+            None => Self::Clear,
+        })
+    }
+}
 
 fn normalize_plan_id(raw: &str) -> Option<String> {
     let id = raw.trim().to_lowercase();
@@ -467,13 +497,17 @@ pub(super) struct AdminUpdateUserRequest {
     #[serde(rename = "userId")]
     user_id: i64,
     #[serde(rename = "baseStorageB64")]
-    base_storage_b64: Option<Option<i64>>,
+    #[serde(default)]
+    base_storage_b64: PatchField<i64>,
     #[serde(rename = "baseOutboundBytes")]
-    base_outbound_bytes: Option<Option<i64>>,
+    #[serde(default)]
+    base_outbound_bytes: PatchField<i64>,
     #[serde(rename = "subscriptionPlanId")]
-    subscription_plan_id: Option<Option<String>>,
+    #[serde(default)]
+    subscription_plan_id: PatchField<String>,
     #[serde(rename = "subscriptionExpiresAtMsUtc")]
-    subscription_expires_at_ms_utc: Option<i64>,
+    #[serde(default)]
+    subscription_expires_at_ms_utc: PatchField<i64>,
     banned: Option<bool>,
 }
 
@@ -536,8 +570,12 @@ pub(super) async fn admin_update_user(
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
     banned_at_ms_utc = banned_at_ms_utc.filter(|ms| *ms > 0);
 
-    if let Some(v) = req.base_storage_b64 {
-        if let Some(n) = v {
+    match req.base_storage_b64 {
+        PatchField::Missing => {}
+        PatchField::Clear => {
+            base_storage_b64 = None;
+        }
+        PatchField::Value(n) => {
             if n < 0 {
                 tx.rollback().await.ok();
                 return Err(json_error(
@@ -546,13 +584,15 @@ pub(super) async fn admin_update_user(
                 ));
             }
             base_storage_b64 = Some(n);
-        } else {
-            base_storage_b64 = None;
         }
     }
 
-    if let Some(v) = req.base_outbound_bytes {
-        if let Some(n) = v {
+    match req.base_outbound_bytes {
+        PatchField::Missing => {}
+        PatchField::Clear => {
+            base_outbound_bytes = None;
+        }
+        PatchField::Value(n) => {
             if n < 0 {
                 tx.rollback().await.ok();
                 return Err(json_error(
@@ -561,74 +601,91 @@ pub(super) async fn admin_update_user(
                 ));
             }
             base_outbound_bytes = Some(n);
-        } else {
-            base_outbound_bytes = None;
         }
     }
 
     let mut subscription_plan_id = existing_plan_id.clone();
     let mut subscription_expires_at_ms_utc = existing_expires_at;
 
-    if let Some(v) = req.subscription_plan_id {
-        let new_plan_id = v
-            .as_deref()
-            .map(|s| s.trim().to_string())
-            .unwrap_or_default();
-        if new_plan_id.is_empty() {
+    let plan_patch_is_missing = matches!(&req.subscription_plan_id, PatchField::Missing);
+
+    match req.subscription_plan_id {
+        PatchField::Missing => {}
+        PatchField::Clear => {
             subscription_plan_id = None;
             subscription_expires_at_ms_utc = None;
-        } else {
-            let Some(norm) = normalize_plan_id(&new_plan_id) else {
-                tx.rollback().await.ok();
-                return Err(json_error(
-                    StatusCode::BAD_REQUEST,
-                    "invalid_subscription_plan_id",
-                ));
-            };
-            let Some(plan) = state.billing.plans.get(&norm) else {
-                tx.rollback().await.ok();
-                return Err(json_error(StatusCode::BAD_REQUEST, "unknown_plan"));
-            };
-            subscription_plan_id = Some(plan.id.clone());
-            let exp_ms = match req.subscription_expires_at_ms_utc {
-                Some(v) => v,
-                None => now_ms.saturating_add(plan.duration_ms),
-            };
-            if exp_ms < 0 {
-                tx.rollback().await.ok();
-                return Err(json_error(
-                    StatusCode::BAD_REQUEST,
-                    "invalid_subscription_expires_at_ms_utc",
-                ));
-            }
-            if exp_ms <= now_ms {
+        }
+        PatchField::Value(v) => {
+            let new_plan_id = v.trim().to_string();
+            if new_plan_id.is_empty() {
                 subscription_plan_id = None;
                 subscription_expires_at_ms_utc = None;
             } else {
-                subscription_expires_at_ms_utc = Some(exp_ms);
+                let Some(norm) = normalize_plan_id(&new_plan_id) else {
+                    tx.rollback().await.ok();
+                    return Err(json_error(
+                        StatusCode::BAD_REQUEST,
+                        "invalid_subscription_plan_id",
+                    ));
+                };
+                let Some(plan) = state.billing.plans.get(&norm) else {
+                    tx.rollback().await.ok();
+                    return Err(json_error(StatusCode::BAD_REQUEST, "unknown_plan"));
+                };
+                subscription_plan_id = Some(plan.id.clone());
+                let exp_ms = match req.subscription_expires_at_ms_utc {
+                    PatchField::Value(v) => v,
+                    PatchField::Clear | PatchField::Missing => {
+                        now_ms.saturating_add(plan.duration_ms)
+                    }
+                };
+                if exp_ms < 0 {
+                    tx.rollback().await.ok();
+                    return Err(json_error(
+                        StatusCode::BAD_REQUEST,
+                        "invalid_subscription_expires_at_ms_utc",
+                    ));
+                }
+                if exp_ms <= now_ms {
+                    subscription_plan_id = None;
+                    subscription_expires_at_ms_utc = None;
+                } else {
+                    subscription_expires_at_ms_utc = Some(exp_ms);
+                }
             }
         }
-    } else if let Some(exp_ms) = req.subscription_expires_at_ms_utc {
-        if exp_ms < 0 {
-            tx.rollback().await.ok();
-            return Err(json_error(
-                StatusCode::BAD_REQUEST,
-                "invalid_subscription_expires_at_ms_utc",
-            ));
-        }
-        let Some(norm) = existing_plan_id.as_deref().and_then(normalize_plan_id) else {
-            tx.rollback().await.ok();
-            return Err(json_error(
-                StatusCode::BAD_REQUEST,
-                "subscription_plan_id_required",
-            ));
-        };
-        if exp_ms <= now_ms {
-            subscription_plan_id = None;
-            subscription_expires_at_ms_utc = None;
-        } else {
-            subscription_plan_id = Some(norm);
-            subscription_expires_at_ms_utc = Some(exp_ms);
+    }
+
+    if plan_patch_is_missing {
+        match req.subscription_expires_at_ms_utc {
+            PatchField::Missing => {}
+            PatchField::Clear => {
+                subscription_plan_id = None;
+                subscription_expires_at_ms_utc = None;
+            }
+            PatchField::Value(exp_ms) => {
+                if exp_ms < 0 {
+                    tx.rollback().await.ok();
+                    return Err(json_error(
+                        StatusCode::BAD_REQUEST,
+                        "invalid_subscription_expires_at_ms_utc",
+                    ));
+                }
+                let Some(norm) = existing_plan_id.as_deref().and_then(normalize_plan_id) else {
+                    tx.rollback().await.ok();
+                    return Err(json_error(
+                        StatusCode::BAD_REQUEST,
+                        "subscription_plan_id_required",
+                    ));
+                };
+                if exp_ms <= now_ms {
+                    subscription_plan_id = None;
+                    subscription_expires_at_ms_utc = None;
+                } else {
+                    subscription_plan_id = Some(norm);
+                    subscription_expires_at_ms_utc = Some(exp_ms);
+                }
+            }
         }
     }
 

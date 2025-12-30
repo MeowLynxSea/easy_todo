@@ -93,6 +93,7 @@
   "cloudSyncErrorLocked": "Sync is locked (missing DEK)",
   "cloudSyncErrorAccountChanged": "Account changed — please re-enable sync",
   "cloudSyncErrorUnauthorized": "Unauthorized (check token)",
+  "cloudSyncErrorBanned": "Account banned",
   "cloudSyncErrorKeyBundleNotFound": "Key bundle not found on server",
   "cloudSyncErrorNetwork": "Network error",
   "cloudSyncErrorConflict": "Conflict (bundle version mismatch)",

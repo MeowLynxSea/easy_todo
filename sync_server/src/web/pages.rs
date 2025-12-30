@@ -10,8 +10,8 @@ use serde::Deserialize;
 use sqlx::Row;
 
 use crate::{
-    clear_subscription_if_expired, compute_effective_quota, json_error, now_ms_utc, AppState,
-    reset_user_api_outbound_if_new_month, ErrorBody, UserBillingRow,
+    clear_subscription_if_expired, compute_effective_quota, json_error, now_ms_utc,
+    reset_user_api_outbound_if_new_month, AppState, ErrorBody, UserBillingRow,
 };
 
 use super::layout::{nav_bar, page_shell, stat_card, stat_card_ms, stat_card_ms_opt};
@@ -73,6 +73,95 @@ pub(super) async fn home_page(
     let base_url = state.auth.config.base_url.trim_end_matches('/').to_string();
     let server_link = h(&base_url);
 
+    let fmt_limit = |v: Option<i64>| match v {
+        Some(v) => format_bytes(v),
+        None => "不限".to_string(),
+    };
+
+    let mut plans = state.billing.plans.values().collect::<Vec<_>>();
+    plans.sort_by(|a, b| {
+        a.duration_ms
+            .cmp(&b.duration_ms)
+            .then_with(|| a.id.cmp(&b.id))
+    });
+
+    let base_storage_b64 = state.billing.default_base_storage_b64.filter(|v| *v >= 0);
+    let base_outbound_bytes = state
+        .billing
+        .default_base_outbound_bytes
+        .filter(|v| *v >= 0);
+
+    let plan_rows = if plans.is_empty() {
+        r#"<tr class="table-row"><td class="px-3 py-3 text-xs muted" colspan="4">未配置订阅方案</td></tr>"#
+            .to_string()
+    } else {
+        plans
+            .into_iter()
+            .map(|plan| {
+                let duration_secs = (plan.duration_ms / 1000).max(0) as u64;
+                let duration_display = if duration_secs % 86400 == 0 {
+                    format!("{} 天", duration_secs / 86400)
+                } else {
+                    format_uptime(Duration::from_secs(duration_secs))
+                };
+
+                let total_storage =
+                    base_storage_b64.map(|v| v.saturating_add(plan.extra_storage_b64.max(0)));
+                let total_outbound =
+                    base_outbound_bytes.map(|v| v.saturating_add(plan.extra_outbound_bytes.max(0)));
+
+                format!(
+                    r#"<tr class="table-row">
+  <td class="px-3 py-2 text-xs font-semibold">{name}</td>
+  <td class="px-3 py-2 text-xs font-mono">{duration}</td>
+  <td class="px-3 py-2 text-xs font-mono">{storage}</td>
+  <td class="px-3 py-2 text-xs font-mono">{outbound}</td>
+</tr>"#,
+                    name = h(plan.name.trim()),
+                    duration = h(&duration_display),
+                    storage = h(&fmt_limit(total_storage)),
+                    outbound = h(&fmt_limit(total_outbound)),
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+
+    let plans_section = format!(
+        r#"<div class="mt-10 card p-6" data-spotlight>
+  <h2 class="text-base font-semibold">订阅方案</h2>
+  <p class="mt-2 text-sm muted">总限额 = 基础配额 + 订阅额外配额</p>
+  <dl class="mt-4 grid gap-3 text-sm md:grid-cols-2">
+    <div class="subcard">
+      <dt class="text-xs font-medium subtle">基础存储配额</dt>
+      <dd class="mt-1 font-mono">{base_storage}</dd>
+    </div>
+    <div class="subcard">
+      <dt class="text-xs font-medium subtle">基础出站配额</dt>
+      <dd class="mt-1 font-mono">{base_outbound}</dd>
+    </div>
+  </dl>
+  <div class="table-wrap mt-4 overflow-x-auto">
+    <table class="table w-full text-left text-xs">
+      <thead class="subtle">
+        <tr>
+          <th class="px-3 py-2">名称</th>
+          <th class="px-3 py-2">有效期</th>
+          <th class="px-3 py-2">总存储限额</th>
+          <th class="px-3 py-2">总出站限额</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows}
+      </tbody>
+    </table>
+  </div>
+</div>"#,
+        base_storage = h(&fmt_limit(base_storage_b64)),
+        base_outbound = h(&fmt_limit(base_outbound_bytes)),
+        rows = plan_rows
+    );
+
     let body = format!(
         r#"
 {nav}
@@ -112,6 +201,8 @@ pub(super) async fn home_page(
       <p id="copy-hint" class="mt-2 hidden text-xs text-emerald-600 dark:text-emerald-400">已复制</p>
     </div>
   </div>
+
+  {plans}
 
     <div class="mt-8 flex flex-wrap items-center justify-between gap-3">
       <div class="text-xs subtle">
@@ -153,6 +244,7 @@ pub(super) async fn home_page(
         stat_uptime = stat_card("已提供服务", &format_uptime(service_duration)),
         server_link = server_link,
         server_link_js = serde_json::to_string(&base_url).unwrap_or_else(|_| "\"\"".to_string()),
+        plans = plans_section,
     );
 
     Ok(Html(page_shell("轻单 同步服务", &body)))
@@ -334,16 +426,6 @@ pub(super) async fn dashboard_page(
             .fetch_one(&state.db)
             .await
             .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
-
-    let active_sessions: i64 = sqlx::query_scalar(
-        r#"SELECT COUNT(*) FROM refresh_tokens
-           WHERE user_id = ? AND revoked_at_ms_utc IS NULL AND expires_at_ms_utc > ?"#,
-    )
-    .bind(user_id)
-    .bind(now_ms)
-    .fetch_one(&state.db)
-    .await
-    .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
     let user_billing = UserBillingRow {
         base_storage_b64,
@@ -530,7 +612,10 @@ pub(super) async fn dashboard_page(
             "bg-[color:var(--accent)]"
         },
         out_ratio = h(&fmt_ratio(api_outbound_bytes, quota.allowed_outbound_bytes)),
-        out_pct = h(&fmt_percent(api_outbound_bytes, quota.allowed_outbound_bytes)),
+        out_pct = h(&fmt_percent(
+            api_outbound_bytes,
+            quota.allowed_outbound_bytes
+        )),
         out_width = bar_width(api_outbound_bytes, quota.allowed_outbound_bytes),
         out_bar = if over_outbound {
             "bg-rose-500"
@@ -657,7 +742,7 @@ pub(super) async fn dashboard_page(
     {stat_records}
     {usage_card}
     {stat_last_sync}
-    {stat_sessions}
+    {stat_user_id}
   </div>
 
   <div class="mt-10 card p-6" data-spotlight>
@@ -784,11 +869,11 @@ pub(super) async fn dashboard_page(
 </script>
 "#,
         nav = nav_bar(Some("仪表盘")),
+        stat_user_id = stat_card("用户ID", &format_number(user_id)),
         stat_created = stat_card_ms("注册时间", created_at_ms, "created-at"),
         stat_records = stat_card("记录数", &format_number(total_records)),
         usage_card = usage_card,
         stat_last_sync = stat_card_ms_opt("最近同步", last_sync_at_ms, "last-sync"),
-        stat_sessions = stat_card("活跃会话", &format_number(active_sessions)),
         provider = h(&oauth_provider_display),
         subscription_section = subscription_section,
         quota_section = quota_section,

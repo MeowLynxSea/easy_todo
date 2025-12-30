@@ -1247,6 +1247,18 @@ async fn auth_exchange(
         return Err(json_error(StatusCode::UNAUTHORIZED, "ticket expired"));
     }
 
+    let banned_at_ms_utc: Option<i64> =
+        sqlx::query_scalar(r#"SELECT banned_at_ms_utc FROM users WHERE id = ?"#)
+            .bind(user_id)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?
+            .flatten();
+    if banned_at_ms_utc.is_some_and(|ms| ms > 0) {
+        tx.rollback().await.ok();
+        return Err(json_error(StatusCode::FORBIDDEN, "banned"));
+    }
+
     let updated = sqlx::query(
         r#"UPDATE auth_tickets
            SET consumed_at_ms_utc = ?
@@ -1307,11 +1319,23 @@ async fn auth_refresh(
         .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
 
     let now_ms = now_ms_utc();
-    let (_user_id, tokens) = state
+    let (user_id, tokens) = state
         .auth
         .rotate_refresh_token(&mut tx, &req.refresh_token, now_ms)
         .await
         .map_err(|_| json_error(StatusCode::UNAUTHORIZED, "refresh token expired"))?;
+
+    let banned_at_ms_utc: Option<i64> =
+        sqlx::query_scalar(r#"SELECT banned_at_ms_utc FROM users WHERE id = ?"#)
+            .bind(user_id)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?
+            .flatten();
+    if banned_at_ms_utc.is_some_and(|ms| ms > 0) {
+        tx.rollback().await.ok();
+        return Err(json_error(StatusCode::FORBIDDEN, "banned"));
+    }
 
     tx.commit()
         .await

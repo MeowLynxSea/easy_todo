@@ -152,8 +152,10 @@ class SyncApiClient {
         },
         onError: (err, handler) async {
           final status = err.response?.statusCode;
+          final isBanned =
+              status == 403 && _isBannedErrorBody(err.response?.data);
           final shouldRetry =
-              (status == 401 || status == 403) &&
+              (status == 401 || (status == 403 && !isBanned)) &&
               err.requestOptions.extra['__sync_retried'] != true;
           if (!shouldRetry) {
             handler.next(err);
@@ -186,6 +188,13 @@ class SyncApiClient {
       trimmed = trimmed.substring(0, trimmed.length - 1);
     }
     return trimmed;
+  }
+
+  static bool _isBannedErrorBody(Object? data) {
+    if (data is Map && data['error'] is String) {
+      return (data['error'] as String).trim().toLowerCase() == 'banned';
+    }
+    return false;
   }
 
   Future<String?> _getAccessToken() async {
@@ -223,8 +232,13 @@ class SyncApiClient {
       return tokens;
     } catch (e) {
       final status = e is DioException ? e.response?.statusCode : null;
+      final isBanned =
+          e is DioException &&
+          status == 403 &&
+          _isBannedErrorBody(e.response?.data);
       final shouldClear =
-          status == 401 || status == 403; // refresh token invalid/expired
+          status == 401 ||
+          (status == 403 && !isBanned); // refresh token invalid/expired
       if (shouldClear) {
         await storage.clear();
       }

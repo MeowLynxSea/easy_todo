@@ -291,6 +291,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cloudSyncErrorUnauthorized => '未授权（请检查 token）';
 
   @override
+  String get cloudSyncErrorBanned => '账号已被封禁';
+
+  @override
   String get cloudSyncErrorKeyBundleNotFound => '服务器未找到 keyBundle';
 
   @override

@@ -104,14 +104,18 @@ class AttachmentStorageService {
     return dest.path;
   }
 
-  String stagingFilePathFor(String finalFilePath) => '$finalFilePath$_stagingSuffix';
+  String stagingFilePathFor(String finalFilePath) =>
+      '$finalFilePath$_stagingSuffix';
 
   Future<bool> fileExists(String filePath) async {
     final file = File(filePath);
     return file.exists();
   }
 
-  Future<void> moveFile({required String fromPath, required String toPath}) async {
+  Future<void> moveFile({
+    required String fromPath,
+    required String toPath,
+  }) async {
     if (fromPath == toPath) return;
 
     final from = File(fromPath);

@@ -32,6 +32,7 @@ import 'package:easy_todo/services/sync/sync_server_auth_service.dart';
 import 'package:easy_todo/services/sync_write_service.dart';
 import 'package:easy_todo/utils/todo_attachment_record_id.dart';
 import 'package:easy_todo/utils/hlc_clock.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
@@ -48,6 +49,7 @@ enum SyncErrorCode {
   invalidPassphrase,
   accountChanged,
   unauthorized,
+  banned,
   keyBundleNotFound,
   network,
   conflict,
@@ -1465,6 +1467,29 @@ class SyncProvider extends ChangeNotifier {
       _status = SyncStatus.error;
       if (e is InvalidPassphraseException) {
         _lastErrorCode = SyncErrorCode.invalidPassphrase;
+      } else if (e is DioException) {
+        final status = e.response?.statusCode;
+        final data = e.response?.data;
+        final message = data is Map && data['error'] is String
+            ? (data['error'] as String).trim()
+            : (e.message ?? 'network error');
+        final messageLower = message.toLowerCase();
+
+        if (status == null) {
+          _lastErrorCode = SyncErrorCode.network;
+        } else if (status == 402) {
+          _lastErrorCode = SyncErrorCode.quotaExceeded;
+          _lastErrorDetail = message;
+        } else if (status == 403 && messageLower == 'banned') {
+          _lastErrorCode = SyncErrorCode.banned;
+          _lastErrorDetail = message;
+        } else if (status == 401 || status == 403) {
+          _lastErrorCode = SyncErrorCode.unauthorized;
+        } else if (status == 409) {
+          _lastErrorCode = SyncErrorCode.conflict;
+        } else {
+          _lastErrorCode = SyncErrorCode.unknown;
+        }
       } else if (e is SyncPushRejectedException) {
         if (e.rejectedByReason.length == 1 &&
             e.rejectedByReason.keys.single == 'quota_exceeded') {
@@ -1480,6 +1505,10 @@ class SyncProvider extends ChangeNotifier {
           _lastErrorCode = SyncErrorCode.network;
         } else if (e.statusCode == 402) {
           _lastErrorCode = SyncErrorCode.quotaExceeded;
+          _lastErrorDetail = e.message;
+        } else if (e.statusCode == 403 &&
+            e.message.trim().toLowerCase() == 'banned') {
+          _lastErrorCode = SyncErrorCode.banned;
           _lastErrorDetail = e.message;
         } else if (e.statusCode == 401 || e.statusCode == 403) {
           _lastErrorCode = SyncErrorCode.unauthorized;

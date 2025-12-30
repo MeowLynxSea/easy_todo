@@ -93,6 +93,7 @@
   "cloudSyncErrorLocked": "La sync est verrouillée (DEK manquant)",
   "cloudSyncErrorAccountChanged": "Compte changé — réactivez la synchronisation",
   "cloudSyncErrorUnauthorized": "Non autorisé (vérifiez le jeton)",
+  "cloudSyncErrorBanned": "Compte banni",
   "cloudSyncErrorKeyBundleNotFound": "Key bundle introuvable sur le serveur",
   "cloudSyncErrorNetwork": "Erreur réseau",
   "cloudSyncErrorConflict": "Conflit (version du bundle)",

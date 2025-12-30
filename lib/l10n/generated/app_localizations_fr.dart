@@ -305,6 +305,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get cloudSyncErrorUnauthorized => 'Non autorisé (vérifiez le jeton)';
 
   @override
+  String get cloudSyncErrorBanned => 'Compte banni';
+
+  @override
   String get cloudSyncErrorKeyBundleNotFound =>
       'Key bundle introuvable sur le serveur';
 

@@ -93,6 +93,7 @@
   "cloudSyncErrorLocked": "Sync ist gesperrt (DEK fehlt)",
   "cloudSyncErrorAccountChanged": "Konto gewechselt – bitte Sync erneut aktivieren",
   "cloudSyncErrorUnauthorized": "Nicht autorisiert (Token prüfen)",
+  "cloudSyncErrorBanned": "Konto gesperrt",
   "cloudSyncErrorKeyBundleNotFound": "Key-Bundle auf dem Server nicht gefunden",
   "cloudSyncErrorNetwork": "Netzwerkfehler",
   "cloudSyncErrorConflict": "Konflikt (Bundle-Version stimmt nicht überein)",

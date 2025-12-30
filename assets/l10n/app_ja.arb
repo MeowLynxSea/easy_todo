@@ -93,6 +93,7 @@
   "cloudSyncErrorLocked": "同期がロックされています（DEK 不足）",
   "cloudSyncErrorAccountChanged": "アカウントが変更されました。同期を再度有効にしてください",
   "cloudSyncErrorUnauthorized": "認証されていません（トークンを確認）",
+  "cloudSyncErrorBanned": "アカウントが凍結されています",
   "cloudSyncErrorKeyBundleNotFound": "サーバーに keyBundle が見つかりません",
   "cloudSyncErrorNetwork": "ネットワークエラー",
   "cloudSyncErrorConflict": "競合（bundleVersion 不一致）",

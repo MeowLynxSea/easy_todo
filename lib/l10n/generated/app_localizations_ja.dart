@@ -297,6 +297,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get cloudSyncErrorUnauthorized => '認証されていません（トークンを確認）';
 
   @override
+  String get cloudSyncErrorBanned => 'アカウントが凍結されています';
+
+  @override
   String get cloudSyncErrorKeyBundleNotFound => 'サーバーに keyBundle が見つかりません';
 
   @override

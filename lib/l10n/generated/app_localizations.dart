@@ -672,6 +672,12 @@ abstract class AppLocalizations {
   /// **'Unauthorized (check token)'**
   String get cloudSyncErrorUnauthorized;
 
+  /// No description provided for @cloudSyncErrorBanned.
+  ///
+  /// In en, this message translates to:
+  /// **'Account banned'**
+  String get cloudSyncErrorBanned;
+
   /// No description provided for @cloudSyncErrorKeyBundleNotFound.
   ///
   /// In en, this message translates to:

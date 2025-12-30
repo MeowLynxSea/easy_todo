@@ -297,6 +297,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get cloudSyncErrorUnauthorized => '인증되지 않았습니다(토큰 확인)';
 
   @override
+  String get cloudSyncErrorBanned => '계정이 차단되었습니다';
+
+  @override
   String get cloudSyncErrorKeyBundleNotFound => '서버에서 keyBundle을 찾을 수 없습니다';
 
   @override

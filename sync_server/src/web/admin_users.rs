@@ -369,14 +369,15 @@ pub(super) async fn admin_users_page(
   function localInputValueToMs(value) {{
     const s = String(value || '').trim();
     if (!s) return null;
-    const m = s.match(/^(\\d{{4}})-(\\d{{2}})-(\\d{{2}})T(\\d{{2}}):(\\d{{2}})/);
+    const m = s.match(/^(\d{{4}})-(\d{{2}})-(\d{{2}})T(\d{{2}}):(\d{{2}})(?::(\d{{2}}))?/);
     if (!m) return null;
     const y = Number(m[1]);
     const mo = Number(m[2]) - 1;
     const da = Number(m[3]);
     const h = Number(m[4]);
     const mi = Number(m[5]);
-    const d = new Date(y, mo, da, h, mi, 0, 0);
+    const se = Number(m[6] || '0');
+    const d = new Date(y, mo, da, h, mi, se, 0);
     const ms = d.getTime();
     return Number.isFinite(ms) ? ms : null;
   }}
@@ -439,12 +440,20 @@ pub(super) async fn admin_users_page(
       show(userErr, true);
       return;
     }}
+    const expiresMs =
+      subExpires.value === '' ? null : localInputValueToMs(subExpires.value);
+    if (subExpires.value !== '' && expiresMs === null) {{
+      userErr.textContent = '订阅到期时间格式无效';
+      show(userErr, true);
+      return;
+    }}
+
     const payload = {{
       userId: id,
       baseStorageB64: getBaseStorageB64(),
       baseOutboundBytes: getBaseOutboundBytes(),
       subscriptionPlanId: subPlan.value === '' ? null : subPlan.value,
-      subscriptionExpiresAtMsUtc: subExpires.value === '' ? null : localInputValueToMs(subExpires.value),
+      subscriptionExpiresAtMsUtc: expiresMs,
       banned: banned.checked,
     }};
     btnUpdate.disabled = true;

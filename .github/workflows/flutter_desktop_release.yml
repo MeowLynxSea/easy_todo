@@ -25,7 +25,7 @@ jobs:
           - os: macos-latest
             target: macos
             artifact_name: flutter-macos-release
-            artifact_path: build/macos/Build/Products/Release/easy_todo.app
+            artifact_path: build/macos/Build/Products/Release
 
     steps:
       - name: Checkout
@@ -54,6 +54,10 @@ jobs:
 
       - name: Build ${{ matrix.target }} (release)
         run: flutter build ${{ matrix.target }} --release
+
+      - name: Strip macOS dSYM
+        if: matrix.target == 'macos'
+        run: rm -rf build/macos/Build/Products/Release/*.dSYM
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

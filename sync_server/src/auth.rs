@@ -13,6 +13,7 @@ use axum::{Json, Router};
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use rand::RngCore;
+use regex::Regex;
 use reqwest::header::{ACCEPT, USER_AGENT};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -64,7 +65,7 @@ pub struct AuthConfig {
     pub jwt_secret: String,
     pub jwt_issuer: String,
     pub token_pepper: String,
-    pub app_redirect_allowlist: Vec<String>,
+    pub app_redirect_allowlist: Vec<AppRedirectAllowRule>,
     pub access_token_ttl: Duration,
     pub refresh_token_ttl: Duration,
     pub login_attempt_ttl: Duration,
@@ -85,12 +86,9 @@ impl AuthConfig {
         let token_pepper =
             std::env::var("TOKEN_PEPPER").unwrap_or_else(|_| "dev-pepper-change-me".to_string());
 
-        let app_redirect_allowlist = std::env::var("APP_REDIRECT_ALLOWLIST")
-            .unwrap_or_else(|_| "easy_todo://".to_string())
-            .split(',')
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .collect::<Vec<_>>();
+        let app_redirect_allowlist = parse_app_redirect_allowlist(
+            &std::env::var("APP_REDIRECT_ALLOWLIST").unwrap_or_else(|_| "easy_todo://".to_string()),
+        );
 
         let providers = load_oauth_providers_from_env()
             .context("load oauth providers (OAUTH_PROVIDERS_JSON)")?;
@@ -172,68 +170,15 @@ impl AuthService {
     }
 
     fn is_allowed_app_redirect(&self, app_redirect: &str) -> bool {
-        let Ok(app_url) = Url::parse(app_redirect.trim()) else {
+        let app_redirect = app_redirect.trim();
+        let Some(app_url) = ParsedAppRedirectUrl::parse(app_redirect) else {
             return false;
         };
 
-        let app_scheme = app_url.scheme().to_ascii_lowercase();
-        let app_host = app_url.host_str().map(|s| s.to_ascii_lowercase());
-        let app_port = app_url.port_or_known_default();
-        let app_path = app_url.path();
-        let app_fragment = app_url.fragment().unwrap_or("");
-
-        for raw in &self.config.app_redirect_allowlist {
-            let raw = raw.trim();
-            if raw.is_empty() {
-                continue;
+        for rule in &self.config.app_redirect_allowlist {
+            if rule.is_match(app_redirect, &app_url) {
+                return true;
             }
-
-            // Support scheme-only allowlist entries like `easy_todo://`.
-            if raw.ends_with("://") {
-                let scheme = raw.trim_end_matches("://").to_ascii_lowercase();
-                if scheme == app_scheme && scheme != "http" && scheme != "https" {
-                    return true;
-                }
-                continue;
-            }
-
-            let Ok(allowed) = Url::parse(raw) else {
-                continue;
-            };
-
-            if allowed.scheme().to_ascii_lowercase() != app_scheme {
-                continue;
-            }
-
-            let allowed_host = allowed.host_str().map(|s| s.to_ascii_lowercase());
-            if allowed_host != app_host {
-                continue;
-            }
-
-            if let Some(allowed_port) = allowed.port() {
-                if app_port != Some(allowed_port) {
-                    continue;
-                }
-            }
-
-            let allowed_path = allowed.path();
-            if allowed_path != "/" && !allowed_path.is_empty() {
-                let ok = if allowed_path.ends_with('/') {
-                    app_path.starts_with(allowed_path)
-                } else {
-                    app_path == allowed_path || app_path.starts_with(&format!("{allowed_path}/"))
-                };
-                if !ok {
-                    continue;
-                }
-            }
-
-            let allowed_fragment = allowed.fragment().unwrap_or("");
-            if !allowed_fragment.is_empty() && !app_fragment.starts_with(allowed_fragment) {
-                continue;
-            }
-
-            return true;
         }
 
         false
@@ -808,6 +753,258 @@ fn load_oauth_providers_from_env() -> anyhow::Result<HashMap<String, OAuthProvid
         map.insert(name, p);
     }
     Ok(map)
+}
+
+#[derive(Debug, Clone)]
+pub enum AppRedirectAllowRule {
+    SchemeOnly { scheme: String },
+    UrlPrefix { url: ParsedAppRedirectUrl },
+    UrlExact { url: ParsedAppRedirectUrl },
+    Regex { regex: Regex },
+}
+
+impl AppRedirectAllowRule {
+    fn parse(raw: &str) -> Option<Self> {
+        let raw = raw.trim();
+        if raw.is_empty() {
+            return None;
+        }
+
+        let raw_lower = raw.to_ascii_lowercase();
+        if raw_lower.starts_with("re:") {
+            let pat = raw.get(3..)?.trim();
+            let regex = Regex::new(pat).ok()?;
+            return Some(Self::Regex { regex });
+        }
+        if raw_lower.starts_with("regex:") {
+            let pat = raw.get(6..)?.trim();
+            let regex = Regex::new(pat).ok()?;
+            return Some(Self::Regex { regex });
+        }
+        if raw_lower.starts_with("strict:") {
+            let url = ParsedAppRedirectUrl::parse(raw.get(7..)?.trim())?;
+            return Some(Self::UrlExact { url });
+        }
+        if raw_lower.starts_with("exact:") {
+            let url = ParsedAppRedirectUrl::parse(raw.get(6..)?.trim())?;
+            return Some(Self::UrlExact { url });
+        }
+
+        // Support scheme-only allowlist entries like `easy_todo://`.
+        if raw.ends_with("://") {
+            return Some(Self::SchemeOnly {
+                scheme: raw.trim_end_matches("://").to_ascii_lowercase(),
+            });
+        }
+
+        let url = ParsedAppRedirectUrl::parse(raw)?;
+        Some(Self::UrlPrefix { url })
+    }
+
+    fn is_match(&self, app_redirect_raw: &str, app_url: &ParsedAppRedirectUrl) -> bool {
+        match self {
+            Self::Regex { regex } => regex.is_match(app_redirect_raw),
+            Self::SchemeOnly { scheme } => {
+                scheme.as_str() == app_url.scheme.as_str() && scheme != "http" && scheme != "https"
+            }
+            Self::UrlPrefix { url } => {
+                if url.scheme.as_str() != app_url.scheme.as_str() {
+                    return false;
+                }
+
+                if url.host.as_deref() != app_url.host.as_deref() {
+                    return false;
+                }
+
+                if let Some(allowed_port) = url.port {
+                    if app_url.port_or_known_default() != Some(allowed_port) {
+                        return false;
+                    }
+                }
+
+                let allowed_path = url.path.as_str();
+                if allowed_path != "/" && !allowed_path.is_empty() {
+                    let ok = if allowed_path.ends_with('/') {
+                        app_url.path.starts_with(allowed_path)
+                    } else {
+                        app_url.path == allowed_path
+                            || app_url.path.starts_with(&format!("{allowed_path}/"))
+                    };
+                    if !ok {
+                        return false;
+                    }
+                }
+
+                let allowed_fragment = url.fragment.as_deref().unwrap_or("");
+                if !allowed_fragment.is_empty()
+                    && !app_url
+                        .fragment
+                        .as_deref()
+                        .unwrap_or("")
+                        .starts_with(allowed_fragment)
+                {
+                    return false;
+                }
+
+                true
+            }
+            Self::UrlExact { url } => {
+                if url.scheme.as_str() != app_url.scheme.as_str() {
+                    return false;
+                }
+
+                if url.host.as_deref() != app_url.host.as_deref() {
+                    return false;
+                }
+
+                if url.port_or_known_default() != app_url.port_or_known_default() {
+                    return false;
+                }
+
+                if url.path.as_str() != app_url.path.as_str() {
+                    return false;
+                }
+
+                if url.query.as_deref() != app_url.query.as_deref() {
+                    return false;
+                }
+
+                if url.fragment.as_deref() != app_url.fragment.as_deref() {
+                    return false;
+                }
+
+                true
+            }
+        }
+    }
+}
+
+fn parse_app_redirect_allowlist(raw: &str) -> Vec<AppRedirectAllowRule> {
+    raw.split(',')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .filter_map(AppRedirectAllowRule::parse)
+        .collect()
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ParsedAppRedirectUrl {
+    scheme: String,
+    host: Option<String>,
+    port: Option<u16>,
+    path: String,
+    query: Option<String>,
+    fragment: Option<String>,
+}
+
+impl ParsedAppRedirectUrl {
+    fn parse(raw: &str) -> Option<Self> {
+        let raw = raw.trim();
+        if raw.is_empty() {
+            return None;
+        }
+
+        let (scheme, after_colon) = raw.split_once(':')?;
+        if !is_valid_app_redirect_scheme(scheme) {
+            return None;
+        }
+        let scheme = scheme.to_ascii_lowercase();
+
+        if !after_colon.starts_with("//") {
+            return None;
+        }
+
+        let rest = after_colon.get(2..)?;
+        let authority_end = rest
+            .find(|c| matches!(c, '/' | '?' | '#'))
+            .unwrap_or(rest.len());
+        let authority = rest.get(..authority_end)?;
+        let after_authority = rest.get(authority_end..)?;
+
+        let hostport = authority
+            .rsplit_once('@')
+            .map(|(_, hp)| hp)
+            .unwrap_or(authority);
+        if hostport.is_empty() {
+            return None;
+        }
+
+        let (host, port) = parse_host_and_port(hostport)?;
+
+        let mut path_query = after_authority;
+        let mut fragment: Option<String> = None;
+        if let Some((before, frag)) = path_query.split_once('#') {
+            path_query = before;
+            fragment = Some(frag.to_string());
+        }
+
+        let mut path = path_query;
+        let mut query: Option<String> = None;
+        if let Some((before, q)) = path.split_once('?') {
+            path = before;
+            query = Some(q.to_string());
+        }
+
+        let path = if path.is_empty() { "/" } else { path };
+
+        Some(Self {
+            scheme,
+            host: Some(host.to_ascii_lowercase()),
+            port,
+            path: path.to_string(),
+            query,
+            fragment,
+        })
+    }
+
+    fn port_or_known_default(&self) -> Option<u16> {
+        if let Some(p) = self.port {
+            return Some(p);
+        }
+        match self.scheme.as_str() {
+            "http" => Some(80),
+            "https" => Some(443),
+            _ => None,
+        }
+    }
+}
+
+fn is_valid_app_redirect_scheme(s: &str) -> bool {
+    let mut chars = s.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    if !first.is_ascii_alphabetic() {
+        return false;
+    }
+    chars.all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.' | '_'))
+}
+
+fn parse_host_and_port(hostport: &str) -> Option<(String, Option<u16>)> {
+    if let Some(rest) = hostport.strip_prefix('[') {
+        let end = rest.find(']')?;
+        let host = rest.get(..end)?.to_string();
+        let after = rest.get(end + 1..)?;
+        if after.is_empty() {
+            return Some((host, None));
+        }
+        let port_str = after.strip_prefix(':')?;
+        if port_str.is_empty() {
+            return None;
+        }
+        let port: u16 = port_str.parse().ok()?;
+        return Some((host, Some(port)));
+    }
+
+    if let Some((host, port_str)) = hostport.rsplit_once(':') {
+        if !host.is_empty() && !port_str.is_empty() && port_str.chars().all(|c| c.is_ascii_digit())
+        {
+            let port: u16 = port_str.parse().ok()?;
+            return Some((host.to_string(), Some(port)));
+        }
+    }
+
+    Some((hostport.to_string(), None))
 }
 
 #[derive(Debug, Deserialize)]
@@ -1411,4 +1608,64 @@ async fn auth_providers(
             .map(|name| ProviderItem { name })
             .collect(),
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_service(allowlist: &str) -> AuthService {
+        let cfg = AuthConfig {
+            base_url: "http://127.0.0.1:8787".to_string(),
+            jwt_secret: "secret".to_string(),
+            jwt_issuer: "issuer".to_string(),
+            token_pepper: "pepper".to_string(),
+            app_redirect_allowlist: parse_app_redirect_allowlist(allowlist),
+            access_token_ttl: Duration::from_secs(60),
+            refresh_token_ttl: Duration::from_secs(60),
+            login_attempt_ttl: Duration::from_secs(60),
+            ticket_ttl: Duration::from_secs(60),
+            enabled_providers: Vec::new(),
+            providers: HashMap::new(),
+        };
+        AuthService::new(cfg).expect("service")
+    }
+
+    #[test]
+    fn app_redirect_allowlist_scheme_only() {
+        let svc = make_service("easy_todo://");
+        assert!(svc.is_allowed_app_redirect("easy_todo://auth"));
+        assert!(svc.is_allowed_app_redirect("easy_todo://auth/callback"));
+        assert!(!svc.is_allowed_app_redirect("https://example.com/auth/callback"));
+    }
+
+    #[test]
+    fn app_redirect_allowlist_prefix_url() {
+        let svc = make_service("https://example.com/auth/callback");
+        assert!(svc.is_allowed_app_redirect("https://example.com/auth/callback"));
+        assert!(svc.is_allowed_app_redirect("https://example.com/auth/callback/next"));
+
+        // Prefix rules are backward compatible: port is only checked if allowlist specifies it.
+        assert!(svc.is_allowed_app_redirect("https://example.com:444/auth/callback"));
+    }
+
+    #[test]
+    fn app_redirect_allowlist_strict_url() {
+        let svc = make_service("strict:https://example.com/auth/callback");
+        assert!(svc.is_allowed_app_redirect("https://example.com/auth/callback"));
+        assert!(svc.is_allowed_app_redirect("https://example.com:443/auth/callback"));
+
+        assert!(!svc.is_allowed_app_redirect("https://example.com/auth/callback/next"));
+        assert!(!svc.is_allowed_app_redirect("https://example.com/auth/callback?x=1"));
+        assert!(!svc.is_allowed_app_redirect("https://example.com/auth/callback#frag"));
+        assert!(!svc.is_allowed_app_redirect("https://example.com:444/auth/callback"));
+    }
+
+    #[test]
+    fn app_redirect_allowlist_regex() {
+        let svc = make_service(r"re:^easy_todo://auth(?:/.*)?$");
+        assert!(svc.is_allowed_app_redirect("easy_todo://auth"));
+        assert!(svc.is_allowed_app_redirect("easy_todo://auth/callback"));
+        assert!(!svc.is_allowed_app_redirect("easy_todo://evil"));
+    }
 }

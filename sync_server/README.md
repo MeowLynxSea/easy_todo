@@ -24,7 +24,11 @@ Key env vars:
 - Register this redirect/callback URL in your OAuth provider: `BASE_URL/v1/auth/callback`
 - `JWT_SECRET=...` (HS256)
 - `TOKEN_PEPPER=...` (hashing refresh tokens & tickets)
-- `APP_REDIRECT_ALLOWLIST=easy_todo://auth,https://your-web.example.com/auth/callback`
+- `APP_REDIRECT_ALLOWLIST=easy_todo://auth,strict:easy_todo://auth,re:^easy_todo://auth(?:/.*)?$,https://your-web.example.com/auth/callback`
+  - Plain URL entries are **prefix matches** (scheme+host match; path/fragment prefix match; port checked only if specified).
+  - `strict:` / `exact:` entries are **strict matches** (scheme+host+port+path+query+fragment must match exactly).
+  - `re:` / `regex:` entries are Rust regex patterns matched against the raw `app_redirect` value.
+  - Entries like `easy_todo://` allow any redirect under that scheme (except `http`/`https`).
 - `AUTH_PROVIDERS=your_provider_name` (comma-separated allowlist; defaults to all configured)
 - `OAUTH_PROVIDERS_JSON=[{...}, {...}]` (see `sync_server/.env.example`; when exporting via shell/systemd, wrap the whole JSON in single quotes)
 

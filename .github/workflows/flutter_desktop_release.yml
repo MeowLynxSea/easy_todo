@@ -64,8 +64,18 @@ jobs:
         run: |
           rm -rf dist/macos
           mkdir -p dist/macos
-          rsync -a --copy-unsafe-links build/macos/Build/Products/Release/easy_todo.app dist/macos/
-          codesign --force --deep --sign - dist/macos/easy_todo.app
+          APP_BUNDLE="$(ls -1 build/macos/Build/Products/Release/*.app | head -n 1)"
+          echo "Packaging: ${APP_BUNDLE}"
+          rsync -a --copy-unsafe-links "${APP_BUNDLE}" dist/macos/
+
+          APP_NAME="$(basename "${APP_BUNDLE}")"
+          DEST_APP="dist/macos/${APP_NAME}"
+
+          shopt -s nullglob
+          for item in "${DEST_APP}/Contents/Frameworks/"*.framework "${DEST_APP}/Contents/Frameworks/"*.dylib; do
+            codesign --force --sign - "${item}"
+          done
+          codesign --force --sign - "${DEST_APP}"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

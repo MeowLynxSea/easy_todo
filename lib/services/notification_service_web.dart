@@ -269,6 +269,22 @@ class NotificationService {
     _clearTodoReminderState(todoId);
   }
 
+  /// Cancel all scheduled todo reminders and clear in-memory reminder state.
+  ///
+  /// Web notifications are best-effort; this clears timers and internal state.
+  Future<void> cancelAllTodoReminders() async {
+    try {
+      for (final timer in _activeTimers.values) {
+        timer.cancel();
+      }
+      _activeTimers.clear();
+      await _cancelDailySummary();
+      resetTodoReminderStates();
+    } catch (e) {
+      debugPrint('NotificationService(web): Error canceling all reminders: $e');
+    }
+  }
+
   Future<void> sendTestNotification(String title, String body) async {
     if (!await hasNotificationPermission()) return;
     _showBrowserNotification(title, body, tag: 'test_notification');

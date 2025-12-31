@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:easy_todo/providers/todo_provider.dart';
 import 'package:easy_todo/providers/language_provider.dart';
 import 'package:easy_todo/providers/theme_provider.dart';
+import 'package:easy_todo/providers/filter_provider.dart';
 import 'package:easy_todo/providers/app_settings_provider.dart';
 import 'package:easy_todo/providers/pomodoro_provider.dart';
 import 'package:easy_todo/screens/language_settings_screen.dart';
@@ -572,6 +573,22 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                 context,
                 listen: false,
               );
+              final filterProvider = Provider.of<FilterProvider>(
+                context,
+                listen: false,
+              );
+              final languageProvider = Provider.of<LanguageProvider>(
+                context,
+                listen: false,
+              );
+              final themeProvider = Provider.of<ThemeProvider>(
+                context,
+                listen: false,
+              );
+              final aiProvider = Provider.of<AIProvider>(
+                context,
+                listen: false,
+              );
               final pomodoroProvider = Provider.of<PomodoroProvider>(
                 context,
                 listen: false,
@@ -602,6 +619,21 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
               try {
                 await todoProvider.clearAllData();
                 pomodoroProvider.resetAllState();
+
+                // Reset provider state to defaults after persistent storage wipe.
+                await appSettingsProvider.reloadFromStorage();
+                await languageProvider.reloadFromHiveReadOnly();
+                await filterProvider.reloadFromHiveReadOnly();
+                todoProvider.syncWithFilterProvider(filterProvider);
+                await aiProvider.clearAllAICache();
+                await aiProvider.reloadFromHiveReadOnly();
+                await pomodoroProvider.updateSettings(
+                  workDuration: 25 * 60,
+                  breakDuration: 5 * 60,
+                  longBreakDuration: 15 * 60,
+                  sessionsUntilLongBreak: 4,
+                );
+
                 await _loadStorageStats();
                 if (!context.mounted) return;
 
@@ -611,6 +643,9 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                     backgroundColor: Colors.green,
                   ),
                 );
+
+                // Apply theme reset last: this may trigger a full MaterialApp rebuild.
+                await themeProvider.reloadFromHiveReadOnly();
               } catch (e) {
                 if (!context.mounted) return;
                 messenger.showSnackBar(

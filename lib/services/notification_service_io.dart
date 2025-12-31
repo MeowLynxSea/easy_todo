@@ -765,6 +765,23 @@ class NotificationService {
     }
   }
 
+  /// Cancel all scheduled todo reminders and clear in-memory reminder state.
+  ///
+  /// This is used by "Clear All Data" to ensure no stale notifications remain
+  /// after deleting todos.
+  Future<void> cancelAllTodoReminders() async {
+    try {
+      _clearAllTimers();
+      await _cancelDailySummary();
+      try {
+        await _notificationsPlugin.cancelAll();
+      } catch (_) {}
+      debugPrint('All todo reminders cancelled');
+    } catch (e) {
+      debugPrint('Error canceling all todo reminders: $e');
+    }
+  }
+
   Future<void> _scheduleDailySummary() async {
     if (_settings?.notificationsEnabled == false) return;
     if (_settings?.dailySummaryEnabled == false) return;

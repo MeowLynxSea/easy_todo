@@ -21,6 +21,12 @@ import 'package:easy_todo/services/repositories/repeat_todo_repository.dart';
 import 'package:easy_todo/services/repositories/statistics_data_repository.dart';
 import 'package:easy_todo/services/repositories/todo_attachment_repository.dart';
 import 'package:easy_todo/services/attachment_storage_service.dart';
+import 'package:easy_todo/services/secure_storage_service.dart';
+import 'package:easy_todo/models/user_preferences_model.dart';
+import 'package:easy_todo/models/ai_settings_model.dart';
+import 'package:easy_todo/services/repositories/user_preferences_repository.dart';
+import 'package:easy_todo/services/repositories/ai_settings_repository.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class TodoProvider extends ChangeNotifier {
   final HiveService _hiveService = HiveService();
@@ -35,6 +41,10 @@ class TodoProvider extends ChangeNotifier {
       TodoAttachmentRepository();
   final AttachmentStorageService _attachmentStorage =
       AttachmentStorageService();
+  final SecureStorageService _secureStorageService = SecureStorageService();
+  final UserPreferencesRepository _userPreferencesRepository =
+      UserPreferencesRepository();
+  final AISettingsRepository _aiSettingsRepository = AISettingsRepository();
   AIProvider? _aiProvider;
   LanguageProvider? _languageProvider;
   List<TodoModel> _todos = [];
@@ -1574,6 +1584,35 @@ class TodoProvider extends ChangeNotifier {
     try {
       debugPrint('Starting to clear all data...');
 
+      // Best-effort: ensure AI cache is ready so we can clear it.
+      await _aiCacheService.init();
+
+      // Cancel in-flight todo / AI operations to avoid races while clearing.
+      for (final timer in _debounceTimers.values) {
+        timer.cancel();
+      }
+      _debounceTimers.clear();
+      _processingTodos.clear();
+      _failedAiRequests.clear();
+      _lastRequestTime.clear();
+      _lastRateLimitError = null;
+
+      _processingRepeatTodos.clear();
+      _repeatTodoAILoading.clear();
+      _repeatTodoAIStatus.clear();
+
+      // Best-effort: cancel all scheduled reminders/notifications.
+      try {
+        await _notificationService.cancelAllTodoReminders();
+        await _notificationService.resetDailySummaryState();
+        _notificationService.resetTodoReminderStates();
+      } catch (e) {
+        debugPrint('Error clearing notification state: $e');
+      }
+
+      // Clear todo attachments (Hive + local files).
+      await _clearAllTodoAttachments();
+
       final todosBox = _hiveService.todosBox;
       final statisticsBox = _hiveService.statisticsBox;
       final repeatTodosBox = _hiveService.repeatTodosBox;
@@ -1615,12 +1654,36 @@ class TodoProvider extends ChangeNotifier {
         await pomodoroBox.delete(entry.key);
       }
 
+      debugPrint('Clearing settings boxes...');
+      await _hiveService.notificationSettingsBox.clear();
+      await _hiveService.deviceSettingsBox.clear();
+      await _hiveService.appSettingsBox.clear(); // legacy box (safe to clear)
+      await _hiveService.pomodoroSettingsBox.clear();
+      try {
+        await _secureStorageService.deleteAiApiKey();
+      } catch (e) {
+        debugPrint('Error clearing AI API key from secure storage: $e');
+      }
+      await _clearLegacySharedPreferences();
+
+      // Reset synced settings to defaults (also keeps sync outbox healthy).
+      await _userPreferencesRepository.save(UserPreferencesModel.create());
+      await _aiSettingsRepository.save(AISettingsModel.create());
+
+      debugPrint('Clearing AI cache...');
+      await _aiCacheService.clearAllAICache();
+
       debugPrint('Clearing in-memory lists...');
       _todos = [];
       _filteredTodos = [];
       _statistics = [];
       _repeatTodos = [];
       _statisticsData = [];
+      _searchQuery = '';
+      _dateRange = null;
+      _selectedCategories = {};
+      _currentFilter = TodoFilter.active;
+      _sortOrder = SortOrder.timeAscending;
 
       debugPrint('All data cleared successfully');
 
@@ -1632,6 +1695,77 @@ class TodoProvider extends ChangeNotifier {
       debugPrint('Error clearing all data: $e');
       debugPrint('Stack trace: ${StackTrace.current}');
       rethrow;
+    }
+  }
+
+  Future<void> _clearAllTodoAttachments() async {
+    final attachments = _hiveService.todoAttachmentsBox.values.toList(
+      growable: false,
+    );
+
+    for (final attachment in attachments) {
+      try {
+        await _todoAttachmentRepository.tombstoneAttachment(attachment.id);
+        await _todoAttachmentRepository.tombstoneAttachmentCommit(
+          attachment.id,
+        );
+        if (attachment.chunkCount > 0) {
+          await _todoAttachmentRepository.tombstoneAllChunks(
+            attachmentId: attachment.id,
+            chunkCount: attachment.chunkCount,
+          );
+        }
+
+        final localPath = attachment.localPath;
+        await _attachmentStorage.deleteFileIfExists(localPath);
+        final staging = localPath == null
+            ? null
+            : _attachmentStorage.stagingFilePathFor(localPath);
+        if (staging != null && staging != localPath) {
+          await _attachmentStorage.deleteFileIfExists(staging);
+        }
+      } catch (e) {
+        debugPrint(
+          'Error clearing attachment ${attachment.id} (continuing): $e',
+        );
+      } finally {
+        try {
+          await _hiveService.todoAttachmentsBox.delete(attachment.id);
+        } catch (_) {}
+      }
+    }
+
+    try {
+      await _hiveService.todoAttachmentChunksBox.clear();
+    } catch (_) {}
+  }
+
+  Future<void> _clearLegacySharedPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      const keys = <String>[
+        // Legacy UserPreferencesRepository migration keys.
+        'app_language',
+        'app_theme',
+        'theme_colors',
+        'custom_theme',
+        'todo_status_filter',
+        'todo_time_filter',
+        'todo_sort_order',
+        'todo_selected_categories',
+
+        // SecureStorageService BestEffortSecureStorage fallback key.
+        'ai_api_key',
+
+        // NotificationService daily summary state.
+        'last_daily_summary_date',
+      ];
+
+      for (final key in keys) {
+        await prefs.remove(key);
+      }
+    } catch (e) {
+      debugPrint('Error clearing legacy SharedPreferences keys: $e');
     }
   }
 

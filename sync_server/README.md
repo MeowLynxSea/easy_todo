@@ -141,6 +141,11 @@ Admin stats page:
 - Conflict resolution is HLC-based: only accepts updates with strictly newer HLC.
 - `serverSeq` is per-user and increments only for accepted writes.
 
+## Garbage collection
+
+- Staged upload cleanup: old `staged_records` rows are deleted periodically. Configure with `STAGED_RECORD_TTL_MS` + `STAGED_GC_INTERVAL_SECS`.
+- Ghost attachment cleanup (optional): periodically deletes attachments whose owning todo no longer exists (based on `attachment_refs` from clients). Enable with `GHOST_GC_INTERVAL_SECS` and optionally set `GHOST_GC_MIN_REF_AGE_MS` / `GHOST_GC_MAX_USERS_PER_RUN`.
+
 ## Limits
 
 - Per-record `nonce`/`ciphertext` base64 length is capped at **512KB per field** (reject reason: `record_too_large`).

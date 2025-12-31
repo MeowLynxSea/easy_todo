@@ -899,6 +899,7 @@ class SyncProvider extends ChangeNotifier {
     }
     final mutex = Completer<void>();
     _syncMutex = mutex;
+    _didBackfillAttachmentRefsThisRun = false;
 
     var succeeded = false;
     try {
@@ -963,6 +964,12 @@ class SyncProvider extends ChangeNotifier {
           sinceBefore: sinceBefore,
           allowRollback: allowRollback,
         );
+        // Pull can enqueue new outbox work (e.g. attachment tombstones when a
+        // remote todo deletion arrives). Push again so server-side storage
+        // cleanup doesn't depend on a subsequent sync run.
+        if (_hiveService.syncOutboxBox.isNotEmpty) {
+          await _pushOutbox(client);
+        }
         await _maybeBackfillAttachmentRefs(client, trigger: trigger);
 
         _lastSyncAt = DateTime.now();

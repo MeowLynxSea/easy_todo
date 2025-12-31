@@ -21,6 +21,7 @@ use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 mod auth;
+mod ghost_gc;
 mod metrics;
 mod web;
 
@@ -2242,6 +2243,84 @@ async fn main() -> anyhow::Result<()> {
                     }
                     Err(e) => {
                         error!(error = %e, "staged_records GC failed");
+                    }
+                }
+            }
+        });
+    }
+
+    let ghost_gc_interval_secs: i64 = env_i64("GHOST_GC_INTERVAL_SECS").unwrap_or(0);
+    let ghost_gc_min_ref_age_ms: i64 = env_i64("GHOST_GC_MIN_REF_AGE_MS").unwrap_or(30 * 60 * 1000);
+    let ghost_gc_max_users_per_run: i64 = env_i64("GHOST_GC_MAX_USERS_PER_RUN").unwrap_or(200);
+
+    if ghost_gc_interval_secs > 0 {
+        let db = state.db.clone();
+        tokio::spawn(async move {
+            let mut ticker =
+                tokio::time::interval(Duration::from_secs(ghost_gc_interval_secs as u64));
+            loop {
+                ticker.tick().await;
+
+                let user_ids = match ghost_gc::select_users_with_orphan_attachment_refs(
+                    &db,
+                    ghost_gc_min_ref_age_ms,
+                    ghost_gc_max_users_per_run,
+                )
+                .await
+                {
+                    Ok(ids) => ids,
+                    Err(e) => {
+                        error!(error = %e, "ghost files GC list users failed");
+                        continue;
+                    }
+                };
+
+                if user_ids.is_empty() {
+                    continue;
+                }
+
+                for user_id in user_ids {
+                    let mut tx = match db.begin().await {
+                        Ok(tx) => tx,
+                        Err(e) => {
+                            error!(error = %e, "ghost files GC begin tx failed");
+                            break;
+                        }
+                    };
+
+                    let stats = match ghost_gc::gc_ghost_files_for_user(
+                        &mut tx,
+                        user_id,
+                        ghost_gc::GhostGcOptions {
+                            include_unreferenced_when_no_live_todo: false,
+                            min_ref_age_ms: ghost_gc_min_ref_age_ms,
+                        },
+                    )
+                    .await
+                    {
+                        Ok(stats) => stats,
+                        Err(e) => {
+                            tx.rollback().await.ok();
+                            error!(user_id, error = %e, "ghost files GC failed");
+                            continue;
+                        }
+                    };
+
+                    if let Err(e) = tx.commit().await {
+                        error!(user_id, error = %e, "ghost files GC commit failed");
+                        continue;
+                    }
+
+                    if stats.deleted_records > 0 {
+                        let freed_bytes = (stats.stored_before - stats.stored_after).max(0);
+                        info!(
+                            user_id,
+                            deleted_attachments = stats.deleted_attachments,
+                            deleted_records = stats.deleted_records,
+                            freed_bytes,
+                            stored_bytes = stats.stored_after,
+                            "ghost files GC"
+                        );
                     }
                 }
             }

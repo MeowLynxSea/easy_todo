@@ -591,6 +591,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get deleteRepeat => '삭제';
 
   @override
+  String get loading => '로딩 중';
+
+  @override
   String get repeatTaskConfirm => '반복 작업 삭제';
 
   @override
@@ -2831,6 +2834,20 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get todoAttachmentReady => 'Ready';
+
+  @override
+  String get todoAttachmentPreviewUnsupported => '이 파일 형식은 미리보기를 지원하지 않습니다';
+
+  @override
+  String todoAttachmentPreviewTooLarge(Object maxSize) {
+    return '파일이 너무 커서 미리볼 수 없습니다(최대: $maxSize)';
+  }
+
+  @override
+  String get todoAttachmentMarkdownRendered => '렌더링';
+
+  @override
+  String get todoAttachmentMarkdownSource => '원문';
 
   @override
   String get todoAttachmentWebNotSupported =>

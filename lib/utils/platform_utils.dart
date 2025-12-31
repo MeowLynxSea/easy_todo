@@ -17,4 +17,3 @@ class PlatformUtils {
   /// Update check + auto-update UI should be hidden on Web and desktop.
   static bool get shouldShowUpdateFeatures => isMobile;
 }
-

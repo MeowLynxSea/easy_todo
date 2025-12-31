@@ -1252,6 +1252,12 @@ abstract class AppLocalizations {
   /// **'Delete'**
   String get deleteRepeat;
 
+  /// No description provided for @loading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading'**
+  String get loading;
+
   /// No description provided for @repeatTaskConfirm.
   ///
   /// In en, this message translates to:
@@ -5458,6 +5464,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Ready'**
   String get todoAttachmentReady;
+
+  /// No description provided for @todoAttachmentPreviewUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview is not available for this file type'**
+  String get todoAttachmentPreviewUnsupported;
+
+  /// No description provided for @todoAttachmentPreviewTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'File is too large to preview (max: {maxSize})'**
+  String todoAttachmentPreviewTooLarge(Object maxSize);
+
+  /// No description provided for @todoAttachmentMarkdownRendered.
+  ///
+  /// In en, this message translates to:
+  /// **'Rendered'**
+  String get todoAttachmentMarkdownRendered;
+
+  /// No description provided for @todoAttachmentMarkdownSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get todoAttachmentMarkdownSource;
 
   /// No description provided for @todoAttachmentWebNotSupported.
   ///

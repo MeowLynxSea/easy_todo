@@ -196,6 +196,7 @@
   "resumeRepeat": "Resume",
   "editRepeat": "Edit",
   "deleteRepeat": "Delete",
+  "loading": "Loading",
   "repeatTaskConfirm": "Delete Repeat Task",
   "repeatTaskDeleteMessage": "This will delete all recurring tasks generated from this template. This action cannot be undone.",
   "manageRepeatTasks": "Manage Repeat Tasks",
@@ -968,5 +969,14 @@
   "todoAttachmentUploading": "Uploading",
   "todoAttachmentDownloading": "Downloading",
   "todoAttachmentReady": "Ready",
+  "todoAttachmentPreviewUnsupported": "Preview is not available for this file type",
+  "todoAttachmentPreviewTooLarge": "File is too large to preview (max: {maxSize})",
+  "@todoAttachmentPreviewTooLarge": {
+    "placeholders": {
+      "maxSize": {}
+    }
+  },
+  "todoAttachmentMarkdownRendered": "Rendered",
+  "todoAttachmentMarkdownSource": "Source",
   "todoAttachmentWebNotSupported": "Attachments are not supported on web"
 }

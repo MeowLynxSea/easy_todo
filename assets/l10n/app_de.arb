@@ -189,6 +189,7 @@
   "resumeRepeat": "Fortsetzen",
   "editRepeat": "Bearbeiten",
   "deleteRepeat": "Löschen",
+  "loading": "Laden",
   "repeatTaskConfirm": "Wiederkehrende Aufgabe löschen",
   "repeatTaskDeleteMessage": "Dies löscht alle wiederkehrenden Aufgaben, die aus dieser Vorlage generiert wurden. Diese Aktion kann nicht rückgängig gemacht werden.",
   "manageRepeatTasks": "Wiederkehrende Aufgaben verwalten",
@@ -924,6 +925,15 @@
   "todoAttachmentUploading": "Uploading",
   "todoAttachmentDownloading": "Downloading",
   "todoAttachmentReady": "Ready",
+  "todoAttachmentPreviewUnsupported": "Vorschau ist für diesen Dateityp nicht verfügbar",
+  "todoAttachmentPreviewTooLarge": "Datei ist zu groß für die Vorschau (max.: {maxSize})",
+  "@todoAttachmentPreviewTooLarge": {
+    "placeholders": {
+      "maxSize": {}
+    }
+  },
+  "todoAttachmentMarkdownRendered": "Gerendert",
+  "todoAttachmentMarkdownSource": "Quelltext",
   "todoAttachmentWebNotSupported": "Attachments are not supported on web",
   "cloudSyncErrorQuotaExceeded": "Serverkontingent überschritten (einige Datensätze wurden abgelehnt)",
 

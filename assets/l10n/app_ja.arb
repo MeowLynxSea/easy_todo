@@ -189,6 +189,7 @@
   "resumeRepeat": "再開",
   "editRepeat": "編集",
   "deleteRepeat": "削除",
+  "loading": "読み込み中",
   "repeatTaskConfirm": "繰り返しタスクを削除",
   "repeatTaskDeleteMessage": "これにより、このテンプレートから生成されたすべての定期的なタスクが削除されます。この操作は元に戻せません。",
   "manageRepeatTasks": "繰り返しタスクを管理",
@@ -919,6 +920,15 @@
   "todoAttachmentUploading": "Uploading",
   "todoAttachmentDownloading": "Downloading",
   "todoAttachmentReady": "Ready",
+  "todoAttachmentPreviewUnsupported": "このファイル形式はプレビューに対応していません",
+  "todoAttachmentPreviewTooLarge": "ファイルが大きすぎてプレビューできません（最大：{maxSize}）",
+  "@todoAttachmentPreviewTooLarge": {
+    "placeholders": {
+      "maxSize": {}
+    }
+  },
+  "todoAttachmentMarkdownRendered": "表示",
+  "todoAttachmentMarkdownSource": "ソース",
   "todoAttachmentWebNotSupported": "Attachments are not supported on web",
   "cloudSyncErrorQuotaExceeded": "サーバーのクォータを超えました（一部のレコードが拒否されました）",
 

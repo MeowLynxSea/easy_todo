@@ -610,6 +610,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get deleteRepeat => 'Supprimer';
 
   @override
+  String get loading => 'Chargement';
+
+  @override
   String get repeatTaskConfirm => 'Supprimer la tâche répétitive';
 
   @override
@@ -2967,6 +2970,21 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get todoAttachmentReady => 'Ready';
+
+  @override
+  String get todoAttachmentPreviewUnsupported =>
+      'Aperçu indisponible pour ce type de fichier';
+
+  @override
+  String todoAttachmentPreviewTooLarge(Object maxSize) {
+    return 'Fichier trop volumineux pour l’aperçu (max : $maxSize)';
+  }
+
+  @override
+  String get todoAttachmentMarkdownRendered => 'Rendu';
+
+  @override
+  String get todoAttachmentMarkdownSource => 'Source';
 
   @override
   String get todoAttachmentWebNotSupported =>

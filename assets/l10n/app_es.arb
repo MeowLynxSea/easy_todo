@@ -189,6 +189,7 @@
   "resumeRepeat": "Resume",
   "editRepeat": "Edit",
   "deleteRepeat": "Delete",
+  "loading": "Cargando",
   "repeatTaskConfirm": "Delete Repeat Task",
   "repeatTaskDeleteMessage": "This will delete all recurring tasks generated from this template. This action cannot be undone.",
   "manageRepeatTasks": "Manage Repeat Tasks",
@@ -919,6 +920,15 @@
   "todoAttachmentUploading": "Uploading",
   "todoAttachmentDownloading": "Downloading",
   "todoAttachmentReady": "Ready",
+  "todoAttachmentPreviewUnsupported": "La vista previa no está disponible para este tipo de archivo",
+  "todoAttachmentPreviewTooLarge": "El archivo es demasiado grande para previsualizar (máx.: {maxSize})",
+  "@todoAttachmentPreviewTooLarge": {
+    "placeholders": {
+      "maxSize": {}
+    }
+  },
+  "todoAttachmentMarkdownRendered": "Renderizado",
+  "todoAttachmentMarkdownSource": "Fuente",
   "todoAttachmentWebNotSupported": "Attachments are not supported on web",
   "cloudSyncErrorQuotaExceeded": "Cuota del servidor excedida (algunos registros fueron rechazados)",
 

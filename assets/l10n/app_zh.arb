@@ -196,6 +196,7 @@
   "resumeRepeat": "恢复",
   "editRepeat": "编辑",
   "deleteRepeat": "删除",
+  "loading": "加载中",
   "repeatTaskConfirm": "删除重复任务",
   "repeatTaskDeleteMessage": "这将删除从此模板生成的所有重复任务。此操作不可撤销。",
   "manageRepeatTasks": "管理重复任务",
@@ -970,5 +971,14 @@
   "todoAttachmentUploading": "上传中",
   "todoAttachmentDownloading": "下载中",
   "todoAttachmentReady": "可用",
+  "todoAttachmentPreviewUnsupported": "该文件类型不支持预览",
+  "todoAttachmentPreviewTooLarge": "文件过大，无法预览（最大：{maxSize}）",
+  "@todoAttachmentPreviewTooLarge": {
+    "placeholders": {
+      "maxSize": {}
+    }
+  },
+  "todoAttachmentMarkdownRendered": "渲染",
+  "todoAttachmentMarkdownSource": "原文",
   "todoAttachmentWebNotSupported": "Web 暂不支持附件"
 }

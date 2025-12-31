@@ -189,6 +189,7 @@
   "resumeRepeat": "재개",
   "editRepeat": "편집",
   "deleteRepeat": "삭제",
+  "loading": "로딩 중",
   "repeatTaskConfirm": "반복 작업 삭제",
   "repeatTaskDeleteMessage": "이렇게 하면 이 템플릿에서 생성된 모든 반복 작업이 삭제됩니다. 이 작업은 실행 취소할 수 없습니다.",
   "manageRepeatTasks": "반복 작업 관리",
@@ -919,6 +920,15 @@
   "todoAttachmentUploading": "Uploading",
   "todoAttachmentDownloading": "Downloading",
   "todoAttachmentReady": "Ready",
+  "todoAttachmentPreviewUnsupported": "이 파일 형식은 미리보기를 지원하지 않습니다",
+  "todoAttachmentPreviewTooLarge": "파일이 너무 커서 미리볼 수 없습니다(최대: {maxSize})",
+  "@todoAttachmentPreviewTooLarge": {
+    "placeholders": {
+      "maxSize": {}
+    }
+  },
+  "todoAttachmentMarkdownRendered": "렌더링",
+  "todoAttachmentMarkdownSource": "원문",
   "todoAttachmentWebNotSupported": "Attachments are not supported on web",
   "cloudSyncErrorQuotaExceeded": "서버 할당량 초과(일부 레코드가 거부됨)",
 

@@ -585,6 +585,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get deleteRepeat => '删除';
 
   @override
+  String get loading => '加载中';
+
+  @override
   String get repeatTaskConfirm => '删除重复任务';
 
   @override
@@ -2817,6 +2820,20 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get todoAttachmentReady => '可用';
+
+  @override
+  String get todoAttachmentPreviewUnsupported => '该文件类型不支持预览';
+
+  @override
+  String todoAttachmentPreviewTooLarge(Object maxSize) {
+    return '文件过大，无法预览（最大：$maxSize）';
+  }
+
+  @override
+  String get todoAttachmentMarkdownRendered => '渲染';
+
+  @override
+  String get todoAttachmentMarkdownSource => '原文';
 
   @override
   String get todoAttachmentWebNotSupported => 'Web 暂不支持附件';

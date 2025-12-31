@@ -12,7 +12,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
-    SharedPreferences.setMockInitialValues(<String, Object?>{});
+    SharedPreferences.setMockInitialValues(<String, Object>{});
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
   });
 
@@ -21,7 +21,7 @@ void main() {
   });
 
   test('falls back to SharedPreferences on macOS -34018', () async {
-    const missingEntitlement = PlatformException(
+    final missingEntitlement = PlatformException(
       code: 'Unexpected security result code',
       message: "Code: -34018, Message: A required entitlement isn't presented",
     );

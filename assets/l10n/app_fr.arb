@@ -189,6 +189,7 @@
   "resumeRepeat": "Reprendre",
   "editRepeat": "Modifier",
   "deleteRepeat": "Supprimer",
+  "loading": "Chargement",
   "repeatTaskConfirm": "Supprimer la tâche répétitive",
   "repeatTaskDeleteMessage": "Cela supprimera toutes les tâches récurrentes générées à partir de ce modèle. Cette action ne peut être annulée.",
   "manageRepeatTasks": "Gérer les tâches répétitives",
@@ -919,6 +920,15 @@
   "todoAttachmentUploading": "Uploading",
   "todoAttachmentDownloading": "Downloading",
   "todoAttachmentReady": "Ready",
+  "todoAttachmentPreviewUnsupported": "Aperçu indisponible pour ce type de fichier",
+  "todoAttachmentPreviewTooLarge": "Fichier trop volumineux pour l’aperçu (max : {maxSize})",
+  "@todoAttachmentPreviewTooLarge": {
+    "placeholders": {
+      "maxSize": {}
+    }
+  },
+  "todoAttachmentMarkdownRendered": "Rendu",
+  "todoAttachmentMarkdownSource": "Source",
   "todoAttachmentWebNotSupported": "Attachments are not supported on web",
   "cloudSyncErrorQuotaExceeded": "Quota du serveur dépassé (certains enregistrements ont été rejetés)",
 

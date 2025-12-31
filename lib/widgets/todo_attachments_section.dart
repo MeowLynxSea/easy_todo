@@ -1,16 +1,18 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:easy_todo/l10n/generated/app_localizations.dart';
 import 'package:easy_todo/models/sync_outbox_item.dart';
 import 'package:easy_todo/models/todo_attachment_model.dart';
 import 'package:easy_todo/providers/sync_provider.dart';
+import 'package:easy_todo/screens/attachment_preview_screen.dart';
 import 'package:easy_todo/services/attachment_download.dart';
-import 'package:easy_todo/services/attachment_storage_service.dart';
+import 'package:easy_todo/services/attachment_read_service.dart';
 import 'package:easy_todo/services/hive_service.dart';
 import 'package:easy_todo/services/file_service.dart';
 import 'package:easy_todo/services/sync_write_service.dart';
 import 'package:easy_todo/services/todo_attachment_service.dart';
+import 'package:easy_todo/utils/attachment_file_type.dart';
+import 'package:easy_todo/utils/responsive.dart';
 import 'package:easy_todo/utils/todo_attachment_record_id.dart';
 import 'package:easy_todo/widgets/attachment_image.dart';
 import 'package:file_picker/file_picker.dart';
@@ -33,8 +35,7 @@ class _TodoAttachmentsSectionState extends State<TodoAttachmentsSection> {
   final HiveService _hiveService = HiveService();
   final SyncWriteService _syncWriteService = SyncWriteService();
   final TodoAttachmentService _attachmentService = TodoAttachmentService();
-  final AttachmentStorageService _attachmentStorage =
-      AttachmentStorageService();
+  final AttachmentReadService _attachmentRead = AttachmentReadService();
 
   bool _busy = false;
   double? _addProgress;
@@ -159,7 +160,7 @@ class _TodoAttachmentsSectionState extends State<TodoAttachmentsSection> {
                                 a.id,
                               ),
                             ),
-                            onOpenImage: _openImagePreview,
+                            onPreview: _openAttachmentPreview,
                             onExport: _exportAttachment,
                             onRemove: _removeAttachment,
                             onRetry: canSyncNow ? () => _retrySync() : null,
@@ -226,7 +227,7 @@ class _TodoAttachmentsSectionState extends State<TodoAttachmentsSection> {
     setState(() => _busy = true);
     try {
       _setAddProgress(0);
-      final mimeType = _guessMimeType(file.name);
+      final mimeType = guessMimeTypeFromFileName(file.name);
       if (kIsWeb) {
         final bytes = file.bytes;
         if (bytes == null) {
@@ -329,96 +330,72 @@ class _TodoAttachmentsSectionState extends State<TodoAttachmentsSection> {
     });
   }
 
-  String _guessMimeType(String fileName) {
-    final name = fileName.toLowerCase();
-    if (name.endsWith('.jpg') || name.endsWith('.jpeg')) return 'image/jpeg';
-    if (name.endsWith('.png')) return 'image/png';
-    if (name.endsWith('.gif')) return 'image/gif';
-    if (name.endsWith('.webp')) return 'image/webp';
-    if (name.endsWith('.bmp')) return 'image/bmp';
-    if (name.endsWith('.heic')) return 'image/heic';
-    if (name.endsWith('.heif')) return 'image/heif';
-    return 'application/octet-stream';
-  }
-
-  bool _isImageAttachment(TodoAttachmentModel attachment) {
-    final mime = attachment.mimeType.trim().toLowerCase();
-    if (mime.startsWith('image/')) return true;
-    return _guessMimeType(attachment.fileName).startsWith('image/');
-  }
-
-  Future<void> _openImagePreview(TodoAttachmentModel attachment) async {
+  Future<void> _openAttachmentPreview(TodoAttachmentModel attachment) async {
     final path = attachment.localPath;
-    if (!_isImageAttachment(attachment)) return;
-    if (path == null || path.trim().isEmpty || !attachment.isComplete) return;
+    if (path == null || path.trim().isEmpty || !attachment.isComplete) {
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.todoAttachmentNotAvailable)));
+      return;
+    }
 
-    final l10n = AppLocalizations.of(context)!;
-    if (kIsWeb) {
-      await showDialog<void>(
-        context: context,
-        builder: (context) => Dialog(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 900, maxHeight: 700),
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: FutureBuilder<Uint8List>(
-                    future: _readAllBytes(attachment),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState != ConnectionState.done) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      final bytes = snapshot.data;
-                      if (bytes == null || bytes.isEmpty) {
-                        return Center(
-                          child: Text(l10n.todoAttachmentNotAvailable),
-                        );
-                      }
-                      return InteractiveViewer(
-                        child: Image.memory(bytes, fit: BoxFit.contain),
-                      );
-                    },
-                  ),
-                ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: IconButton(
-                    tooltip: l10n.close,
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
-                  ),
-                ),
-              ],
+    final fileType = classifyAttachmentFileType(
+      fileName: attachment.fileName,
+      mimeType: attachment.mimeType,
+    );
+
+    if (!isAttachmentPreviewSupported(fileType)) {
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.todoAttachmentPreviewUnsupported)),
+      );
+      return;
+    }
+
+    final maxBytes = maxPreviewBytesForAttachmentType(fileType);
+    if (maxBytes != null && attachment.size > maxBytes) {
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            l10n.todoAttachmentPreviewTooLarge(
+              FileService.formatFileSize(maxBytes),
             ),
           ),
         ),
       );
       return;
     }
-    await showDialog<void>(
-      context: context,
-      builder: (context) => Dialog(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 900, maxHeight: 700),
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: InteractiveViewer(
-                  child: AttachmentImage(filePath: path, fit: BoxFit.contain),
-                ),
+
+    final useDialog = isWebDesktop(context);
+    if (useDialog) {
+      await showDialog<void>(
+        context: context,
+        builder: (context) => Dialog(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900, maxHeight: 700),
+            child: SizedBox(
+              width: 900,
+              height: 700,
+              child: AttachmentPreviewScreen(
+                attachment: attachment,
+                fileType: fileType,
+                showCloseButton: true,
               ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: IconButton(
-                  tooltip: l10n.close,
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close),
-                ),
-              ),
-            ],
+            ),
           ),
+        ),
+      );
+      return;
+    }
+
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => AttachmentPreviewScreen(
+          attachment: attachment,
+          fileType: fileType,
+          showCloseButton: false,
         ),
       ),
     );
@@ -436,7 +413,7 @@ class _TodoAttachmentsSectionState extends State<TodoAttachmentsSection> {
 
     try {
       if (kIsWeb) {
-        final bytes = await _readAllBytes(attachment);
+        final bytes = await _attachmentRead.readAllBytes(attachment);
         await downloadBytes(
           bytes,
           fileName: attachment.fileName,
@@ -453,32 +430,6 @@ class _TodoAttachmentsSectionState extends State<TodoAttachmentsSection> {
         context,
       ).showSnackBar(SnackBar(content: Text(l10n.shareFailed(e.toString()))));
     }
-  }
-
-  Future<Uint8List> _readAllBytes(TodoAttachmentModel attachment) async {
-    final path = attachment.localPath;
-    if (path == null || path.trim().isEmpty) {
-      throw StateError('Missing localPath');
-    }
-
-    final chunkSize = attachment.chunkSize > 0
-        ? attachment.chunkSize
-        : TodoAttachmentService.chunkSizeBytes;
-    final chunkCount = attachment.chunkCount;
-    final size = attachment.size;
-
-    final builder = BytesBuilder(copy: false);
-    for (var i = 0; i < chunkCount; i++) {
-      final offset = i * chunkSize;
-      final length = (size - offset).clamp(0, chunkSize).toInt();
-      final chunk = await _attachmentStorage.readChunk(
-        filePath: path,
-        offset: offset,
-        length: length,
-      );
-      builder.add(chunk);
-    }
-    return builder.toBytes();
   }
 
   Future<void> _removeAttachment(TodoAttachmentModel attachment) async {
@@ -531,7 +482,7 @@ class _AttachmentTile extends StatelessWidget {
   final int pendingChunkCount;
   final bool pendingMeta;
   final bool pendingCommit;
-  final ValueChanged<TodoAttachmentModel> onOpenImage;
+  final ValueChanged<TodoAttachmentModel> onPreview;
   final ValueChanged<TodoAttachmentModel> onExport;
   final ValueChanged<TodoAttachmentModel> onRemove;
   final VoidCallback? onRetry;
@@ -541,7 +492,7 @@ class _AttachmentTile extends StatelessWidget {
     required this.pendingChunkCount,
     required this.pendingMeta,
     required this.pendingCommit,
-    required this.onOpenImage,
+    required this.onPreview,
     required this.onExport,
     required this.onRemove,
     required this.onRetry,
@@ -588,18 +539,24 @@ class _AttachmentTile extends StatelessWidget {
         attachment.isComplete &&
         (attachment.localPath?.trim().isNotEmpty ?? false);
 
-    final isImage =
-        attachment.mimeType.toLowerCase().startsWith('image/') ||
-        attachment.fileName.toLowerCase().endsWith('.jpg') ||
-        attachment.fileName.toLowerCase().endsWith('.jpeg') ||
-        attachment.fileName.toLowerCase().endsWith('.png') ||
-        attachment.fileName.toLowerCase().endsWith('.gif') ||
-        attachment.fileName.toLowerCase().endsWith('.webp') ||
-        attachment.fileName.toLowerCase().endsWith('.bmp') ||
-        attachment.fileName.toLowerCase().endsWith('.heic') ||
-        attachment.fileName.toLowerCase().endsWith('.heif');
+    final fileType = classifyAttachmentFileType(
+      fileName: attachment.fileName,
+      mimeType: attachment.mimeType,
+    );
 
-    final leading = isImage && canExport
+    final canPreview = canExport && isAttachmentPreviewSupported(fileType);
+
+    final icon = switch (fileType) {
+      AttachmentFileType.image => Icons.image_outlined,
+      AttachmentFileType.audio => Icons.audiotrack_outlined,
+      AttachmentFileType.video => Icons.movie_outlined,
+      AttachmentFileType.pdf => Icons.picture_as_pdf_outlined,
+      AttachmentFileType.text => Icons.text_snippet_outlined,
+      AttachmentFileType.markdown => Icons.code_outlined,
+      AttachmentFileType.other => Icons.insert_drive_file_outlined,
+    };
+
+    final leading = fileType == AttachmentFileType.image && canExport
         ? ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: AttachmentImage(
@@ -616,10 +573,7 @@ class _AttachmentTile extends StatelessWidget {
               color: theme.colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(
-              isImage ? Icons.image_outlined : Icons.insert_drive_file_outlined,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            child: Icon(icon, color: theme.colorScheme.onSurfaceVariant),
           );
 
     return Card(
@@ -650,7 +604,7 @@ class _AttachmentTile extends StatelessWidget {
             ],
           ],
         ),
-        onTap: isImage ? () => onOpenImage(attachment) : null,
+        onTap: canPreview ? () => onPreview(attachment) : null,
         trailing: Wrap(
           spacing: 4,
           children: [

@@ -163,7 +163,8 @@ class AppSettingsProvider extends ChangeNotifier {
 
     if (kIsWeb || isDesktop) {
       final needsDisableAutoUpdate = _deviceSettings.autoUpdateEnabled;
-      final needsDisableBiometric = kIsWeb && _deviceSettings.biometricLockEnabled;
+      final needsDisableBiometric =
+          kIsWeb && _deviceSettings.biometricLockEnabled;
       if (needsDisableAutoUpdate || needsDisableBiometric) {
         _deviceSettings = _deviceSettings.copyWith(
           autoUpdateEnabled: false,

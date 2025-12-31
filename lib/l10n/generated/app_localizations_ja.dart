@@ -591,6 +591,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get deleteRepeat => '削除';
 
   @override
+  String get loading => '読み込み中';
+
+  @override
   String get repeatTaskConfirm => '繰り返しタスクを削除';
 
   @override
@@ -2829,6 +2832,20 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get todoAttachmentReady => 'Ready';
+
+  @override
+  String get todoAttachmentPreviewUnsupported => 'このファイル形式はプレビューに対応していません';
+
+  @override
+  String todoAttachmentPreviewTooLarge(Object maxSize) {
+    return 'ファイルが大きすぎてプレビューできません（最大：$maxSize）';
+  }
+
+  @override
+  String get todoAttachmentMarkdownRendered => '表示';
+
+  @override
+  String get todoAttachmentMarkdownSource => 'ソース';
 
   @override
   String get todoAttachmentWebNotSupported =>

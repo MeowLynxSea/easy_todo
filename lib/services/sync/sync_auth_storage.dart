@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../best_effort_secure_storage.dart';
 import '../web_session_storage_stub.dart'
     if (dart.library.html) '../web_session_storage_html.dart';
 
@@ -22,11 +24,18 @@ class SyncAuthStorage {
   static const _expiresAtKey = 'sync_expires_at_ms_utc';
 
   final FlutterSecureStorage? _secureStorageOverride;
-  late final FlutterSecureStorage _secureStorage =
-      _secureStorageOverride ?? const FlutterSecureStorage();
+  final Future<SharedPreferences>? _prefsOverride;
 
-  SyncAuthStorage({FlutterSecureStorage? secureStorage})
-    : _secureStorageOverride = secureStorage;
+  late final BestEffortSecureStorage _storage = BestEffortSecureStorage(
+    secureStorage: _secureStorageOverride,
+    prefs: _prefsOverride,
+  );
+
+  SyncAuthStorage({
+    FlutterSecureStorage? secureStorage,
+    Future<SharedPreferences>? prefs,
+  }) : _secureStorageOverride = secureStorage,
+       _prefsOverride = prefs;
 
   Future<SyncAuthTokens?> read() async {
     if (kIsWeb) {
@@ -44,10 +53,10 @@ class SyncAuthStorage {
       );
     }
 
-    final accessToken = await _secureStorage.read(key: _accessTokenKey);
+    final accessToken = await _storage.read(key: _accessTokenKey);
     if (accessToken == null || accessToken.trim().isEmpty) return null;
-    final refreshToken = await _secureStorage.read(key: _refreshTokenKey);
-    final expiresRaw = await _secureStorage.read(key: _expiresAtKey);
+    final refreshToken = await _storage.read(key: _refreshTokenKey);
+    final expiresRaw = await _storage.read(key: _expiresAtKey);
     final expiresAtMsUtc = expiresRaw == null ? null : int.tryParse(expiresRaw);
     return SyncAuthTokens(
       accessToken: accessToken,
@@ -72,22 +81,19 @@ class SyncAuthStorage {
       return;
     }
 
-    await _secureStorage.write(key: _accessTokenKey, value: tokens.accessToken);
+    await _storage.write(key: _accessTokenKey, value: tokens.accessToken);
     if (tokens.refreshToken != null) {
-      await _secureStorage.write(
-        key: _refreshTokenKey,
-        value: tokens.refreshToken,
-      );
+      await _storage.write(key: _refreshTokenKey, value: tokens.refreshToken!);
     } else {
-      await _secureStorage.delete(key: _refreshTokenKey);
+      await _storage.delete(key: _refreshTokenKey);
     }
     if (tokens.expiresAtMsUtc != null) {
-      await _secureStorage.write(
+      await _storage.write(
         key: _expiresAtKey,
         value: tokens.expiresAtMsUtc.toString(),
       );
     } else {
-      await _secureStorage.delete(key: _expiresAtKey);
+      await _storage.delete(key: _expiresAtKey);
     }
   }
 
@@ -99,8 +105,8 @@ class SyncAuthStorage {
       return;
     }
 
-    await _secureStorage.delete(key: _accessTokenKey);
-    await _secureStorage.delete(key: _refreshTokenKey);
-    await _secureStorage.delete(key: _expiresAtKey);
+    await _storage.delete(key: _accessTokenKey);
+    await _storage.delete(key: _refreshTokenKey);
+    await _storage.delete(key: _expiresAtKey);
   }
 }

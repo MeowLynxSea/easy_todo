@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'best_effort_secure_storage.dart';
 import 'web_session_storage_stub.dart'
     if (dart.library.html) 'web_session_storage_html.dart'
     as web_session;
@@ -17,11 +19,18 @@ class DekStorageService {
   static final Map<String, List<int>> _webSessionDek = <String, List<int>>{};
 
   final FlutterSecureStorage? _storageOverride;
-  late final FlutterSecureStorage _storage =
-      _storageOverride ?? const FlutterSecureStorage();
+  final Future<SharedPreferences>? _prefsOverride;
 
-  DekStorageService({FlutterSecureStorage? storage})
-    : _storageOverride = storage;
+  late final BestEffortSecureStorage _storage = BestEffortSecureStorage(
+    secureStorage: _storageOverride,
+    prefs: _prefsOverride,
+  );
+
+  DekStorageService({
+    FlutterSecureStorage? storage,
+    Future<SharedPreferences>? prefs,
+  }) : _storageOverride = storage,
+       _prefsOverride = prefs;
 
   Future<void> writeDek({required String dekId, required List<int> dek}) async {
     if (kIsWeb) {

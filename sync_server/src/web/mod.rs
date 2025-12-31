@@ -25,6 +25,7 @@ pub fn web_router(admin_entry_path: String) -> Router<AppState> {
         .route("/dashboard/logout", post(pages::dashboard_logout))
         .route("/web/api/me", get(api::web_me))
         .route("/web/api/me/activate-cdkey", post(api::web_activate_cdkey))
+        .route("/web/api/me/gc-ghost-files", post(api::web_gc_ghost_files))
         .route("/web/api/me/delete", post(api::web_delete_me))
         .route("/web/api/auth/refresh", post(api::web_refresh))
         .merge(admin_pages::admin_router(&admin_entry_path))

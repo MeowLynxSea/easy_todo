@@ -87,6 +87,8 @@ class SyncProvider extends ChangeNotifier {
   // avoid common reverse-proxy defaults (often ~1MB) returning 413.
   static const int _pushChunkBatchLimit = 2;
   static const int _defaultAttachmentChunkSizeBytes = 256 * 1024;
+  static const int _attachmentRefsBatchLimit = 200;
+  static const int _autoRefsBackfillMaxAttachments = 50;
 
   static const int _attachmentCommitSchemaVersion = 1;
 
@@ -148,6 +150,8 @@ class SyncProvider extends ChangeNotifier {
   int _autoSyncFailureCount = 0;
   bool _appActive = true;
 
+  bool _didBackfillAttachmentRefsThisRun = false;
+
   void _debugLog(String message) {
     if (!kDebugMode) return;
     debugPrint('[Sync] $message');
@@ -200,7 +204,12 @@ class SyncProvider extends ChangeNotifier {
 
   Future<void> _init() async {
     var state = await _ensureStateLoaded();
-    _authTokens = await _authStorage.read();
+    try {
+      _authTokens = await _authStorage.read();
+    } catch (e) {
+      _debugLog('read auth tokens failed: $e');
+      _authTokens = null;
+    }
     final reconcile = await _reconcileAuthUserFromTokensIfNeeded(
       state: state,
       tokens: _authTokens,
@@ -211,18 +220,31 @@ class SyncProvider extends ChangeNotifier {
       _lastErrorDetail = null;
     }
 
+    if (state.syncEnabled && !isLoggedIn) {
+      // When secure storage is cleared/invalidated, we can lose auth tokens
+      // while the Hive sync toggle remains enabled. Auto-disable to avoid a
+      // mismatched "enabled but logged out" state causing errors/confusion.
+      await disableSync(forgetDek: false);
+      state = await _ensureStateLoaded();
+    }
+
     if (state.serverUrl.trim().isNotEmpty) {
       unawaited(refreshProviders());
     }
 
     if (state.syncEnabled && state.dekId != null) {
-      final cached = await _dekStorage.readDek(dekId: state.dekId!);
-      if (cached != null) {
-        _dek = cached;
+      try {
+        final cached = await _dekStorage.readDek(dekId: state.dekId!);
+        if (cached != null) {
+          _dek = cached;
+        }
+      } catch (e) {
+        _debugLog('read DEK failed: $e');
       }
     }
 
     _startAutoSync();
+    unawaited(_repairOrphanAttachmentsForTombstonedTodos());
     notifyListeners();
   }
 
@@ -841,7 +863,12 @@ class SyncProvider extends ChangeNotifier {
     SyncRunTrigger trigger = SyncRunTrigger.manual,
   }) async {
     final state = await _ensureStateLoaded();
-    _authTokens = await _authStorage.read();
+    try {
+      _authTokens = await _authStorage.read();
+    } catch (e) {
+      _debugLog('read auth tokens failed: $e');
+      _authTokens = null;
+    }
     final reconcile = await _reconcileAuthUserFromTokensIfNeeded(
       state: state,
       tokens: _authTokens,
@@ -936,6 +963,7 @@ class SyncProvider extends ChangeNotifier {
           sinceBefore: sinceBefore,
           allowRollback: allowRollback,
         );
+        await _maybeBackfillAttachmentRefs(client, trigger: trigger);
 
         _lastSyncAt = DateTime.now();
         _debugLog('syncNow end lastSeq=${_state?.lastServerSeq ?? 0}');
@@ -972,6 +1000,54 @@ class SyncProvider extends ChangeNotifier {
         _autoSyncCompletedRevision++;
         notifyListeners();
       }
+    }
+  }
+
+  Future<void> _maybeBackfillAttachmentRefs(
+    SyncApiClient client, {
+    required SyncRunTrigger trigger,
+  }) async {
+    if (_didBackfillAttachmentRefsThisRun) return;
+
+    final attachments = _hiveService.todoAttachmentsBox.values.toList(
+      growable: false,
+    );
+    if (attachments.isEmpty) {
+      _didBackfillAttachmentRefsThisRun = true;
+      return;
+    }
+
+    if (trigger == SyncRunTrigger.auto &&
+        attachments.length > _autoRefsBackfillMaxAttachments) {
+      return;
+    }
+
+    final refs = <AttachmentRef>[];
+    for (final a in attachments) {
+      final todoId = a.todoId.trim();
+      if (todoId.isEmpty) continue;
+      refs.add(AttachmentRef(attachmentId: a.id, todoId: todoId));
+    }
+    if (refs.isEmpty) {
+      _didBackfillAttachmentRefsThisRun = true;
+      return;
+    }
+
+    try {
+      for (
+        var offset = 0;
+        offset < refs.length;
+        offset += _attachmentRefsBatchLimit
+      ) {
+        final batch = refs
+            .skip(offset)
+            .take(_attachmentRefsBatchLimit)
+            .toList(growable: false);
+        await client.upsertAttachmentRefs(refs: batch);
+      }
+      _didBackfillAttachmentRefsThisRun = true;
+    } catch (e) {
+      _debugLog('upsertAttachmentRefs failed: $e');
     }
   }
 
@@ -2152,6 +2228,14 @@ class SyncProvider extends ChangeNotifier {
 
         clock.observe(remoteHlc, nowMsUtc);
 
+        if (remote.deletedAtMsUtc != null && remote.type == SyncTypes.todo) {
+          await _handleRemoteTodoTombstone(
+            todoId: remote.recordId,
+            clock: clock,
+            nowMsUtc: nowMsUtc,
+          );
+        }
+
         if (remote.deletedAtMsUtc != null &&
             remote.type == SyncTypes.todoAttachment) {
           await _handleRemoteAttachmentTombstone(remote.recordId);
@@ -2475,6 +2559,174 @@ class SyncProvider extends ChangeNotifier {
       await _attachmentStorage.deleteFileIfExists(attachmentId);
     }
     await attachmentBox.delete(attachmentId);
+  }
+
+  Future<void> _deleteTodoByIdBestEffort(String todoId) async {
+    final box = _hiveService.todosBox;
+    if (box.containsKey(todoId)) {
+      await box.delete(todoId);
+      return;
+    }
+
+    // Legacy Hive box keys might not equal `TodoModel.id`.
+    final keys = box.keys.toList(growable: false);
+    for (final key in keys) {
+      final todo = box.get(key);
+      if (todo?.id != todoId) continue;
+      await box.delete(key);
+      return;
+    }
+  }
+
+  Future<void> _handleRemoteTodoTombstone({
+    required String todoId,
+    required HlcClock clock,
+    required int nowMsUtc,
+  }) async {
+    try {
+      await NotificationService.instance.cancelTodoReminder(todoId);
+    } catch (_) {}
+
+    await _deleteTodoByIdBestEffort(todoId);
+
+    final attachments = _hiveService.todoAttachmentsBox.values
+        .where((a) => a.todoId == todoId)
+        .toList(growable: false);
+    if (attachments.isEmpty) return;
+
+    final metaBox = _hiveService.syncMetaBox;
+    final outbox = _hiveService.syncOutboxBox;
+
+    for (final attachment in attachments) {
+      final hlc = clock.tick(nowMsUtc);
+      final metaKey = SyncWriteService.metaKeyOf(
+        SyncTypes.todoAttachment,
+        attachment.id,
+      );
+
+      final existing = metaBox.get(metaKey);
+      final tombstone =
+          existing?.copyWith(
+            hlcWallMsUtc: hlc.wallTimeMsUtc,
+            hlcCounter: hlc.counter,
+            hlcDeviceId: hlc.deviceId,
+            deletedAtMsUtc: nowMsUtc,
+            schemaVersion: TodoAttachmentRepository.attachmentSchemaVersion,
+          ) ??
+          SyncMeta(
+            type: SyncTypes.todoAttachment,
+            recordId: attachment.id,
+            hlcWallMsUtc: hlc.wallTimeMsUtc,
+            hlcCounter: hlc.counter,
+            hlcDeviceId: hlc.deviceId,
+            deletedAtMsUtc: nowMsUtc,
+            schemaVersion: TodoAttachmentRepository.attachmentSchemaVersion,
+          );
+      await metaBox.put(metaKey, tombstone);
+      await outbox.put(
+        metaKey,
+        SyncOutboxItem(
+          type: SyncTypes.todoAttachment,
+          recordId: attachment.id,
+          lastEnqueuedAtMsUtc: nowMsUtc,
+        ),
+      );
+
+      // Drop any in-flight outbox entries for this attachment's chunks or commit
+      // marker (e.g. upload in progress) to avoid redundant pushes.
+      final chunkPrefix = '${SyncTypes.todoAttachmentChunk}:${attachment.id}:';
+      final outboxKeys = outbox.keys.whereType<String>().toList(
+        growable: false,
+      );
+      for (final key in outboxKeys) {
+        if (key.startsWith(chunkPrefix)) {
+          await outbox.delete(key);
+        }
+      }
+      await outbox.delete(
+        SyncWriteService.metaKeyOf(
+          SyncTypes.todoAttachmentCommit,
+          attachment.id,
+        ),
+      );
+
+      final localPath = attachment.localPath;
+      await _attachmentStorage.deleteFileIfExists(localPath);
+      final staging = localPath == null
+          ? null
+          : _attachmentStorage.stagingFilePathFor(localPath);
+      if (staging != null && staging != localPath) {
+        await _attachmentStorage.deleteFileIfExists(staging);
+      }
+
+      await _hiveService.todoAttachmentsBox.delete(attachment.id);
+    }
+  }
+
+  Future<void> _repairOrphanAttachmentsForTombstonedTodos() async {
+    final state = await _ensureStateLoaded();
+    if (!state.syncEnabled) return;
+
+    final attachments = _hiveService.todoAttachmentsBox.values.toList(
+      growable: false,
+    );
+    if (attachments.isEmpty) return;
+    var repaired = 0;
+
+    for (final attachment in attachments) {
+      final todoId = attachment.todoId.trim();
+      if (todoId.isEmpty) continue;
+      if (!_syncWriteService.isTombstonedSync(SyncTypes.todo, todoId)) {
+        continue;
+      }
+
+      try {
+        await _syncWriteService.tombstoneRecord(
+          type: SyncTypes.todoAttachment,
+          recordId: attachment.id,
+          schemaVersion: TodoAttachmentRepository.attachmentSchemaVersion,
+        );
+
+        // Drop any in-flight outbox entries for this attachment's chunks or
+        // commit marker to avoid redundant pushes (upload in progress).
+        final outbox = _hiveService.syncOutboxBox;
+        final chunkPrefix =
+            '${SyncTypes.todoAttachmentChunk}:${attachment.id}:';
+        final outboxKeys = outbox.keys.whereType<String>().toList(
+          growable: false,
+        );
+        for (final key in outboxKeys) {
+          if (key.startsWith(chunkPrefix)) {
+            await outbox.delete(key);
+          }
+        }
+        await outbox.delete(
+          SyncWriteService.metaKeyOf(
+            SyncTypes.todoAttachmentCommit,
+            attachment.id,
+          ),
+        );
+
+        final localPath = attachment.localPath;
+        await _attachmentStorage.deleteFileIfExists(localPath);
+        final staging = localPath == null
+            ? null
+            : _attachmentStorage.stagingFilePathFor(localPath);
+        if (staging != null && staging != localPath) {
+          await _attachmentStorage.deleteFileIfExists(staging);
+        }
+
+        await _hiveService.todoAttachmentsBox.delete(attachment.id);
+        repaired++;
+      } catch (e) {
+        _debugLog('repair orphan attachment failed id=${attachment.id}: $e');
+      }
+    }
+
+    // If repairs created outbox work, attempt a debounced auto-sync.
+    if (repaired > 0) {
+      _scheduleDebouncedAutoSync(reason: 'orphan-attachment-repair');
+    }
   }
 }
 

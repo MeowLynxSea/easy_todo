@@ -90,6 +90,18 @@ class PullResponse {
   }
 }
 
+class AttachmentRef {
+  final String attachmentId;
+  final String todoId;
+
+  const AttachmentRef({required this.attachmentId, required this.todoId});
+
+  Map<String, dynamic> toJson() => {
+    'attachmentId': attachmentId,
+    'todoId': todoId,
+  };
+}
+
 class SyncApiClient {
   static const Duration _syncTimeout = Duration(minutes: 3);
 
@@ -201,8 +213,12 @@ class SyncApiClient {
     if (_staticBearerToken != null) return _staticBearerToken;
     final storage = _authStorage;
     if (storage == null) return null;
-    final tokens = await storage.read();
-    return tokens?.accessToken;
+    try {
+      final tokens = await storage.read();
+      return tokens?.accessToken;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<SyncAuthTokens?> _refreshIfPossible() async {
@@ -210,7 +226,12 @@ class SyncApiClient {
     final authService = _authService;
     if (storage == null || authService == null) return null;
 
-    final existing = await storage.read();
+    SyncAuthTokens? existing;
+    try {
+      existing = await storage.read();
+    } catch (_) {
+      return null;
+    }
     final refreshToken = existing?.refreshToken;
     if (refreshToken == null || refreshToken.trim().isEmpty) return null;
 
@@ -350,6 +371,23 @@ class SyncApiClient {
   Future<void> health() async {
     try {
       await _dio.get('/v1/health');
+    } catch (e) {
+      _throwAsSyncApiException(e);
+    }
+  }
+
+  Future<void> upsertAttachmentRefs({required List<AttachmentRef> refs}) async {
+    if (refs.isEmpty) return;
+
+    try {
+      await _dio.post<Map<String, dynamic>>(
+        '/v1/attachments/refs',
+        data: <String, dynamic>{'refs': refs.map((e) => e.toJson()).toList()},
+        options: Options(
+          sendTimeout: _syncTimeout,
+          receiveTimeout: _syncTimeout,
+        ),
+      );
     } catch (e) {
       _throwAsSyncApiException(e);
     }

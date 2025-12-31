@@ -206,7 +206,7 @@ void main() {
       authService: _FakeSyncServerAuthService(),
     );
 
-    await Future<void>.delayed(const Duration(milliseconds: 20));
+    await Future<void>.delayed(const Duration(milliseconds: 80));
 
     expect(provider.lastErrorCode, SyncErrorCode.accountChanged);
     expect(provider.syncEnabled, isFalse);
@@ -216,6 +216,44 @@ void main() {
     expect(Hive.box<SyncMeta>('sync_meta_box').isEmpty, isTrue);
     expect(Hive.box<SyncOutboxItem>('sync_outbox_box').isEmpty, isTrue);
     expect(await dekStorage.readDek(dekId: 'dek_1'), isNull);
+
+    provider.dispose();
+  });
+
+  test('auto-disables sync when auth tokens are missing on startup', () async {
+    final initialState = SyncState.create(deviceId: 'device_a').copyWith(
+      serverUrl: 'https://example.invalid',
+      syncEnabled: true,
+      lastServerSeq: 123,
+      didBootstrapLocalRecords: true,
+      didBootstrapSettings: true,
+      didBackfillOutboxFromMeta: true,
+      authUserId: 'user_1',
+      authProvider: 'provider',
+      dekId: 'dek_1',
+    );
+    await Hive.box<SyncState>(
+      'sync_state_box',
+    ).put(SyncWriteService.stateKey, initialState);
+
+    final authStorage = _InMemorySyncAuthStorage(initial: null);
+    final dekStorage = _InMemoryDekStorageService();
+    await dekStorage.writeDek(dekId: 'dek_1', dek: <int>[1, 2, 3]);
+
+    final hiveService = HiveService();
+    final provider = SyncProvider(
+      hiveService: hiveService,
+      syncWriteService: SyncWriteService(hiveService: hiveService),
+      authStorage: authStorage,
+      dekStorage: dekStorage,
+      authService: _FakeSyncServerAuthService(),
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+
+    expect(provider.syncEnabled, isFalse);
+    expect(provider.serverUrl, 'https://example.invalid');
+    expect(await dekStorage.readDek(dekId: 'dek_1'), isNotNull);
 
     provider.dispose();
   });

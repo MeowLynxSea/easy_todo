@@ -723,6 +723,66 @@ pub(super) async fn dashboard_page(
         btn_attr = if cdkey_disabled { "disabled" } else { "" },
     );
 
+    let ghost_gc_section = format!(
+        r#"<div class="mt-6 card p-6" data-spotlight>
+  <h2 class="text-base font-semibold">幽灵文件清理</h2>
+  <p class="mt-1 text-sm muted">清理“文件存在但不再被任何待办引用”的附件数据以释放存储。若你正在上传附件，可能会导致上传失败，需要重新上传。</p>
+  <div class="mt-4 flex flex-wrap items-center gap-3">
+    <button id="ghost-gc-btn" class="btn btn-secondary" type="button">开始清理</button>
+    <p id="ghost-gc-hint" class="hidden text-sm text-emerald-700 dark:text-emerald-300"></p>
+    <p id="ghost-gc-error" class="hidden text-sm text-rose-600 dark:text-rose-400"></p>
+  </div>
+</div>
+<script>
+(() => {{
+  const btn = document.getElementById('ghost-gc-btn');
+  const hint = document.getElementById('ghost-gc-hint');
+  const err = document.getElementById('ghost-gc-error');
+  function show(el, on) {{ el?.classList.toggle('hidden', !on); }}
+  function fmt(bytes) {{
+    const n = Number(bytes || 0);
+    if (!Number.isFinite(n) || n <= 0) return '0B';
+    const units = ['B','KB','MB','GB','TB'];
+    let v = n;
+    let i = 0;
+    while (v >= 1024 && i < units.length - 1) {{ v /= 1024; i++; }}
+    return `${{v.toFixed(i === 0 ? 0 : 2)}}${{units[i]}}`;
+  }}
+  btn?.addEventListener('click', async () => {{
+    show(hint, false);
+    show(err, false);
+    hint.textContent = '';
+    err.textContent = '';
+    if (!confirm('确定要清理幽灵文件吗？')) return;
+
+    btn.disabled = true;
+    btn.classList.add('opacity-50');
+    try {{
+      const resp = await fetch('/web/api/me/gc-ghost-files', {{
+        method: 'POST',
+        headers: {{ 'Content-Type': 'application/json' }},
+        credentials: 'same-origin',
+        body: JSON.stringify({{}}),
+      }});
+      const data = await resp.json().catch(() => ({{}}));
+      if (!resp.ok) throw new Error(data.error || 'gc failed');
+      const n = data.deletedAttachments || 0;
+      const freed = data.freedBytes || 0;
+      hint.textContent = `已清理 ${{n}} 个附件，释放 ${{fmt(freed)}}`;
+      show(hint, true);
+      window.setTimeout(() => window.location.reload(), 700);
+    }} catch (e) {{
+      err.textContent = e?.message || 'gc failed';
+      show(err, true);
+    }} finally {{
+      btn.disabled = false;
+      btn.classList.remove('opacity-50');
+    }}
+  }});
+}})();
+</script>"#,
+    );
+
     let body = format!(
         r#"
 {nav}
@@ -758,6 +818,7 @@ pub(super) async fn dashboard_page(
   {subscription_section}
   {quota_section}
   {cdkey_section}
+  {ghost_gc_section}
 
   <div class="mt-6 rounded-2xl border border-rose-500/20 bg-rose-500/5 p-6 shadow-[0_0_0_1px_rgba(244,63,94,0.12),0_18px_50px_rgba(0,0,0,0.18)]">
     <div class="flex flex-wrap items-start justify-between gap-4">
@@ -878,6 +939,7 @@ pub(super) async fn dashboard_page(
         subscription_section = subscription_section,
         quota_section = quota_section,
         cdkey_section = cdkey_section,
+        ghost_gc_section = ghost_gc_section,
     );
 
     let mut resp = Html(page_shell("仪表盘", &body)).into_response();

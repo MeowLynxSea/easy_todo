@@ -719,6 +719,53 @@ async fn put_key_bundle(
     Ok(resp)
 }
 
+async fn upsert_attachment_refs(
+    State(state): State<AppState>,
+    user: auth::AuthedUser,
+    Json(req): Json<UpsertAttachmentRefsRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorBody>)> {
+    if req.refs.len() > 5000 {
+        return Err(json_error(StatusCode::BAD_REQUEST, "too many refs"));
+    }
+
+    let now_ms = now_ms_utc();
+
+    let mut tx = state
+        .db
+        .begin()
+        .await
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+    for r in req.refs {
+        let attachment_id = r.attachment_id.trim();
+        let todo_id = r.todo_id.trim();
+        if attachment_id.is_empty() || todo_id.is_empty() {
+            continue;
+        }
+
+        sqlx::query(
+            r#"INSERT INTO attachment_refs (user_id, attachment_id, todo_id, updated_at_ms_utc)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(user_id, attachment_id) DO UPDATE SET
+                 todo_id = excluded.todo_id,
+                 updated_at_ms_utc = excluded.updated_at_ms_utc"#,
+        )
+        .bind(user.user_id)
+        .bind(attachment_id)
+        .bind(todo_id)
+        .bind(now_ms)
+        .execute(&mut *tx)
+        .await
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+    }
+
+    tx.commit()
+        .await
+        .map_err(|_| json_error(StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
+
+    Ok(Json(OkResponse { ok: true }))
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 struct Hlc {
     #[serde(rename = "wallTimeMsUtc")]
@@ -772,6 +819,24 @@ struct PushRejected {
 struct PushResponse {
     accepted: Vec<PushAccepted>,
     rejected: Vec<PushRejected>,
+}
+
+#[derive(Debug, Serialize)]
+struct OkResponse {
+    ok: bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct AttachmentRefIn {
+    #[serde(rename = "attachmentId")]
+    attachment_id: String,
+    #[serde(rename = "todoId")]
+    todo_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct UpsertAttachmentRefsRequest {
+    refs: Vec<AttachmentRefIn>,
 }
 
 fn hlc_is_newer(a: &Hlc, b: &Hlc) -> bool {
@@ -2192,6 +2257,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/v1/key-bundle", get(get_key_bundle).put(put_key_bundle))
         .route("/v1/sync/push", post(push_sync))
         .route("/v1/sync/pull", get(pull_sync))
+        .route("/v1/attachments/refs", post(upsert_attachment_refs))
         // Dev-friendly CORS for Flutter Web on a different port (e.g. localhost:8080).
         // For production deployments, replace with a strict allowlist.
         .layer(

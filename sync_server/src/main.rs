@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::sqlite::SqlitePoolOptions;
 use sqlx::{Executor, Pool, Row, Sqlite, Transaction};
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
 use tracing::{error, info};
@@ -164,6 +164,7 @@ struct AppState {
     db: Pool<Sqlite>,
     limiter: Arc<tokio::sync::Mutex<RateLimiter>>,
     auth_limiter: Arc<tokio::sync::Mutex<RateLimiter>>,
+    admin_limiter: Arc<tokio::sync::Mutex<RateLimiter>>,
     auth: Arc<auth::AuthService>,
     max_push_records: usize,
     max_records_per_user: Option<i64>,
@@ -566,6 +567,49 @@ fn unquote_env_json(raw: &str) -> String {
         .or_else(|| trimmed.strip_prefix('"').and_then(|s| s.strip_suffix('"')))
         .unwrap_or(trimmed)
         .to_string()
+}
+
+fn cors_layer_from_env() -> Option<CorsLayer> {
+    let allow_any = std::env::var("CORS_ALLOW_ANY")
+        .ok()
+        .map(|v| v.trim().to_ascii_lowercase())
+        .is_some_and(|v| v == "1" || v == "true" || v == "yes");
+
+    if allow_any {
+        return Some(
+            CorsLayer::new()
+                .allow_origin(tower_http::cors::Any)
+                .allow_methods([Method::GET, Method::POST, Method::PUT, Method::OPTIONS])
+                .allow_headers([
+                    header::AUTHORIZATION,
+                    header::CONTENT_TYPE,
+                    header::ACCEPT,
+                ]),
+        );
+    }
+
+    let raw = std::env::var("CORS_ALLOW_ORIGINS").unwrap_or_default();
+    let origins: Vec<HeaderValue> = raw
+        .split(',')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .filter_map(|s| HeaderValue::from_str(s).ok())
+        .collect();
+
+    if origins.is_empty() {
+        return None;
+    }
+
+    Some(
+        CorsLayer::new()
+            .allow_origin(AllowOrigin::list(origins))
+            .allow_methods([Method::GET, Method::POST, Method::PUT, Method::OPTIONS])
+            .allow_headers([
+                header::AUTHORIZATION,
+                header::CONTENT_TYPE,
+                header::ACCEPT,
+            ]),
+    )
 }
 
 fn load_subscription_plans_from_env() -> anyhow::Result<HashMap<String, SubscriptionPlan>> {
@@ -2156,6 +2200,18 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or(8787);
 
     let auth_config = auth::AuthConfig::load_from_env().context("load auth config")?;
+    let allow_insecure_secrets = std::env::var("ALLOW_INSECURE_DEV_SECRETS")
+        .ok()
+        .map(|v| v.trim().to_ascii_lowercase())
+        .is_some_and(|v| v == "1" || v == "true" || v == "yes");
+    if !allow_insecure_secrets {
+        if auth::is_insecure_dev_secret(&auth_config.jwt_secret) {
+            bail!("JWT_SECRET must be set to a strong value");
+        }
+        if auth::is_insecure_dev_secret(&auth_config.token_pepper) {
+            bail!("TOKEN_PEPPER must be set to a strong value");
+        }
+    }
     info!(
         base_url = %auth_config.base_url,
         enabled_providers = ?auth_config.enabled_providers,
@@ -2214,6 +2270,11 @@ async fn main() -> anyhow::Result<()> {
         auth_limiter: Arc::new(tokio::sync::Mutex::new(RateLimiter::new(
             Duration::from_secs(1),
             10,
+            8192,
+        ))),
+        admin_limiter: Arc::new(tokio::sync::Mutex::new(RateLimiter::new(
+            Duration::from_secs(60),
+            20,
             8192,
         ))),
         auth: auth_service,
@@ -2329,6 +2390,8 @@ async fn main() -> anyhow::Result<()> {
 
     let admin_entry_path = state.admin.entry_path.clone();
 
+    let cors = cors_layer_from_env();
+
     let app = Router::new()
         .merge(web::web_router(admin_entry_path))
         .route("/v1/health", get(health))
@@ -2337,14 +2400,6 @@ async fn main() -> anyhow::Result<()> {
         .route("/v1/sync/push", post(push_sync))
         .route("/v1/sync/pull", get(pull_sync))
         .route("/v1/attachments/refs", post(upsert_attachment_refs))
-        // Dev-friendly CORS for Flutter Web on a different port (e.g. localhost:8080).
-        // For production deployments, replace with a strict allowlist.
-        .layer(
-            CorsLayer::new()
-                .allow_origin(Any)
-                .allow_methods([Method::GET, Method::POST, Method::PUT, Method::OPTIONS])
-                .allow_headers(Any),
-        )
         .layer(RequestBodyLimitLayer::new(body_limit_bytes))
         .layer(
             TraceLayer::new_for_http().make_span_with(|req: &axum::http::Request<_>| {
@@ -2360,6 +2415,12 @@ async fn main() -> anyhow::Result<()> {
             track_api_metrics,
         ))
         .with_state(state);
+
+    let app = if let Some(cors) = cors {
+        app.layer(cors)
+    } else {
+        app
+    };
 
     let addr: SocketAddr = format!("{host}:{port}").parse().context("parse addr")?;
     info!(%addr, "sync server listening");

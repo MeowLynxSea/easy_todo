@@ -123,6 +123,7 @@ fn set_cookie(name: &str, value: &str, max_age_secs: i64, secure: bool) -> Heade
     if secure {
         s.push_str("; Secure");
     }
+    s.push_str("; Priority=High");
     HeaderValue::from_str(&s).unwrap_or_else(|_| HeaderValue::from_static(""))
 }
 

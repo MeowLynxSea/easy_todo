@@ -24,6 +24,7 @@ Key env vars:
 - Register this redirect/callback URL in your OAuth provider: `BASE_URL/v1/auth/callback`
 - `JWT_SECRET=...` (HS256)
 - `TOKEN_PEPPER=...` (hashing refresh tokens & tickets)
+- `ALLOW_INSECURE_DEV_SECRETS=1` (optional; allow dev defaults for local testing)
 - `APP_REDIRECT_ALLOWLIST=easy_todo://auth,strict:easy_todo://auth,re:^easy_todo://auth(?:/.*)?$,https://your-web.example.com/auth/callback`
   - Plain URL entries are **prefix matches** (scheme+host match; path/fragment prefix match; port checked only if specified).
   - `strict:` / `exact:` entries are **strict matches** (scheme+host+port+path+query+fragment must match exactly).
@@ -114,6 +115,7 @@ Notes:
 
 - Set `BASE_URL` to your actual public origin (scheme + host + optional port). If you deploy behind a proxy, make sure it matches what users see in the browser.
 - If `BASE_URL` is `https://...`, dashboard cookies are marked `Secure`.
+- CORS is disabled by default. For Flutter Web on a different origin, set `CORS_ALLOW_ORIGINS=https://example.com,https://localhost:8080` or set `CORS_ALLOW_ANY=1` for local dev only.
 - Optional: set `SITE_CREATED_AT_MS_UTC=<unix_ms>` to show “service age” on the home page (otherwise it shows process uptime).
 
 ## Admin UI

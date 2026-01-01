@@ -111,12 +111,32 @@ pub(super) fn see_other(location: &str) -> Response {
 }
 
 pub(super) fn check_same_origin(state: &AppState, headers: &HeaderMap) -> bool {
-    let origin = headers.get(header::ORIGIN).and_then(|v| v.to_str().ok());
-    let Some(origin) = origin else {
-        return true;
-    };
     let base_url = state.auth.config.base_url.trim_end_matches('/');
     let base_origin = base_url_origin(base_url).unwrap_or_else(|| base_url.to_string());
+
+    if let Some(origin) = headers.get(header::ORIGIN).and_then(|v| v.to_str().ok()) {
+        return origin.trim_end_matches('/') == base_origin;
+    }
+
+    let Some(referer) = headers.get(header::REFERER).and_then(|v| v.to_str().ok()) else {
+        // Strict by default: if neither Origin nor Referer are present, treat the request as
+        // potentially cross-site.
+        return false;
+    };
+
+    let Ok(url) = Url::parse(referer) else {
+        return false;
+    };
+    let host = url.host_str().unwrap_or("");
+    if host.is_empty() {
+        return false;
+    }
+
+    let mut origin = format!("{}://{}", url.scheme(), host);
+    if let Some(port) = url.port() {
+        origin.push(':');
+        origin.push_str(&port.to_string());
+    }
     origin.trim_end_matches('/') == base_origin
 }
 

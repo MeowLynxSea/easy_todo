@@ -22,6 +22,18 @@ use super::util::{
     validate_return_to,
 };
 
+async fn check_admin_rate_limit(
+    state: &AppState,
+    key: &str,
+    remote_ip: std::net::IpAddr,
+) -> Result<(), (StatusCode, Json<ErrorBody>)> {
+    let mut limiter = state.admin_limiter.lock().await;
+    if !limiter.check(&format!("admin:{key}:ip:{remote_ip}")) {
+        return Err(json_error(StatusCode::TOO_MANY_REQUESTS, "rate limited"));
+    }
+    Ok(())
+}
+
 #[derive(Debug, Deserialize)]
 pub(super) struct AdminLoginQuery {
     next: Option<String>,
@@ -233,12 +245,14 @@ pub(super) async fn admin_login_page(
 
 pub(super) async fn admin_login(
     State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     headers: HeaderMap,
     Form(form): Form<AdminLoginForm>,
 ) -> Result<Response, (StatusCode, Json<ErrorBody>)> {
     if !state.admin.enabled() {
         return Err(json_error(StatusCode::NOT_FOUND, "not found"));
     }
+    check_admin_rate_limit(&state, "login", addr.ip()).await?;
     if !check_same_origin(&state, &headers) {
         return Err(json_error(StatusCode::FORBIDDEN, "forbidden"));
     }
@@ -284,11 +298,13 @@ pub(super) async fn admin_login(
 
 pub(super) async fn admin_logout(
     State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     headers: HeaderMap,
 ) -> Result<Response, (StatusCode, Json<ErrorBody>)> {
     if !state.admin.enabled() {
         return Err(json_error(StatusCode::NOT_FOUND, "not found"));
     }
+    check_admin_rate_limit(&state, "logout", addr.ip()).await?;
     if !check_same_origin(&state, &headers) {
         return Err(json_error(StatusCode::FORBIDDEN, "forbidden"));
     }
@@ -300,12 +316,14 @@ pub(super) async fn admin_logout(
 
 pub(super) async fn admin_dashboard_page(
     State(state): State<AppState>,
-    ConnectInfo(_addr): ConnectInfo<SocketAddr>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     headers: HeaderMap,
 ) -> Result<Response, (StatusCode, Json<ErrorBody>)> {
     if !state.admin.enabled() {
         return Err(json_error(StatusCode::NOT_FOUND, "not found"));
     }
+
+    check_admin_rate_limit(&state, "dashboard", addr.ip()).await?;
 
     if authenticate_admin(&state, &headers).is_err() {
         let login = format!(

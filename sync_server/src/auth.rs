@@ -79,12 +79,18 @@ impl AuthConfig {
         let base_url =
             std::env::var("BASE_URL").unwrap_or_else(|_| "http://127.0.0.1:8787".to_string());
 
-        let jwt_secret =
-            std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev-secret-change-me".to_string());
+        let jwt_secret = std::env::var("JWT_SECRET")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "dev-secret-change-me".to_string());
         let jwt_issuer =
             std::env::var("JWT_ISSUER").unwrap_or_else(|_| "easy_todo_sync_server".to_string());
-        let token_pepper =
-            std::env::var("TOKEN_PEPPER").unwrap_or_else(|_| "dev-pepper-change-me".to_string());
+        let token_pepper = std::env::var("TOKEN_PEPPER")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "dev-pepper-change-me".to_string());
 
         let app_redirect_allowlist = parse_app_redirect_allowlist(
             &std::env::var("APP_REDIRECT_ALLOWLIST").unwrap_or_else(|_| "easy_todo://".to_string()),
@@ -145,6 +151,11 @@ impl AuthConfig {
             providers,
         })
     }
+}
+
+pub(crate) fn is_insecure_dev_secret(s: &str) -> bool {
+    let v = s.trim();
+    v.is_empty() || v == "dev-secret-change-me" || v == "dev-pepper-change-me"
 }
 
 #[derive(Clone)]

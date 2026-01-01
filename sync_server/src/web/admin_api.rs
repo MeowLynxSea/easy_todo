@@ -1,4 +1,4 @@
-use axum::extract::{Path, Query, State};
+use axum::extract::{ConnectInfo, Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use axum::Json;
@@ -80,9 +80,16 @@ struct AdminGenerateCdkeysResponse {
 
 pub(super) async fn admin_generate_cdkeys(
     State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<std::net::SocketAddr>,
     headers: HeaderMap,
     Json(req): Json<AdminGenerateCdkeysRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorBody>)> {
+    {
+        let mut limiter = state.admin_limiter.lock().await;
+        if !limiter.check(&format!("admin:cdkeys:generate:{}", addr.ip())) {
+            return Err(json_error(StatusCode::TOO_MANY_REQUESTS, "rate limited"));
+        }
+    }
     authenticate_admin(&state, &headers)?;
     if !check_same_origin(&state, &headers) {
         return Err(json_error(StatusCode::FORBIDDEN, "forbidden"));
@@ -159,9 +166,16 @@ struct AdminListCdkeysResponse {
 
 pub(super) async fn admin_list_cdkeys(
     State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<std::net::SocketAddr>,
     headers: HeaderMap,
     Query(q): Query<AdminListCdkeysQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorBody>)> {
+    {
+        let mut limiter = state.admin_limiter.lock().await;
+        if !limiter.check(&format!("admin:cdkeys:list:{}", addr.ip())) {
+            return Err(json_error(StatusCode::TOO_MANY_REQUESTS, "rate limited"));
+        }
+    }
     authenticate_admin(&state, &headers)?;
     if !check_same_origin(&state, &headers) {
         return Err(json_error(StatusCode::FORBIDDEN, "forbidden"));
@@ -217,9 +231,16 @@ pub(super) async fn admin_list_cdkeys(
 
 pub(super) async fn admin_delete_cdkeys(
     State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<std::net::SocketAddr>,
     headers: HeaderMap,
     Json(req): Json<AdminDeleteCdkeysRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorBody>)> {
+    {
+        let mut limiter = state.admin_limiter.lock().await;
+        if !limiter.check(&format!("admin:cdkeys:delete:{}", addr.ip())) {
+            return Err(json_error(StatusCode::TOO_MANY_REQUESTS, "rate limited"));
+        }
+    }
     authenticate_admin(&state, &headers)?;
     if !check_same_origin(&state, &headers) {
         return Err(json_error(StatusCode::FORBIDDEN, "forbidden"));
@@ -360,9 +381,16 @@ struct AdminGetUserResponse {
 
 pub(super) async fn admin_get_user(
     State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<std::net::SocketAddr>,
     headers: HeaderMap,
     Path(user_id): Path<i64>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorBody>)> {
+    {
+        let mut limiter = state.admin_limiter.lock().await;
+        if !limiter.check(&format!("admin:users:get:{}", addr.ip())) {
+            return Err(json_error(StatusCode::TOO_MANY_REQUESTS, "rate limited"));
+        }
+    }
     authenticate_admin(&state, &headers)?;
 
     let now_ms = now_ms_utc();
@@ -518,9 +546,16 @@ struct OkResponse {
 
 pub(super) async fn admin_update_user(
     State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<std::net::SocketAddr>,
     headers: HeaderMap,
     Json(req): Json<AdminUpdateUserRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorBody>)> {
+    {
+        let mut limiter = state.admin_limiter.lock().await;
+        if !limiter.check(&format!("admin:users:update:{}", addr.ip())) {
+            return Err(json_error(StatusCode::TOO_MANY_REQUESTS, "rate limited"));
+        }
+    }
     authenticate_admin(&state, &headers)?;
     if !check_same_origin(&state, &headers) {
         return Err(json_error(StatusCode::FORBIDDEN, "forbidden"));

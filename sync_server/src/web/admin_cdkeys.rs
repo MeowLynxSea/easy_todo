@@ -1,4 +1,4 @@
-use axum::extract::{OriginalUri, State};
+use axum::extract::{ConnectInfo, OriginalUri, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::Json;
@@ -14,9 +14,17 @@ pub(super) async fn admin_cdkeys_page(
     State(state): State<AppState>,
     OriginalUri(uri): OriginalUri,
     headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<std::net::SocketAddr>,
 ) -> Result<Response, (StatusCode, Json<ErrorBody>)> {
     if !state.admin.enabled() {
         return Err(json_error(StatusCode::NOT_FOUND, "not found"));
+    }
+
+    {
+        let mut limiter = state.admin_limiter.lock().await;
+        if !limiter.check(&format!("admin:cdkeys:page:{}", addr.ip())) {
+            return Err(json_error(StatusCode::TOO_MANY_REQUESTS, "rate limited"));
+        }
     }
 
     if authenticate_admin(&state, &headers).is_err() {

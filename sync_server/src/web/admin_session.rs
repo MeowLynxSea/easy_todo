@@ -72,24 +72,28 @@ pub(super) fn build_admin_login_cookie(
         &token,
         state.admin.session_ttl_secs,
         secure,
+        &state.admin.entry_path,
     )])
 }
 
 pub(super) fn clear_admin_cookies(state: &AppState) -> Vec<HeaderValue> {
     let secure = cookie_secure_flag(&state.auth.config.base_url);
-    vec![set_cookie(ADMIN_COOKIE, "", 0, secure)]
+    vec![set_cookie(ADMIN_COOKIE, "", 0, secure, &state.admin.entry_path)]
 }
 
-fn set_cookie(name: &str, value: &str, max_age_secs: i64, secure: bool) -> HeaderValue {
+fn set_cookie(name: &str, value: &str, max_age_secs: i64, secure: bool, path: &str) -> HeaderValue {
     let mut s = String::new();
     s.push_str(name);
     s.push('=');
     s.push_str(value);
-    s.push_str("; Path=/; HttpOnly; SameSite=Lax; Max-Age=");
+    s.push_str("; Path=");
+    s.push_str(path);
+    s.push_str("; HttpOnly; SameSite=Lax; Max-Age=");
     s.push_str(&max_age_secs.to_string());
     if secure {
         s.push_str("; Secure");
     }
+    s.push_str("; Priority=High");
     HeaderValue::from_str(&s).unwrap_or_else(|_| HeaderValue::from_static(""))
 }
 

@@ -19,11 +19,18 @@ use super::util::{format_bytes, format_number, format_uptime, h, url_encode};
 pub(super) async fn admin_users_page(
     State(state): State<AppState>,
     OriginalUri(uri): OriginalUri,
-    ConnectInfo(_addr): ConnectInfo<SocketAddr>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     headers: HeaderMap,
 ) -> Result<Response, (StatusCode, Json<ErrorBody>)> {
     if !state.admin.enabled() {
         return Err(json_error(StatusCode::NOT_FOUND, "not found"));
+    }
+
+    {
+        let mut limiter = state.admin_limiter.lock().await;
+        if !limiter.check(&format!("admin:users:page:{}", addr.ip())) {
+            return Err(json_error(StatusCode::TOO_MANY_REQUESTS, "rate limited"));
+        }
     }
 
     if authenticate_admin(&state, &headers).is_err() {

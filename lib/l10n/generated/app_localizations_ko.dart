@@ -795,34 +795,34 @@ class AppLocalizationsKo extends AppLocalizations {
   String get completionRateDescription => '할 일 완료';
 
   @override
-  String get fingerprintLock => '지문 잠금';
+  String get fingerprintLock => '앱 잠금';
 
   @override
-  String get fingerprintLockSubtitle => '지문으로 앱 보안 보호';
+  String get fingerprintLockSubtitle => '기기 인증으로 앱 보안을 보호';
 
   @override
-  String get fingerprintLockEnable => '지문 잠금 활성화';
+  String get fingerprintLockEnable => '앱 잠금 활성화';
 
   @override
-  String get fingerprintLockDisable => '지문 잠금 비활성화';
+  String get fingerprintLockDisable => '앱 잠금 비활성화';
 
   @override
-  String get fingerprintLockEnabled => '지문 잠금이 활성화되었습니다';
+  String get fingerprintLockEnabled => '앱 잠금이 활성화되었습니다';
 
   @override
-  String get fingerprintLockDisabled => '지문 잠금이 비활성화되었습니다';
+  String get fingerprintLockDisabled => '앱 잠금이 비활성화되었습니다';
 
   @override
-  String get fingerprintNotAvailable => '지문 인증을 사용할 수 없습니다';
+  String get fingerprintNotAvailable => '기기 인증을 사용할 수 없습니다';
 
   @override
-  String get fingerprintNotEnrolled => '등록된 지문이 없습니다';
+  String get fingerprintNotEnrolled => '생체 인식 또는 기기 비밀번호가 설정되어 있지 않습니다';
 
   @override
-  String get fingerprintAuthenticationFailed => '지문 인증 실패';
+  String get fingerprintAuthenticationFailed => '인증 실패';
 
   @override
-  String get fingerprintAuthenticationSuccess => '지문 인증 성공';
+  String get fingerprintAuthenticationSuccess => '인증 성공';
 
   @override
   String get active => '활성';
@@ -1740,13 +1740,13 @@ class AppLocalizationsKo extends AppLocalizations {
   String get gmt => 'GMT';
 
   @override
-  String get authenticateToEnableFingerprint => '지문 잠금을 활성화하려면 인증하세요';
+  String get authenticateToEnableFingerprint => '앱 잠금을 활성화하려면 인증하세요';
 
   @override
-  String get authenticateToDisableFingerprint => '지문 잠금을 비활성화하려면 인증하세요';
+  String get authenticateToDisableFingerprint => '앱 잠금을 비활성화하려면 인증하세요';
 
   @override
-  String get authenticateToAccessWithFingerprint => '지문 인증을 사용하여 앱에 접근하세요';
+  String get authenticateToAccessWithFingerprint => '앱에 접근하려면 인증하세요';
 
   @override
   String get authenticateToAccessWithBiometric => '계속하려면 생체 인증을 사용하여 신원을 확인하세요';
@@ -2532,7 +2532,7 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get authenticateToAccessAppMessage => '지문을 사용하여 앱에 접근해 주세요';
+  String get authenticateToAccessAppMessage => '앱에 접근하려면 인증해 주세요';
 
   @override
   String get aiFeaturesEnabled => 'AI 기능 활성화됨';

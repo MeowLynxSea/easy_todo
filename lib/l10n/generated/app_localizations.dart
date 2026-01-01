@@ -1651,61 +1651,61 @@ abstract class AppLocalizations {
   /// No description provided for @fingerprintLock.
   ///
   /// In en, this message translates to:
-  /// **'Fingerprint Lock'**
+  /// **'App Lock'**
   String get fingerprintLock;
 
   /// No description provided for @fingerprintLockSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Protect app security with fingerprint'**
+  /// **'Protect the app with device authentication'**
   String get fingerprintLockSubtitle;
 
   /// No description provided for @fingerprintLockEnable.
   ///
   /// In en, this message translates to:
-  /// **'Enable fingerprint lock'**
+  /// **'Enable app lock'**
   String get fingerprintLockEnable;
 
   /// No description provided for @fingerprintLockDisable.
   ///
   /// In en, this message translates to:
-  /// **'Disable fingerprint lock'**
+  /// **'Disable app lock'**
   String get fingerprintLockDisable;
 
   /// No description provided for @fingerprintLockEnabled.
   ///
   /// In en, this message translates to:
-  /// **'Fingerprint lock enabled'**
+  /// **'App lock enabled'**
   String get fingerprintLockEnabled;
 
   /// No description provided for @fingerprintLockDisabled.
   ///
   /// In en, this message translates to:
-  /// **'Fingerprint lock disabled'**
+  /// **'App lock disabled'**
   String get fingerprintLockDisabled;
 
   /// No description provided for @fingerprintNotAvailable.
   ///
   /// In en, this message translates to:
-  /// **'Fingerprint authentication not available'**
+  /// **'Device authentication not available'**
   String get fingerprintNotAvailable;
 
   /// No description provided for @fingerprintNotEnrolled.
   ///
   /// In en, this message translates to:
-  /// **'No fingerprint enrolled'**
+  /// **'No biometrics or device passcode set up'**
   String get fingerprintNotEnrolled;
 
   /// No description provided for @fingerprintAuthenticationFailed.
   ///
   /// In en, this message translates to:
-  /// **'Fingerprint authentication failed'**
+  /// **'Authentication failed'**
   String get fingerprintAuthenticationFailed;
 
   /// No description provided for @fingerprintAuthenticationSuccess.
   ///
   /// In en, this message translates to:
-  /// **'Fingerprint authentication successful'**
+  /// **'Authentication successful'**
   String get fingerprintAuthenticationSuccess;
 
   /// No description provided for @active.
@@ -3373,7 +3373,7 @@ abstract class AppLocalizations {
   /// No description provided for @authenticateToAccessApp.
   ///
   /// In en, this message translates to:
-  /// **'Please use fingerprint to access app'**
+  /// **'Please authenticate to access the app'**
   String get authenticateToAccessApp;
 
   /// No description provided for @backupFileSubject.
@@ -3433,19 +3433,19 @@ abstract class AppLocalizations {
   /// No description provided for @authenticateToEnableFingerprint.
   ///
   /// In en, this message translates to:
-  /// **'Please authenticate to enable fingerprint lock'**
+  /// **'Please authenticate to enable app lock'**
   String get authenticateToEnableFingerprint;
 
   /// No description provided for @authenticateToDisableFingerprint.
   ///
   /// In en, this message translates to:
-  /// **'Please authenticate to disable fingerprint lock'**
+  /// **'Please authenticate to disable app lock'**
   String get authenticateToDisableFingerprint;
 
   /// No description provided for @authenticateToAccessWithFingerprint.
   ///
   /// In en, this message translates to:
-  /// **'Please use fingerprint verification to access the app'**
+  /// **'Please authenticate to access the app'**
   String get authenticateToAccessWithFingerprint;
 
   /// No description provided for @authenticateToAccessWithBiometric.
@@ -4957,7 +4957,7 @@ abstract class AppLocalizations {
   /// No description provided for @authenticateToAccessAppMessage.
   ///
   /// In en, this message translates to:
-  /// **'Please use fingerprint to access app'**
+  /// **'Please authenticate to access the app'**
   String get authenticateToAccessAppMessage;
 
   /// No description provided for @aiFeaturesEnabled.

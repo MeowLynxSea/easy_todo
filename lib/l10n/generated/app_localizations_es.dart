@@ -811,37 +811,37 @@ class AppLocalizationsEs extends AppLocalizations {
   String get completionRateDescription => 'of all todos completed';
 
   @override
-  String get fingerprintLock => 'Fingerprint Lock';
+  String get fingerprintLock => 'Bloqueo de la app';
 
   @override
-  String get fingerprintLockSubtitle => 'Protect app security with fingerprint';
+  String get fingerprintLockSubtitle =>
+      'Protege la app con la autenticación del dispositivo';
 
   @override
-  String get fingerprintLockEnable => 'Enable fingerprint lock';
+  String get fingerprintLockEnable => 'Activar bloqueo de la app';
 
   @override
-  String get fingerprintLockDisable => 'Disable fingerprint lock';
+  String get fingerprintLockDisable => 'Desactivar bloqueo de la app';
 
   @override
-  String get fingerprintLockEnabled => 'Fingerprint lock enabled';
+  String get fingerprintLockEnabled => 'Bloqueo de la app activado';
 
   @override
-  String get fingerprintLockDisabled => 'Fingerprint lock disabled';
+  String get fingerprintLockDisabled => 'Bloqueo de la app desactivado';
 
   @override
   String get fingerprintNotAvailable =>
-      'Fingerprint authentication not available';
+      'Autenticación del dispositivo no disponible';
 
   @override
-  String get fingerprintNotEnrolled => 'No fingerprint enrolled';
+  String get fingerprintNotEnrolled =>
+      'No hay credenciales del dispositivo configuradas';
 
   @override
-  String get fingerprintAuthenticationFailed =>
-      'Fingerprint authentication failed';
+  String get fingerprintAuthenticationFailed => 'Falló la autenticación';
 
   @override
-  String get fingerprintAuthenticationSuccess =>
-      'Fingerprint authentication successful';
+  String get fingerprintAuthenticationSuccess => 'Autenticación correcta';
 
   @override
   String get active => 'Active';
@@ -1783,15 +1783,15 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get authenticateToEnableFingerprint =>
-      'Please authenticate to enable fingerprint lock';
+      'Autentícate para activar el bloqueo de la app';
 
   @override
   String get authenticateToDisableFingerprint =>
-      'Please authenticate to disable fingerprint lock';
+      'Autentícate para desactivar el bloqueo de la app';
 
   @override
   String get authenticateToAccessWithFingerprint =>
-      'Please use fingerprint verification to access the app';
+      'Autentícate para acceder a la app';
 
   @override
   String get authenticateToAccessWithBiometric =>
@@ -2619,7 +2619,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get authenticateToAccessAppMessage =>
-      'Por favor use la huella digital para acceder a la aplicación';
+      'Autentícate para acceder a la aplicación';
 
   @override
   String get aiFeaturesEnabled => 'Características de IA Habilitadas';

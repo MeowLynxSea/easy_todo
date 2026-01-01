@@ -794,34 +794,34 @@ class AppLocalizationsJa extends AppLocalizations {
   String get completionRateDescription => 'のToDoが完了';
 
   @override
-  String get fingerprintLock => '指紋ロック';
+  String get fingerprintLock => 'アプリロック';
 
   @override
-  String get fingerprintLockSubtitle => '指紋でアプリのセキュリティを保護';
+  String get fingerprintLockSubtitle => '端末の認証でアプリを保護';
 
   @override
-  String get fingerprintLockEnable => '指紋ロックを有効にする';
+  String get fingerprintLockEnable => 'アプリロックを有効にする';
 
   @override
-  String get fingerprintLockDisable => '指紋ロックを無効にする';
+  String get fingerprintLockDisable => 'アプリロックを無効にする';
 
   @override
-  String get fingerprintLockEnabled => '指紋ロックが有効になりました';
+  String get fingerprintLockEnabled => 'アプリロックが有効になりました';
 
   @override
-  String get fingerprintLockDisabled => '指紋ロックが無効になりました';
+  String get fingerprintLockDisabled => 'アプリロックが無効になりました';
 
   @override
-  String get fingerprintNotAvailable => '指紋認証が利用できません';
+  String get fingerprintNotAvailable => '端末の認証を利用できません';
 
   @override
-  String get fingerprintNotEnrolled => '登録された指紋がありません';
+  String get fingerprintNotEnrolled => '生体認証または端末のパスコードが設定されていません';
 
   @override
-  String get fingerprintAuthenticationFailed => '指紋認証に失敗しました';
+  String get fingerprintAuthenticationFailed => '認証に失敗しました';
 
   @override
-  String get fingerprintAuthenticationSuccess => '指紋認証に成功しました';
+  String get fingerprintAuthenticationSuccess => '認証に成功しました';
 
   @override
   String get active => 'アクティブ';
@@ -1738,13 +1738,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get gmt => 'GMT';
 
   @override
-  String get authenticateToEnableFingerprint => '指紋ロックを有効にするには認証してください';
+  String get authenticateToEnableFingerprint => 'アプリロックを有効にするには認証してください';
 
   @override
-  String get authenticateToDisableFingerprint => '指紋ロックを無効にするには認証してください';
+  String get authenticateToDisableFingerprint => 'アプリロックを無効にするには認証してください';
 
   @override
-  String get authenticateToAccessWithFingerprint => '指紋認証を使用してアプリにアクセスしてください';
+  String get authenticateToAccessWithFingerprint => 'アプリにアクセスするには認証してください';
 
   @override
   String get authenticateToAccessWithBiometric => '続行するには生体認証を使用して身元を確認してください';
@@ -2530,7 +2530,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get authenticateToAccessAppMessage => '指紋を使用してアプリにアクセスしてください';
+  String get authenticateToAccessAppMessage => 'アプリにアクセスするには認証してください';
 
   @override
   String get aiFeaturesEnabled => 'AI機能が有効';

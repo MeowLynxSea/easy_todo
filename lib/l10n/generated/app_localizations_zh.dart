@@ -787,34 +787,34 @@ class AppLocalizationsZh extends AppLocalizations {
   String get completionRateDescription => '的待办事项已完成';
 
   @override
-  String get fingerprintLock => '指纹锁';
+  String get fingerprintLock => '应用锁';
 
   @override
-  String get fingerprintLockSubtitle => '使用指纹保护应用安全';
+  String get fingerprintLockSubtitle => '使用设备密码或生物识别保护应用安全';
 
   @override
-  String get fingerprintLockEnable => '启用指纹锁';
+  String get fingerprintLockEnable => '启用应用锁';
 
   @override
-  String get fingerprintLockDisable => '禁用指纹锁';
+  String get fingerprintLockDisable => '禁用应用锁';
 
   @override
-  String get fingerprintLockEnabled => '指纹锁已启用';
+  String get fingerprintLockEnabled => '应用锁已启用';
 
   @override
-  String get fingerprintLockDisabled => '指纹锁已禁用';
+  String get fingerprintLockDisabled => '应用锁已禁用';
 
   @override
-  String get fingerprintNotAvailable => '设备不支持指纹识别';
+  String get fingerprintNotAvailable => '设备认证不可用';
 
   @override
-  String get fingerprintNotEnrolled => '未注册指纹';
+  String get fingerprintNotEnrolled => '未设置设备密码或生物识别';
 
   @override
-  String get fingerprintAuthenticationFailed => '指纹验证失败';
+  String get fingerprintAuthenticationFailed => '验证失败';
 
   @override
-  String get fingerprintAuthenticationSuccess => '指纹验证成功';
+  String get fingerprintAuthenticationSuccess => '验证成功';
 
   @override
   String get active => '进行中';
@@ -1699,7 +1699,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get checkRepeatTodos => '检查重复待办';
 
   @override
-  String get authenticateToAccessApp => '请使用指纹验证以访问应用';
+  String get authenticateToAccessApp => '请验证身份以访问应用';
 
   @override
   String get backupFileSubject => '轻单备份文件';
@@ -1729,13 +1729,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gmt => 'GMT';
 
   @override
-  String get authenticateToEnableFingerprint => '请验证身份以启用指纹锁';
+  String get authenticateToEnableFingerprint => '请验证身份以启用应用锁';
 
   @override
-  String get authenticateToDisableFingerprint => '请验证身份以禁用指纹锁';
+  String get authenticateToDisableFingerprint => '请验证身份以禁用应用锁';
 
   @override
-  String get authenticateToAccessWithFingerprint => '请使用指纹验证以访问应用';
+  String get authenticateToAccessWithFingerprint => '请验证身份以访问应用';
 
   @override
   String get authenticateToAccessWithBiometric => '请使用生物识别验证您的身份以继续';
@@ -2520,7 +2520,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get authenticateToAccessAppMessage => '请使用指纹访问应用';
+  String get authenticateToAccessAppMessage => '请验证身份以访问应用';
 
   @override
   String get aiFeaturesEnabled => 'AI 功能已启用';

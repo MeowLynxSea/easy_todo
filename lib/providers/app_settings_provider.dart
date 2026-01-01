@@ -193,7 +193,7 @@ class AppSettingsProvider extends ChangeNotifier {
     }
   }
 
-  /// 设置指纹锁
+  /// 设置应用锁（设备认证：PIN/指纹/人脸等）
   Future<bool> setFingerprintLock(
     bool enabled, {
     String? enableReason,
@@ -204,7 +204,7 @@ class AppSettingsProvider extends ChangeNotifier {
 
     try {
       if (enabled) {
-        // 启用指纹锁，需要先验证身份
+        // 启用应用锁，需要先验证身份
         final isAvailable = await _biometricService.isFingerprintAvailable();
         if (!isAvailable) {
           _isLoading = false;
@@ -213,7 +213,7 @@ class AppSettingsProvider extends ChangeNotifier {
         }
 
         final authenticated = await _biometricService
-            .authenticateWithFingerprint(reason: enableReason ?? '请验证身份以启用指纹锁');
+            .authenticateWithFingerprint(reason: enableReason ?? '请验证身份以启用应用锁');
 
         if (!authenticated) {
           _isLoading = false;
@@ -221,12 +221,12 @@ class AppSettingsProvider extends ChangeNotifier {
           return false;
         }
       } else {
-        // 禁用指纹锁，需要先验证身份
+        // 禁用应用锁，需要先验证身份
         final isAvailable = await _biometricService.isFingerprintAvailable();
         if (isAvailable) {
           final authenticated = await _biometricService
               .authenticateWithFingerprint(
-                reason: disableReason ?? '请验证身份以禁用指纹锁',
+                reason: disableReason ?? '请验证身份以禁用应用锁',
               );
 
           if (!authenticated) {
@@ -252,10 +252,10 @@ class AppSettingsProvider extends ChangeNotifier {
     }
   }
 
-  /// 验证指纹（用于应用启动时的验证）
+  /// 验证设备认证（用于应用启动时的验证）
   Future<bool> authenticateForAppAccess({String? reason}) async {
     if (!_deviceSettings.biometricLockEnabled) {
-      return true; // 如果未启用指纹锁，直接允许访问
+      return true; // 如果未启用应用锁，直接允许访问
     }
 
     try {

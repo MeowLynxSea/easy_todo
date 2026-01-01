@@ -35,7 +35,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
     );
 
     // 安全地获取本地化字符串，如果不可用则使用默认值
-    String authReason = 'Please use fingerprint to access app';
+    String authReason = 'Please authenticate to access the app';
     try {
       final l10n = AppLocalizations.of(context);
       if (l10n != null) {

@@ -806,37 +806,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String get completionRateDescription => 'of all todos completed';
 
   @override
-  String get fingerprintLock => 'Fingerprint Lock';
+  String get fingerprintLock => 'App Lock';
 
   @override
-  String get fingerprintLockSubtitle => 'Protect app security with fingerprint';
+  String get fingerprintLockSubtitle =>
+      'Protect the app with device authentication';
 
   @override
-  String get fingerprintLockEnable => 'Enable fingerprint lock';
+  String get fingerprintLockEnable => 'Enable app lock';
 
   @override
-  String get fingerprintLockDisable => 'Disable fingerprint lock';
+  String get fingerprintLockDisable => 'Disable app lock';
 
   @override
-  String get fingerprintLockEnabled => 'Fingerprint lock enabled';
+  String get fingerprintLockEnabled => 'App lock enabled';
 
   @override
-  String get fingerprintLockDisabled => 'Fingerprint lock disabled';
+  String get fingerprintLockDisabled => 'App lock disabled';
 
   @override
-  String get fingerprintNotAvailable =>
-      'Fingerprint authentication not available';
+  String get fingerprintNotAvailable => 'Device authentication not available';
 
   @override
-  String get fingerprintNotEnrolled => 'No fingerprint enrolled';
+  String get fingerprintNotEnrolled =>
+      'No biometrics or device passcode set up';
 
   @override
-  String get fingerprintAuthenticationFailed =>
-      'Fingerprint authentication failed';
+  String get fingerprintAuthenticationFailed => 'Authentication failed';
 
   @override
-  String get fingerprintAuthenticationSuccess =>
-      'Fingerprint authentication successful';
+  String get fingerprintAuthenticationSuccess => 'Authentication successful';
 
   @override
   String get active => 'Active';
@@ -1743,7 +1742,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkRepeatTodos => 'Check Repeat Todos';
 
   @override
-  String get authenticateToAccessApp => 'Please use fingerprint to access app';
+  String get authenticateToAccessApp => 'Please authenticate to access the app';
 
   @override
   String get backupFileSubject => 'Easy Todo Backup File';
@@ -1777,15 +1776,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get authenticateToEnableFingerprint =>
-      'Please authenticate to enable fingerprint lock';
+      'Please authenticate to enable app lock';
 
   @override
   String get authenticateToDisableFingerprint =>
-      'Please authenticate to disable fingerprint lock';
+      'Please authenticate to disable app lock';
 
   @override
   String get authenticateToAccessWithFingerprint =>
-      'Please use fingerprint verification to access the app';
+      'Please authenticate to access the app';
 
   @override
   String get authenticateToAccessWithBiometric =>
@@ -2607,7 +2606,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get authenticateToAccessAppMessage =>
-      'Please use fingerprint to access app';
+      'Please authenticate to access the app';
 
   @override
   String get aiFeaturesEnabled => 'AI Features Enabled';

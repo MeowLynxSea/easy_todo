@@ -813,38 +813,38 @@ class AppLocalizationsDe extends AppLocalizations {
   String get completionRateDescription => 'aller Aufgaben abgeschlossen';
 
   @override
-  String get fingerprintLock => 'Fingerabdruck-Sperre';
+  String get fingerprintLock => 'App-Sperre';
 
   @override
   String get fingerprintLockSubtitle =>
-      'App-Sicherheit mit Fingerabdruck schützen';
+      'App mit Geräteauthentifizierung schützen';
 
   @override
-  String get fingerprintLockEnable => 'Fingerabdruck-Sperre aktivieren';
+  String get fingerprintLockEnable => 'App-Sperre aktivieren';
 
   @override
-  String get fingerprintLockDisable => 'Fingerabdruck-Sperre deaktivieren';
+  String get fingerprintLockDisable => 'App-Sperre deaktivieren';
 
   @override
-  String get fingerprintLockEnabled => 'Fingerabdruck-Sperre aktiviert';
+  String get fingerprintLockEnabled => 'App-Sperre aktiviert';
 
   @override
-  String get fingerprintLockDisabled => 'Fingerabdruck-Sperre deaktiviert';
+  String get fingerprintLockDisabled => 'App-Sperre deaktiviert';
 
   @override
   String get fingerprintNotAvailable =>
-      'Fingerabdruck-Authentifizierung nicht verfügbar';
+      'Geräteauthentifizierung nicht verfügbar';
 
   @override
-  String get fingerprintNotEnrolled => 'Kein Fingerabdruck registriert';
+  String get fingerprintNotEnrolled => 'Keine Geräteanmeldedaten eingerichtet';
 
   @override
   String get fingerprintAuthenticationFailed =>
-      'Fingerabdruck-Authentifizierung fehlgeschlagen';
+      'Authentifizierung fehlgeschlagen';
 
   @override
   String get fingerprintAuthenticationSuccess =>
-      'Fingerabdruck-Authentifizierung erfolgreich';
+      'Authentifizierung erfolgreich';
 
   @override
   String get active => 'Aktiv';
@@ -1803,15 +1803,15 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get authenticateToEnableFingerprint =>
-      'Bitte authentifizieren Sie sich, um die Fingerabdruck-Sperre zu aktivieren';
+      'Bitte authentifizieren Sie sich, um die App-Sperre zu aktivieren';
 
   @override
   String get authenticateToDisableFingerprint =>
-      'Bitte authentifizieren Sie sich, um die Fingerabdruck-Sperre zu deaktivieren';
+      'Bitte authentifizieren Sie sich, um die App-Sperre zu deaktivieren';
 
   @override
   String get authenticateToAccessWithFingerprint =>
-      'Bitte verwenden Sie die Fingerabdruck-Überprüfung, um auf die App zuzugreifen';
+      'Bitte authentifizieren Sie sich, um auf die App zuzugreifen';
 
   @override
   String get authenticateToAccessWithBiometric =>
@@ -2646,7 +2646,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get authenticateToAccessAppMessage =>
-      'Bitte verwenden Sie den Fingerabdruck, um auf die App zuzugreifen';
+      'Bitte authentifizieren Sie sich, um auf die App zuzugreifen';
 
   @override
   String get aiFeaturesEnabled => 'KI-Funktionen aktiviert';

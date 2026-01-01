@@ -816,42 +816,40 @@ class AppLocalizationsFr extends AppLocalizations {
   String get completionRateDescription => 'de toutes les tâches terminées';
 
   @override
-  String get fingerprintLock => 'Verrouillage par empreinte digitale';
+  String get fingerprintLock => 'Verrouillage de l\'application';
 
   @override
   String get fingerprintLockSubtitle =>
-      'Protéger la sécurité de l\'application avec empreinte digitale';
+      'Protéger l\'application avec l\'authentification de l\'appareil';
 
   @override
   String get fingerprintLockEnable =>
-      'Activer le verrouillage par empreinte digitale';
+      'Activer le verrouillage de l\'application';
 
   @override
   String get fingerprintLockDisable =>
-      'Désactiver le verrouillage par empreinte digitale';
+      'Désactiver le verrouillage de l\'application';
 
   @override
-  String get fingerprintLockEnabled =>
-      'Verrouillage par empreinte digitale activé';
+  String get fingerprintLockEnabled => 'Verrouillage de l\'application activé';
 
   @override
   String get fingerprintLockDisabled =>
-      'Verrouillage par empreinte digitale désactivé';
+      'Verrouillage de l\'application désactivé';
 
   @override
   String get fingerprintNotAvailable =>
-      'Authentification par empreinte digitale non disponible';
+      'Authentification de l\'appareil non disponible';
 
   @override
-  String get fingerprintNotEnrolled => 'Aucune empreinte digitale enregistrée';
+  String get fingerprintNotEnrolled =>
+      'Aucun identifiant de l\'appareil configuré';
 
   @override
-  String get fingerprintAuthenticationFailed =>
-      'Échec de l\'authentification par empreinte digitale';
+  String get fingerprintAuthenticationFailed => 'Échec de l\'authentification';
 
   @override
-  String get fingerprintAuthenticationSuccess =>
-      'Authentification par empreinte digitale réussie';
+  String get fingerprintAuthenticationSuccess => 'Authentification réussie';
 
   @override
   String get active => 'Actif';
@@ -1810,15 +1808,15 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get authenticateToEnableFingerprint =>
-      'Veuillez vous authentifier pour activer le verrouillage par empreinte digitale';
+      'Veuillez vous authentifier pour activer le verrouillage de l\'application';
 
   @override
   String get authenticateToDisableFingerprint =>
-      'Veuillez vous authentifier pour désactiver le verrouillage par empreinte digitale';
+      'Veuillez vous authentifier pour désactiver le verrouillage de l\'application';
 
   @override
   String get authenticateToAccessWithFingerprint =>
-      'Veuillez utiliser la vérification par empreinte digitale pour accéder à l\'application';
+      'Veuillez vous authentifier pour accéder à l\'application';
 
   @override
   String get authenticateToAccessWithBiometric =>
@@ -2659,7 +2657,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get authenticateToAccessAppMessage =>
-      'Veuillez utiliser l\'empreinte digitale pour accéder à l\'application';
+      'Veuillez vous authentifier pour accéder à l\'application';
 
   @override
   String get aiFeaturesEnabled => 'Fonctionnalités IA Activées';

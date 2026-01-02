@@ -68,6 +68,12 @@ class TodoModel extends HiveObject {
   @HiveField(19)
   String? generatedKey;
 
+  /// Schedule color seed.
+  /// When present, Schedule view uses this stable seed to pick a random color
+  /// from the active color group.
+  @HiveField(20)
+  String? scheduleColorSeed;
+
   TodoModel({
     required this.id,
     required this.title,
@@ -89,6 +95,7 @@ class TodoModel extends HiveObject {
     this.startTime,
     this.endTime,
     this.generatedKey,
+    this.scheduleColorSeed,
   });
 
   factory TodoModel.create({
@@ -107,6 +114,7 @@ class TodoModel extends HiveObject {
     bool aiProcessed = false,
     DateTime? startTime,
     DateTime? endTime,
+    String? scheduleColorSeed,
   }) {
     // 使用系统时间，避免时区混乱
     final now = DateTime.now();
@@ -137,6 +145,7 @@ class TodoModel extends HiveObject {
       aiProcessed: aiProcessed,
       startTime: startTime,
       endTime: endTime,
+      scheduleColorSeed: scheduleColorSeed,
     );
   }
 
@@ -161,6 +170,7 @@ class TodoModel extends HiveObject {
     Object? startTime = _unset,
     Object? endTime = _unset,
     Object? generatedKey = _unset,
+    Object? scheduleColorSeed = _unset,
   }) {
     final resolvedDescription = identical(description, _unset)
         ? this.description
@@ -177,6 +187,9 @@ class TodoModel extends HiveObject {
     final resolvedGeneratedKey = identical(generatedKey, _unset)
         ? this.generatedKey
         : generatedKey as String?;
+    final resolvedScheduleColorSeed = identical(scheduleColorSeed, _unset)
+        ? this.scheduleColorSeed
+        : scheduleColorSeed as String?;
 
     return TodoModel(
       id: id ?? this.id,
@@ -200,6 +213,7 @@ class TodoModel extends HiveObject {
       startTime: resolvedStartTime,
       endTime: resolvedEndTime,
       generatedKey: resolvedGeneratedKey,
+      scheduleColorSeed: resolvedScheduleColorSeed,
     );
   }
 
@@ -225,6 +239,7 @@ class TodoModel extends HiveObject {
       'startTime': startTime?.toIso8601String(),
       'endTime': endTime?.toIso8601String(),
       'generatedKey': generatedKey,
+      'scheduleColorSeed': scheduleColorSeed,
     };
   }
 
@@ -256,6 +271,7 @@ class TodoModel extends HiveObject {
           : null,
       endTime: json['endTime'] != null ? DateTime.parse(json['endTime']) : null,
       generatedKey: json['generatedKey'],
+      scheduleColorSeed: json['scheduleColorSeed'],
     );
   }
 

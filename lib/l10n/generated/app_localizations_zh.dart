@@ -1450,6 +1450,50 @@ class AppLocalizationsZh extends AppLocalizations {
   String get scheduleLayoutSettingsSubtitle => '自定义时间范围与显示的星期';
 
   @override
+  String get scheduleColorGroups => '日程颜色组';
+
+  @override
+  String get scheduleColorGroupsSubtitle => '为未完成与已完成任务自定义颜色';
+
+  @override
+  String get scheduleColorGroupPresets => '预设';
+
+  @override
+  String get scheduleColorGroupMyGroups => '我的颜色组';
+
+  @override
+  String get scheduleColorGroupNoMyGroups => '暂无自定义颜色组。';
+
+  @override
+  String get scheduleColorGroupCreate => '创建';
+
+  @override
+  String get scheduleColorGroupName => '名称';
+
+  @override
+  String get scheduleColorGroupAddColor => '添加颜色';
+
+  @override
+  String get scheduleColorGroupNeedAtLeastOneColor => '请为未完成与已完成颜色组各添加至少一种颜色。';
+
+  @override
+  String scheduleColorGroupDeleteMessage(String name) {
+    return '删除\"$name\"？此操作无法撤销。';
+  }
+
+  @override
+  String get scheduleColorPresetWarmCool => '暖色 / 冷色';
+
+  @override
+  String get scheduleColorPresetForestLavender => '森林 / 薰衣草';
+
+  @override
+  String get scheduleColorPresetSunsetOcean => '落日 / 海洋';
+
+  @override
+  String get scheduleColorPresetGrayscale => '灰度';
+
+  @override
   String get viewMode => '视图模式';
 
   @override

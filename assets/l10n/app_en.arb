@@ -491,6 +491,27 @@
   "historyViewSettings": "History View Settings",
   "scheduleLayoutSettings": "Schedule Layout Settings",
   "scheduleLayoutSettingsSubtitle": "Customize time range and weekdays",
+  "scheduleColorGroups": "Schedule Color Groups",
+  "scheduleColorGroupsSubtitle": "Customize colors for completed and incomplete tasks",
+  "scheduleColorGroupPresets": "Presets",
+  "scheduleColorGroupMyGroups": "My groups",
+  "scheduleColorGroupNoMyGroups": "No custom color groups yet.",
+  "scheduleColorGroupCreate": "Create",
+  "scheduleColorGroupName": "Name",
+  "scheduleColorGroupAddColor": "Add color",
+  "scheduleColorGroupNeedAtLeastOneColor": "Please add at least one color for both groups.",
+  "scheduleColorGroupDeleteMessage": "Delete \"{name}\"? This action cannot be undone.",
+  "@scheduleColorGroupDeleteMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "scheduleColorPresetWarmCool": "Warm & Cool",
+  "scheduleColorPresetForestLavender": "Forest & Lavender",
+  "scheduleColorPresetSunsetOcean": "Sunset & Ocean",
+  "scheduleColorPresetGrayscale": "Grayscale",
   "viewMode": "View Mode",
   "listView": "List View",
   "stackingView": "Stacking View",

@@ -29,13 +29,17 @@ class UserPreferencesModelAdapter extends TypeAdapter<UserPreferencesModel> {
       scheduleVisibleWeekdays:
           (fields[5] as List?)?.cast<int>() ?? const <int>[1, 2, 3, 4, 5, 6, 7],
       scheduleLabelTextScale: fields[6] == null ? 1.0 : fields[6] as double,
+      scheduleActiveColorGroupId:
+          fields[15] == null ? 'preset:warm_cool' : fields[15] as String,
+      scheduleCustomColorGroupsString:
+          fields[16] == null ? '' : fields[16] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, UserPreferencesModel obj) {
     writer
-      ..writeByte(15)
+      ..writeByte(17)
       ..writeByte(0)
       ..write(obj.viewMode)
       ..writeByte(1)
@@ -65,6 +69,10 @@ class UserPreferencesModelAdapter extends TypeAdapter<UserPreferencesModel> {
       ..writeByte(13)
       ..write(obj.themeColorsString)
       ..writeByte(14)
-      ..write(obj.customThemeColorsString);
+      ..write(obj.customThemeColorsString)
+      ..writeByte(15)
+      ..write(obj.scheduleActiveColorGroupId)
+      ..writeByte(16)
+      ..write(obj.scheduleCustomColorGroupsString);
   }
 }

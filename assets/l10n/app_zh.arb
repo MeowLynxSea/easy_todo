@@ -491,6 +491,27 @@
   "historyViewSettings": "历史视图设置",
   "scheduleLayoutSettings": "日程布局设置",
   "scheduleLayoutSettingsSubtitle": "自定义时间范围与显示的星期",
+  "scheduleColorGroups": "日程颜色组",
+  "scheduleColorGroupsSubtitle": "为未完成与已完成任务自定义颜色",
+  "scheduleColorGroupPresets": "预设",
+  "scheduleColorGroupMyGroups": "我的颜色组",
+  "scheduleColorGroupNoMyGroups": "暂无自定义颜色组。",
+  "scheduleColorGroupCreate": "创建",
+  "scheduleColorGroupName": "名称",
+  "scheduleColorGroupAddColor": "添加颜色",
+  "scheduleColorGroupNeedAtLeastOneColor": "请为未完成与已完成颜色组各添加至少一种颜色。",
+  "scheduleColorGroupDeleteMessage": "删除\"{name}\"？此操作无法撤销。",
+  "@scheduleColorGroupDeleteMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "scheduleColorPresetWarmCool": "暖色 / 冷色",
+  "scheduleColorPresetForestLavender": "森林 / 薰衣草",
+  "scheduleColorPresetSunsetOcean": "落日 / 海洋",
+  "scheduleColorPresetGrayscale": "灰度",
   "viewMode": "视图模式",
   "listView": "列表视图",
   "stackingView": "堆叠视图",

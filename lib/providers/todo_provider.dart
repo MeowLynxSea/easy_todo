@@ -26,6 +26,7 @@ import 'package:easy_todo/models/user_preferences_model.dart';
 import 'package:easy_todo/models/ai_settings_model.dart';
 import 'package:easy_todo/services/repositories/user_preferences_repository.dart';
 import 'package:easy_todo/services/repositories/ai_settings_repository.dart';
+import 'package:easy_todo/utils/random_id.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class TodoProvider extends ChangeNotifier {
@@ -729,6 +730,20 @@ class TodoProvider extends ChangeNotifier {
         _todos[i] = updated;
       }
 
+      // Backfill schedule color seeds so each todo has a stable per-item color
+      // choice that can be synced across devices.
+      for (var i = 0; i < _todos.length; i++) {
+        final todo = _todos[i];
+        final seed = todo.scheduleColorSeed;
+        if (seed != null && seed.trim().isNotEmpty) continue;
+
+        final updated = todo.copyWith(
+          scheduleColorSeed: generateUrlSafeRandomId(byteLength: 12),
+        );
+        await _putTodo(updated);
+        _todos[i] = updated;
+      }
+
       // Log AI data for each loaded todo
       for (int i = 0; i < _todos.length; i++) {
         final todo = _todos[i];
@@ -1018,6 +1033,7 @@ class TodoProvider extends ChangeNotifier {
         reminderEnabled: reminderEnabled,
         startTime: startTime,
         endTime: endTime,
+        scheduleColorSeed: generateUrlSafeRandomId(byteLength: 12),
       );
 
       await _putTodo(newTodo);
@@ -2662,6 +2678,7 @@ class TodoProvider extends ChangeNotifier {
       aiProcessed: inheritedProcessed,
       startTime: inheritedStartTime,
       endTime: inheritedEndTime,
+      scheduleColorSeed: generateUrlSafeRandomId(byteLength: 12),
     );
 
     // 确保创建的任务使用指定日期，但保留当前时刻的时间分量（避免标准化为00:00）

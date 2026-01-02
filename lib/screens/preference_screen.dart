@@ -19,6 +19,7 @@ import 'package:easy_todo/screens/backup_restore_screen.dart';
 import 'package:easy_todo/screens/notification_settings_screen.dart';
 import 'package:easy_todo/screens/view_settings_screen.dart';
 import 'package:easy_todo/screens/schedule_layout_settings_screen.dart';
+import 'package:easy_todo/screens/schedule_color_groups_screen.dart';
 import 'package:easy_todo/screens/about_screen.dart';
 import 'package:easy_todo/screens/theme_settings_screen.dart';
 import 'package:easy_todo/screens/pomodoro_settings_screen.dart';
@@ -204,6 +205,17 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                       onTap: () {
                         _openPreferenceSubPage(
                           (context) => const ScheduleLayoutSettingsScreen(),
+                        );
+                      },
+                    ),
+                    const Divider(),
+                    _buildPreferenceItem(
+                      icon: Icons.palette_outlined,
+                      title: l10n.scheduleColorGroups,
+                      subtitle: l10n.scheduleColorGroupsSubtitle,
+                      onTap: () {
+                        _openPreferenceSubPage(
+                          (context) => const ScheduleColorGroupsScreen(),
                         );
                       },
                     ),

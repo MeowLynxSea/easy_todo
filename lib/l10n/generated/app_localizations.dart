@@ -2896,6 +2896,90 @@ abstract class AppLocalizations {
   /// **'Customize time range and weekdays'**
   String get scheduleLayoutSettingsSubtitle;
 
+  /// No description provided for @scheduleColorGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule Color Groups'**
+  String get scheduleColorGroups;
+
+  /// No description provided for @scheduleColorGroupsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Customize colors for completed and incomplete tasks'**
+  String get scheduleColorGroupsSubtitle;
+
+  /// No description provided for @scheduleColorGroupPresets.
+  ///
+  /// In en, this message translates to:
+  /// **'Presets'**
+  String get scheduleColorGroupPresets;
+
+  /// No description provided for @scheduleColorGroupMyGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'My groups'**
+  String get scheduleColorGroupMyGroups;
+
+  /// No description provided for @scheduleColorGroupNoMyGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'No custom color groups yet.'**
+  String get scheduleColorGroupNoMyGroups;
+
+  /// No description provided for @scheduleColorGroupCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get scheduleColorGroupCreate;
+
+  /// No description provided for @scheduleColorGroupName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get scheduleColorGroupName;
+
+  /// No description provided for @scheduleColorGroupAddColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Add color'**
+  String get scheduleColorGroupAddColor;
+
+  /// No description provided for @scheduleColorGroupNeedAtLeastOneColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Please add at least one color for both groups.'**
+  String get scheduleColorGroupNeedAtLeastOneColor;
+
+  /// No description provided for @scheduleColorGroupDeleteMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete \"{name}\"? This action cannot be undone.'**
+  String scheduleColorGroupDeleteMessage(String name);
+
+  /// No description provided for @scheduleColorPresetWarmCool.
+  ///
+  /// In en, this message translates to:
+  /// **'Warm & Cool'**
+  String get scheduleColorPresetWarmCool;
+
+  /// No description provided for @scheduleColorPresetForestLavender.
+  ///
+  /// In en, this message translates to:
+  /// **'Forest & Lavender'**
+  String get scheduleColorPresetForestLavender;
+
+  /// No description provided for @scheduleColorPresetSunsetOcean.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunset & Ocean'**
+  String get scheduleColorPresetSunsetOcean;
+
+  /// No description provided for @scheduleColorPresetGrayscale.
+  ///
+  /// In en, this message translates to:
+  /// **'Grayscale'**
+  String get scheduleColorPresetGrayscale;
+
   /// No description provided for @viewMode.
   ///
   /// In en, this message translates to:

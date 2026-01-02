@@ -1,9 +1,20 @@
 import 'package:flutter/foundation.dart';
 import 'package:easy_todo/models/device_settings_model.dart';
 import 'package:easy_todo/models/user_preferences_model.dart';
+import 'package:easy_todo/models/schedule_color_group.dart';
 import 'package:easy_todo/services/hive_service.dart';
 import 'package:easy_todo/services/biometric_service.dart';
 import 'package:easy_todo/services/repositories/user_preferences_repository.dart';
+import 'package:easy_todo/utils/random_id.dart';
+import 'package:easy_todo/utils/schedule_color_group_presets.dart';
+
+extension _FirstOrNullExtension<T> on Iterable<T> {
+  T? get firstOrNull {
+    final it = iterator;
+    if (!it.moveNext()) return null;
+    return it.current;
+  }
+}
 
 class AppSettingsProvider extends ChangeNotifier {
   final HiveService _hiveService = HiveService();
@@ -30,6 +41,26 @@ class AppSettingsProvider extends ChangeNotifier {
   int get scheduleDayStartMinutes => _preferences.scheduleDayStartMinutes;
   int get scheduleDayEndMinutes => _preferences.scheduleDayEndMinutes;
   double get scheduleLabelTextScale => _preferences.scheduleLabelTextScale;
+  String get scheduleActiveColorGroupId =>
+      _preferences.scheduleActiveColorGroupId;
+  List<ScheduleColorGroup> get scheduleCustomColorGroups =>
+      List<ScheduleColorGroup>.unmodifiable(
+        ScheduleColorGroup.decodeListFromString(
+          _preferences.scheduleCustomColorGroupsString,
+        ),
+      );
+  List<ScheduleColorGroup> get schedulePresetColorGroups =>
+      List<ScheduleColorGroup>.unmodifiable(ScheduleColorGroupPresets.all);
+
+  ScheduleColorGroup get scheduleEffectiveActiveColorGroup {
+    final id = _preferences.scheduleActiveColorGroupId;
+    final custom =
+        scheduleCustomColorGroups.where((e) => e.id == id).firstOrNull;
+    return custom ??
+        ScheduleColorGroupPresets.byId(id) ??
+        ScheduleColorGroupPresets.warmCool;
+  }
+
   List<int> get scheduleVisibleWeekdays =>
       List<int>.unmodifiable(_preferences.scheduleVisibleWeekdays);
 
@@ -74,7 +105,11 @@ class AppSettingsProvider extends ChangeNotifier {
               listEquals(
                 _preferences.scheduleVisibleWeekdays,
                 defaultPrefs.scheduleVisibleWeekdays,
-              )) {
+              ) &&
+              _preferences.scheduleActiveColorGroupId ==
+                  defaultPrefs.scheduleActiveColorGroupId &&
+              _preferences.scheduleCustomColorGroupsString ==
+                  defaultPrefs.scheduleCustomColorGroupsString) {
             _preferences = UserPreferencesModel(
               languageCode: _preferences.languageCode,
               themeModeIndex: _preferences.themeModeIndex,
@@ -91,6 +126,10 @@ class AppSettingsProvider extends ChangeNotifier {
               scheduleDayEndMinutes: legacy.scheduleDayEndMinutes,
               scheduleVisibleWeekdays: legacy.scheduleVisibleWeekdays,
               scheduleLabelTextScale: legacy.scheduleLabelTextScale,
+              scheduleActiveColorGroupId:
+                  defaultPrefs.scheduleActiveColorGroupId,
+              scheduleCustomColorGroupsString:
+                  defaultPrefs.scheduleCustomColorGroupsString,
             );
             preferencesChanged = true;
           }
@@ -363,6 +402,79 @@ class AppSettingsProvider extends ChangeNotifier {
       scheduleDayEndMinutes: 1440,
       scheduleVisibleWeekdays: const <int>[1, 2, 3, 4, 5, 6, 7],
       scheduleLabelTextScale: 1.0,
+    );
+    await _savePreferences();
+    notifyListeners();
+  }
+
+  Future<void> setScheduleActiveColorGroupId(String groupId) async {
+    final normalized = groupId.trim();
+    if (normalized.isEmpty) return;
+    _preferences =
+        _preferences.copyWith(scheduleActiveColorGroupId: normalized);
+    await _savePreferences();
+    notifyListeners();
+  }
+
+  Future<void> createScheduleColorGroup({
+    required String name,
+    required List<int> incompleteColorsArgb,
+    required List<int> completedColorsArgb,
+  }) async {
+    final normalizedName = name.trim();
+    if (normalizedName.isEmpty) return;
+
+    final group = ScheduleColorGroup(
+      id: 'custom:${generateUrlSafeRandomId(byteLength: 12)}',
+      name: normalizedName,
+      incompleteColorsArgb: List<int>.from(incompleteColorsArgb),
+      completedColorsArgb: List<int>.from(completedColorsArgb),
+    );
+
+    final next = [...scheduleCustomColorGroups, group];
+    _preferences = _preferences.copyWith(
+      scheduleCustomColorGroupsString:
+          ScheduleColorGroup.encodeListToString(next),
+      scheduleActiveColorGroupId: group.id,
+    );
+    await _savePreferences();
+    notifyListeners();
+  }
+
+  Future<void> updateScheduleColorGroup(ScheduleColorGroup group) async {
+    final normalizedName = group.name.trim();
+    if (group.id.trim().isEmpty || normalizedName.isEmpty) return;
+
+    final existing = scheduleCustomColorGroups;
+    final idx = existing.indexWhere((e) => e.id == group.id);
+    if (idx < 0) return;
+
+    final next = [...existing];
+    next[idx] = group.copyWith(name: normalizedName);
+    _preferences = _preferences.copyWith(
+      scheduleCustomColorGroupsString:
+          ScheduleColorGroup.encodeListToString(next),
+    );
+    await _savePreferences();
+    notifyListeners();
+  }
+
+  Future<void> deleteScheduleColorGroup(String groupId) async {
+    final id = groupId.trim();
+    if (id.isEmpty) return;
+
+    final existing = scheduleCustomColorGroups;
+    final next = existing.where((e) => e.id != id).toList(growable: false);
+
+    var activeId = _preferences.scheduleActiveColorGroupId;
+    if (activeId == id) {
+      activeId = ScheduleColorGroupPresets.warmCool.id;
+    }
+
+    _preferences = _preferences.copyWith(
+      scheduleCustomColorGroupsString:
+          ScheduleColorGroup.encodeListToString(next),
+      scheduleActiveColorGroupId: activeId,
     );
     await _savePreferences();
     notifyListeners();

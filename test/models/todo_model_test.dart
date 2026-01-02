@@ -102,5 +102,17 @@ void main() {
       final decoded = TodoModel.fromJson(todo.toJson());
       expect(decoded.generatedKey, 'r1:20250101');
     });
+
+    test('round-trips scheduleColorSeed', () {
+      final todo = TodoModel(
+        id: 't1',
+        title: 'todo',
+        createdAt: DateTime.utc(2025, 1, 1),
+        scheduleColorSeed: 'seed',
+      );
+
+      final decoded = TodoModel.fromJson(todo.toJson());
+      expect(decoded.scheduleColorSeed, 'seed');
+    });
   });
 }

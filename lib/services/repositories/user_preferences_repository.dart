@@ -4,7 +4,7 @@ import 'package:easy_todo/services/sync_write_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class UserPreferencesRepository {
-  static const int schemaVersion = 1;
+  static const int schemaVersion = 2;
   static const String hiveKey = 'userPreferences';
 
   final HiveService _hiveService;

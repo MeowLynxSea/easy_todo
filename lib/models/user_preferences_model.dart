@@ -32,6 +32,12 @@ class UserPreferencesModel {
   /// Schedule: text scale factor for labels (chips/blocks).
   final double scheduleLabelTextScale;
 
+  /// Schedule: active color group id (preset or user-defined).
+  final String scheduleActiveColorGroupId;
+
+  /// Schedule: serialized user-defined color groups.
+  final String scheduleCustomColorGroupsString;
+
   const UserPreferencesModel({
     required this.languageCode,
     required this.themeModeIndex,
@@ -48,6 +54,8 @@ class UserPreferencesModel {
     required this.scheduleDayEndMinutes,
     required this.scheduleVisibleWeekdays,
     required this.scheduleLabelTextScale,
+    required this.scheduleActiveColorGroupId,
+    required this.scheduleCustomColorGroupsString,
   });
 
   UserPreferencesModel copyWith({
@@ -66,6 +74,8 @@ class UserPreferencesModel {
     int? scheduleDayEndMinutes,
     List<int>? scheduleVisibleWeekdays,
     double? scheduleLabelTextScale,
+    String? scheduleActiveColorGroupId,
+    String? scheduleCustomColorGroupsString,
   }) {
     return UserPreferencesModel(
       languageCode: languageCode ?? this.languageCode,
@@ -88,6 +98,10 @@ class UserPreferencesModel {
           scheduleVisibleWeekdays ?? this.scheduleVisibleWeekdays,
       scheduleLabelTextScale:
           scheduleLabelTextScale ?? this.scheduleLabelTextScale,
+      scheduleActiveColorGroupId:
+          scheduleActiveColorGroupId ?? this.scheduleActiveColorGroupId,
+      scheduleCustomColorGroupsString:
+          scheduleCustomColorGroupsString ?? this.scheduleCustomColorGroupsString,
     );
   }
 
@@ -108,6 +122,8 @@ class UserPreferencesModel {
       scheduleDayEndMinutes: 1440,
       scheduleVisibleWeekdays: <int>[1, 2, 3, 4, 5, 6, 7],
       scheduleLabelTextScale: 1.0,
+      scheduleActiveColorGroupId: 'preset:warm_cool',
+      scheduleCustomColorGroupsString: '',
     );
   }
 
@@ -128,6 +144,8 @@ class UserPreferencesModel {
       'scheduleDayEndMinutes': scheduleDayEndMinutes,
       'scheduleVisibleWeekdays': scheduleVisibleWeekdays,
       'scheduleLabelTextScale': scheduleLabelTextScale,
+      'scheduleActiveColorGroupId': scheduleActiveColorGroupId,
+      'scheduleCustomColorGroupsString': scheduleCustomColorGroupsString,
     };
   }
 
@@ -174,6 +192,12 @@ class UserPreferencesModel {
       scheduleLabelTextScale:
           (json['scheduleLabelTextScale'] as num?)?.toDouble() ??
           defaults.scheduleLabelTextScale,
+      scheduleActiveColorGroupId:
+          (json['scheduleActiveColorGroupId'] as String?) ??
+          defaults.scheduleActiveColorGroupId,
+      scheduleCustomColorGroupsString:
+          (json['scheduleCustomColorGroupsString'] as String?) ??
+          defaults.scheduleCustomColorGroupsString,
     );
   }
 }

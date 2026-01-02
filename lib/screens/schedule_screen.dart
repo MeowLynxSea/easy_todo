@@ -120,6 +120,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           1.4,
         );
 
+        final activeGroup =
+            appSettingsProvider.scheduleEffectiveActiveColorGroup;
+        final incompletePalette = activeGroup.incompleteColors;
+        final completedPalette = activeGroup.completedColors;
+
         final currentStart = _dateForIndex(_startIndex);
         final currentEnd = currentStart.add(const Duration(days: _visibleDays));
         final currentEndInclusive = currentEnd.subtract(
@@ -368,6 +373,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                                 dense: !isDesktop,
                                 labelTextScale: labelTextScale,
                                 isWebDesktop: isDesktop,
+                                incompletePalette: incompletePalette,
+                                completedPalette: completedPalette,
                                 onEdit: _showEditDialog,
                               );
 
@@ -621,6 +628,8 @@ class _DayColumn extends StatelessWidget {
   final bool dense;
   final double labelTextScale;
   final bool isWebDesktop;
+  final List<Color> incompletePalette;
+  final List<Color> completedPalette;
   final ValueChanged<TodoModel> onEdit;
 
   const _DayColumn({
@@ -641,6 +650,8 @@ class _DayColumn extends StatelessWidget {
     required this.dense,
     required this.labelTextScale,
     required this.isWebDesktop,
+    required this.incompletePalette,
+    required this.completedPalette,
     required this.onEdit,
   });
 
@@ -660,20 +671,12 @@ class _DayColumn extends StatelessWidget {
     final compact = width < (dense ? 64 : 84);
     final compactDayLabel = _compactWeekdayLabel(context, dayStart.weekday);
 
-    final warmPalette = <Color>[
-      Colors.orange.shade300,
-      Colors.deepOrange.shade200,
-      Colors.amber.shade300,
-      Colors.redAccent.shade100,
-      Colors.pink.shade200,
-    ];
-    final coolPalette = <Color>[
-      Colors.lightBlue.shade300,
-      Colors.blue.shade200,
-      Colors.cyan.shade200,
-      Colors.teal.shade200,
-      Colors.indigo.shade200,
-    ];
+    final warmPalette = incompletePalette.isEmpty
+        ? <Color>[Theme.of(context).colorScheme.primaryContainer]
+        : incompletePalette;
+    final coolPalette = completedPalette.isEmpty
+        ? <Color>[Theme.of(context).colorScheme.secondaryContainer]
+        : completedPalette;
 
     return SizedBox(
       width: width,
@@ -991,7 +994,10 @@ class _DayColumn extends StatelessWidget {
     required List<Color> coolPalette,
   }) {
     final palette = todo.isCompleted ? coolPalette : warmPalette;
-    final idx = _stableHash(todo.id) % palette.length;
+    if (palette.isEmpty) return Colors.transparent;
+    final seed = todo.scheduleColorSeed;
+    final idx = _stableHash((seed == null || seed.isEmpty) ? todo.id : seed) %
+        palette.length;
     return palette[idx];
   }
 

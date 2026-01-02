@@ -1459,6 +1459,52 @@ class AppLocalizationsJa extends AppLocalizations {
   String get scheduleLayoutSettingsSubtitle => '時間範囲と曜日をカスタマイズ';
 
   @override
+  String get scheduleColorGroups => 'Schedule Color Groups';
+
+  @override
+  String get scheduleColorGroupsSubtitle =>
+      'Customize colors for completed and incomplete tasks';
+
+  @override
+  String get scheduleColorGroupPresets => 'Presets';
+
+  @override
+  String get scheduleColorGroupMyGroups => 'My groups';
+
+  @override
+  String get scheduleColorGroupNoMyGroups => 'No custom color groups yet.';
+
+  @override
+  String get scheduleColorGroupCreate => 'Create';
+
+  @override
+  String get scheduleColorGroupName => 'Name';
+
+  @override
+  String get scheduleColorGroupAddColor => 'Add color';
+
+  @override
+  String get scheduleColorGroupNeedAtLeastOneColor =>
+      'Please add at least one color for both groups.';
+
+  @override
+  String scheduleColorGroupDeleteMessage(String name) {
+    return 'Delete \"$name\"? This action cannot be undone.';
+  }
+
+  @override
+  String get scheduleColorPresetWarmCool => 'Warm & Cool';
+
+  @override
+  String get scheduleColorPresetForestLavender => 'Forest & Lavender';
+
+  @override
+  String get scheduleColorPresetSunsetOcean => 'Sunset & Ocean';
+
+  @override
+  String get scheduleColorPresetGrayscale => 'Grayscale';
+
+  @override
   String get viewMode => '表示モード';
 
   @override

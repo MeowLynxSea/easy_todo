@@ -1582,6 +1582,14 @@ class AppLocalizationsFr extends AppLocalizations {
   String get scheduleTimeRange => 'Plage horaire';
 
   @override
+  String get scheduleVisibleDays => 'Jours visibles';
+
+  @override
+  String scheduleVisibleDaysValue(Object count) {
+    return '$count jours';
+  }
+
+  @override
   String get scheduleVisibleWeekdays => 'Jours affichés';
 
   @override

@@ -1560,6 +1560,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get scheduleTimeRange => 'Time Range';
 
   @override
+  String get scheduleVisibleDays => 'Días visibles';
+
+  @override
+  String scheduleVisibleDaysValue(Object count) {
+    return '$count días';
+  }
+
+  @override
   String get scheduleVisibleWeekdays => 'Days Shown';
 
   @override

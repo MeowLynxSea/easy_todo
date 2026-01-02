@@ -3028,6 +3028,18 @@ abstract class AppLocalizations {
   /// **'Time Range'**
   String get scheduleTimeRange;
 
+  /// No description provided for @scheduleVisibleDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Days Visible'**
+  String get scheduleVisibleDays;
+
+  /// No description provided for @scheduleVisibleDaysValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} days'**
+  String scheduleVisibleDaysValue(Object count);
+
   /// No description provided for @scheduleVisibleWeekdays.
   ///
   /// In en, this message translates to:

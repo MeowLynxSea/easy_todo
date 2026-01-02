@@ -54,8 +54,9 @@ class AppSettingsProvider extends ChangeNotifier {
 
   ScheduleColorGroup get scheduleEffectiveActiveColorGroup {
     final id = _preferences.scheduleActiveColorGroupId;
-    final custom =
-        scheduleCustomColorGroups.where((e) => e.id == id).firstOrNull;
+    final custom = scheduleCustomColorGroups
+        .where((e) => e.id == id)
+        .firstOrNull;
     return custom ??
         ScheduleColorGroupPresets.byId(id) ??
         ScheduleColorGroupPresets.warmCool;
@@ -63,6 +64,8 @@ class AppSettingsProvider extends ChangeNotifier {
 
   List<int> get scheduleVisibleWeekdays =>
       List<int>.unmodifiable(_preferences.scheduleVisibleWeekdays);
+
+  int get scheduleVisibleDayCount => _preferences.scheduleVisibleDayCount;
 
   Future<void> _loadSettings() async {
     _isLoading = true;
@@ -100,6 +103,8 @@ class AppSettingsProvider extends ChangeNotifier {
                   defaultPrefs.scheduleDayStartMinutes &&
               _preferences.scheduleDayEndMinutes ==
                   defaultPrefs.scheduleDayEndMinutes &&
+              _preferences.scheduleVisibleDayCount ==
+                  defaultPrefs.scheduleVisibleDayCount &&
               _preferences.scheduleLabelTextScale ==
                   defaultPrefs.scheduleLabelTextScale &&
               listEquals(
@@ -125,6 +130,7 @@ class AppSettingsProvider extends ChangeNotifier {
               scheduleDayStartMinutes: legacy.scheduleDayStartMinutes,
               scheduleDayEndMinutes: legacy.scheduleDayEndMinutes,
               scheduleVisibleWeekdays: legacy.scheduleVisibleWeekdays,
+              scheduleVisibleDayCount: defaultPrefs.scheduleVisibleDayCount,
               scheduleLabelTextScale: legacy.scheduleLabelTextScale,
               scheduleActiveColorGroupId:
                   defaultPrefs.scheduleActiveColorGroupId,
@@ -401,8 +407,16 @@ class AppSettingsProvider extends ChangeNotifier {
       scheduleDayStartMinutes: 0,
       scheduleDayEndMinutes: 1440,
       scheduleVisibleWeekdays: const <int>[1, 2, 3, 4, 5, 6, 7],
+      scheduleVisibleDayCount: 5,
       scheduleLabelTextScale: 1.0,
     );
+    await _savePreferences();
+    notifyListeners();
+  }
+
+  Future<void> setScheduleVisibleDayCount(int days) async {
+    final normalized = days.clamp(3, 10);
+    _preferences = _preferences.copyWith(scheduleVisibleDayCount: normalized);
     await _savePreferences();
     notifyListeners();
   }
@@ -410,8 +424,9 @@ class AppSettingsProvider extends ChangeNotifier {
   Future<void> setScheduleActiveColorGroupId(String groupId) async {
     final normalized = groupId.trim();
     if (normalized.isEmpty) return;
-    _preferences =
-        _preferences.copyWith(scheduleActiveColorGroupId: normalized);
+    _preferences = _preferences.copyWith(
+      scheduleActiveColorGroupId: normalized,
+    );
     await _savePreferences();
     notifyListeners();
   }
@@ -433,8 +448,9 @@ class AppSettingsProvider extends ChangeNotifier {
 
     final next = [...scheduleCustomColorGroups, group];
     _preferences = _preferences.copyWith(
-      scheduleCustomColorGroupsString:
-          ScheduleColorGroup.encodeListToString(next),
+      scheduleCustomColorGroupsString: ScheduleColorGroup.encodeListToString(
+        next,
+      ),
       scheduleActiveColorGroupId: group.id,
     );
     await _savePreferences();
@@ -452,8 +468,9 @@ class AppSettingsProvider extends ChangeNotifier {
     final next = [...existing];
     next[idx] = group.copyWith(name: normalizedName);
     _preferences = _preferences.copyWith(
-      scheduleCustomColorGroupsString:
-          ScheduleColorGroup.encodeListToString(next),
+      scheduleCustomColorGroupsString: ScheduleColorGroup.encodeListToString(
+        next,
+      ),
     );
     await _savePreferences();
     notifyListeners();
@@ -472,8 +489,9 @@ class AppSettingsProvider extends ChangeNotifier {
     }
 
     _preferences = _preferences.copyWith(
-      scheduleCustomColorGroupsString:
-          ScheduleColorGroup.encodeListToString(next),
+      scheduleCustomColorGroupsString: ScheduleColorGroup.encodeListToString(
+        next,
+      ),
       scheduleActiveColorGroupId: activeId,
     );
     await _savePreferences();

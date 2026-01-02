@@ -22,15 +22,14 @@ class ScheduleScreen extends StatefulWidget {
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
   static const int _baseIndex = 10000;
-  static const int _visibleDays = 7;
-  static const int _centerOffsetDays = 3;
   static const int _bufferDays = 14;
 
   late final ScrollController _scrollController;
   late final DateTime _anchorDay;
-  int _startIndex = _baseIndex - _centerOffsetDays;
+  int _startIndex = _baseIndex - 2;
   double _dayWidth = 0;
   bool _didInitialJump = false;
+  int? _lastVisibleDays;
 
   @override
   void initState() {
@@ -56,6 +55,20 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
     );
+  }
+
+  int _clampVisibleDays(int days) => days.clamp(3, 10);
+
+  int _centerOffsetForVisibleDays(int visibleDays) => visibleDays ~/ 2;
+
+  int _defaultStartIndexForVisibleDays(int visibleDays) {
+    return _baseIndex - _centerOffsetForVisibleDays(visibleDays);
+  }
+
+  Future<void> _animateToToday({required int visibleDays}) async {
+    final target = _defaultStartIndexForVisibleDays(visibleDays);
+    if (_startIndex == target) return;
+    await _animateToStartIndex(target);
   }
 
   String _formatWindowLabel(DateTime start, DateTime endInclusive) {
@@ -120,13 +133,41 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           1.4,
         );
 
+        final visibleDays = _clampVisibleDays(
+          appSettingsProvider.scheduleVisibleDayCount,
+        );
+
+        final previousVisibleDays = _lastVisibleDays;
+        final desiredStartIndex = _defaultStartIndexForVisibleDays(visibleDays);
+        final startIndexForView = previousVisibleDays == null
+            ? desiredStartIndex
+            : (previousVisibleDays != visibleDays &&
+                  _startIndex ==
+                      _defaultStartIndexForVisibleDays(previousVisibleDays))
+            ? desiredStartIndex
+            : _startIndex;
+
+        if (previousVisibleDays != visibleDays) {
+          _lastVisibleDays = visibleDays;
+        }
+
+        if (_startIndex != startIndexForView) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            setState(() {
+              _startIndex = startIndexForView;
+              _didInitialJump = false;
+            });
+          });
+        }
+
         final activeGroup =
             appSettingsProvider.scheduleEffectiveActiveColorGroup;
         final incompletePalette = activeGroup.incompleteColors;
         final completedPalette = activeGroup.completedColors;
 
-        final currentStart = _dateForIndex(_startIndex);
-        final currentEnd = currentStart.add(const Duration(days: _visibleDays));
+        final currentStart = _dateForIndex(startIndexForView);
+        final currentEnd = currentStart.add(Duration(days: visibleDays));
         final currentEndInclusive = currentEnd.subtract(
           const Duration(days: 1),
         );
@@ -142,14 +183,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               if (isDesktop)
                 IconButton(
                   tooltip: materialL10n.previousPageTooltip,
-                  onPressed: () => _animateToStartIndex(_startIndex - 1),
+                  onPressed: () => _animateToStartIndex(startIndexForView - 1),
                   icon: const Icon(Icons.chevron_left),
                 ),
               TextButton(
-                onPressed: _startIndex == _baseIndex - _centerOffsetDays
+                onPressed:
+                    startIndexForView ==
+                        _defaultStartIndexForVisibleDays(visibleDays)
                     ? null
-                    : () =>
-                          _animateToStartIndex(_baseIndex - _centerOffsetDays),
+                    : () => _animateToToday(visibleDays: visibleDays),
                 child: Text(
                   windowLabel,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -162,7 +204,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               if (isDesktop)
                 IconButton(
                   tooltip: materialL10n.nextPageTooltip,
-                  onPressed: () => _animateToStartIndex(_startIndex + 1),
+                  onPressed: () => _animateToStartIndex(startIndexForView + 1),
                   icon: const Icon(Icons.chevron_right),
                 ),
             ],
@@ -178,7 +220,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 0.0,
                 constraints.maxWidth - gutterWidth,
               );
-              final dayWidth = availableForDays / _visibleDays;
+              final dayWidth = availableForDays / visibleDays;
               if (dayWidth > 0 && (dayWidth - _dayWidth).abs() > 0.01) {
                 _dayWidth = dayWidth;
                 _didInitialJump = false;
@@ -188,19 +230,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 _didInitialJump = true;
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (!_scrollController.hasClients) return;
-                  final initialStart = _baseIndex - _centerOffsetDays;
-                  _scrollController.jumpTo(initialStart * _dayWidth);
-                  if (mounted) {
-                    setState(() => _startIndex = initialStart);
-                  }
+                  _scrollController.jumpTo(startIndexForView * _dayWidth);
                 });
               }
 
-              final visibleStart = _dateForIndex(_startIndex);
+              final visibleStart = _dateForIndex(startIndexForView);
 
-              final bufferStartIndex = _startIndex - _bufferDays;
+              final bufferStartIndex = startIndexForView - _bufferDays;
               final bufferEndIndex =
-                  _startIndex + _visibleDays - 1 + _bufferDays;
+                  startIndexForView + visibleDays - 1 + _bufferDays;
               final bufferStart = _dateForIndex(bufferStartIndex);
               final bufferEnd = _dateForIndex(
                 bufferEndIndex,
@@ -220,7 +258,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 );
               }
 
-              final maxUnscheduled = List<int>.generate(_visibleDays, (i) {
+              final maxUnscheduled = List<int>.generate(visibleDays, (i) {
                 final dayStart = visibleStart.add(Duration(days: i));
                 final items = itemsByDay[dayStart] ?? const [];
                 return items
@@ -996,7 +1034,8 @@ class _DayColumn extends StatelessWidget {
     final palette = todo.isCompleted ? coolPalette : warmPalette;
     if (palette.isEmpty) return Colors.transparent;
     final seed = todo.scheduleColorSeed;
-    final idx = _stableHash((seed == null || seed.isEmpty) ? todo.id : seed) %
+    final idx =
+        _stableHash((seed == null || seed.isEmpty) ? todo.id : seed) %
         palette.length;
     return palette[idx];
   }

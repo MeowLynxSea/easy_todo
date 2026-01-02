@@ -50,17 +50,19 @@ void main() {
     );
   });
 
-  testWidgets(
-    'Repeat-generated unscheduled items are not draggable',
-    (tester) async {
+  testWidgets('Repeat-generated unscheduled items are not draggable', (
+    tester,
+  ) async {
     final provider = _MockTodoProvider();
     final settings = _MockAppSettingsProvider();
 
     when(() => settings.scheduleDayStartMinutes).thenReturn(0);
     when(() => settings.scheduleDayEndMinutes).thenReturn(24 * 60);
-    when(() => settings.scheduleVisibleWeekdays)
-        .thenReturn(const <int>[1, 2, 3, 4, 5, 6, 7]);
+    when(
+      () => settings.scheduleVisibleWeekdays,
+    ).thenReturn(const <int>[1, 2, 3, 4, 5, 6, 7]);
     when(() => settings.scheduleLabelTextScale).thenReturn(1.0);
+    when(() => settings.scheduleVisibleDayCount).thenReturn(5);
     when(() => settings.scheduleEffectiveActiveColorGroup).thenReturn(
       const ScheduleColorGroup(
         id: 'test',
@@ -87,10 +89,7 @@ void main() {
     when(() => provider.updateTodo(any())).thenAnswer((_) async {});
 
     await tester.pumpWidget(
-      _wrap(
-        todoProvider: provider,
-        appSettingsProvider: settings,
-      ),
+      _wrap(todoProvider: provider, appSettingsProvider: settings),
     );
     await tester.pumpAndSettle();
 
@@ -106,6 +105,5 @@ void main() {
       ),
       findsNothing,
     );
-    },
-  );
+  });
 }

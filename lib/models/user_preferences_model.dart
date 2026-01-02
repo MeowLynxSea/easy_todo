@@ -29,6 +29,10 @@ class UserPreferencesModel {
   /// Schedule: which weekdays are shown (DateTime.weekday: 1=Mon..7=Sun).
   final List<int> scheduleVisibleWeekdays;
 
+  /// Schedule: how many days are shown at once in the schedule view.
+  /// Allowed range: 3-10.
+  final int scheduleVisibleDayCount;
+
   /// Schedule: text scale factor for labels (chips/blocks).
   final double scheduleLabelTextScale;
 
@@ -53,6 +57,7 @@ class UserPreferencesModel {
     required this.scheduleDayStartMinutes,
     required this.scheduleDayEndMinutes,
     required this.scheduleVisibleWeekdays,
+    required this.scheduleVisibleDayCount,
     required this.scheduleLabelTextScale,
     required this.scheduleActiveColorGroupId,
     required this.scheduleCustomColorGroupsString,
@@ -73,10 +78,13 @@ class UserPreferencesModel {
     int? scheduleDayStartMinutes,
     int? scheduleDayEndMinutes,
     List<int>? scheduleVisibleWeekdays,
+    int? scheduleVisibleDayCount,
     double? scheduleLabelTextScale,
     String? scheduleActiveColorGroupId,
     String? scheduleCustomColorGroupsString,
   }) {
+    final normalizedVisibleDays =
+        (scheduleVisibleDayCount ?? this.scheduleVisibleDayCount).clamp(3, 10);
     return UserPreferencesModel(
       languageCode: languageCode ?? this.languageCode,
       themeModeIndex: themeModeIndex ?? this.themeModeIndex,
@@ -96,12 +104,14 @@ class UserPreferencesModel {
           scheduleDayEndMinutes ?? this.scheduleDayEndMinutes,
       scheduleVisibleWeekdays:
           scheduleVisibleWeekdays ?? this.scheduleVisibleWeekdays,
+      scheduleVisibleDayCount: normalizedVisibleDays,
       scheduleLabelTextScale:
           scheduleLabelTextScale ?? this.scheduleLabelTextScale,
       scheduleActiveColorGroupId:
           scheduleActiveColorGroupId ?? this.scheduleActiveColorGroupId,
       scheduleCustomColorGroupsString:
-          scheduleCustomColorGroupsString ?? this.scheduleCustomColorGroupsString,
+          scheduleCustomColorGroupsString ??
+          this.scheduleCustomColorGroupsString,
     );
   }
 
@@ -121,6 +131,7 @@ class UserPreferencesModel {
       scheduleDayStartMinutes: 0,
       scheduleDayEndMinutes: 1440,
       scheduleVisibleWeekdays: <int>[1, 2, 3, 4, 5, 6, 7],
+      scheduleVisibleDayCount: 5,
       scheduleLabelTextScale: 1.0,
       scheduleActiveColorGroupId: 'preset:warm_cool',
       scheduleCustomColorGroupsString: '',
@@ -143,6 +154,7 @@ class UserPreferencesModel {
       'scheduleDayStartMinutes': scheduleDayStartMinutes,
       'scheduleDayEndMinutes': scheduleDayEndMinutes,
       'scheduleVisibleWeekdays': scheduleVisibleWeekdays,
+      'scheduleVisibleDayCount': scheduleVisibleDayCount,
       'scheduleLabelTextScale': scheduleLabelTextScale,
       'scheduleActiveColorGroupId': scheduleActiveColorGroupId,
       'scheduleCustomColorGroupsString': scheduleCustomColorGroupsString,
@@ -189,6 +201,10 @@ class UserPreferencesModel {
               ?.map((e) => (e as num).toInt())
               .toList() ??
           defaults.scheduleVisibleWeekdays,
+      scheduleVisibleDayCount:
+          ((json['scheduleVisibleDayCount'] as num?)?.toInt() ??
+                  defaults.scheduleVisibleDayCount)
+              .clamp(3, 10),
       scheduleLabelTextScale:
           (json['scheduleLabelTextScale'] as num?)?.toDouble() ??
           defaults.scheduleLabelTextScale,

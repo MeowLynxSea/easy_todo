@@ -520,6 +520,8 @@
   "openInNewPageSubtitle": "Open views in new pages instead of popups",
   "historyViewMode": "History View Mode",
   "scheduleTimeRange": "Time Range",
+  "scheduleVisibleDays": "Days Visible",
+  "scheduleVisibleDaysValue": "{count} days",
   "scheduleVisibleWeekdays": "Days Shown",
   "scheduleLabelTextScale": "Label Text Scale",
   "scheduleAtLeastOneDay": "Keep at least one day selected.",

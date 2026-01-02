@@ -1530,6 +1530,14 @@ class AppLocalizationsKo extends AppLocalizations {
   String get scheduleTimeRange => '시간 범위';
 
   @override
+  String get scheduleVisibleDays => '표시 일수';
+
+  @override
+  String scheduleVisibleDaysValue(Object count) {
+    return '$count일';
+  }
+
+  @override
   String get scheduleVisibleWeekdays => '표시할 요일';
 
   @override

@@ -520,6 +520,8 @@
   "openInNewPageSubtitle": "在新页面中打开视图而不是弹窗",
   "historyViewMode": "历史视图模式",
   "scheduleTimeRange": "一天内显示的时间范围",
+  "scheduleVisibleDays": "日程同时显示天数",
+  "scheduleVisibleDaysValue": "{count} 天",
   "scheduleVisibleWeekdays": "本周显示哪些天",
   "scheduleLabelTextScale": "日程标签文字缩放",
   "scheduleAtLeastOneDay": "请至少保留一天显示。",

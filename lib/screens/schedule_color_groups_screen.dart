@@ -26,9 +26,9 @@ class ScheduleColorGroupsScreen extends StatelessWidget {
                   .read<AppSettingsProvider>()
                   .setScheduleActiveColorGroupId(defaultActiveGroupId);
               if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(l10n.settingsSaved)),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(l10n.settingsSaved)));
             },
             child: Text(l10n.resetButton),
           ),
@@ -70,7 +70,9 @@ class ScheduleColorGroupsScreen extends StatelessWidget {
                           isSelected: activeId == group.id,
                           canEdit: false,
                           onApply: () async {
-                            await provider.setScheduleActiveColorGroupId(group.id);
+                            await provider.setScheduleActiveColorGroupId(
+                              group.id,
+                            );
                           },
                         ),
                     ],
@@ -106,7 +108,9 @@ class ScheduleColorGroupsScreen extends StatelessWidget {
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) =>
-                                          ScheduleColorGroupEditorScreen(group: group),
+                                          ScheduleColorGroupEditorScreen(
+                                            group: group,
+                                          ),
                                     ),
                                   );
                                 },
@@ -117,7 +121,9 @@ class ScheduleColorGroupsScreen extends StatelessWidget {
                                     group.name,
                                   );
                                   if (ok != true) return;
-                                  await provider.deleteScheduleColorGroup(group.id);
+                                  await provider.deleteScheduleColorGroup(
+                                    group.id,
+                                  );
                                 },
                               ),
                           ],
@@ -353,13 +359,11 @@ class _ScheduleColorGroupEditorScreenState
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.group?.name ?? '');
-    _incompleteColors = widget.group?.incompleteColors.toList() ??
-        [
-          Colors.orange.shade300,
-          Colors.amber.shade300,
-          Colors.pink.shade200,
-        ];
-    _completedColors = widget.group?.completedColors.toList() ??
+    _incompleteColors =
+        widget.group?.incompleteColors.toList() ??
+        [Colors.orange.shade300, Colors.amber.shade300, Colors.pink.shade200];
+    _completedColors =
+        widget.group?.completedColors.toList() ??
         [
           Colors.lightBlue.shade300,
           Colors.teal.shade200,
@@ -382,12 +386,7 @@ class _ScheduleColorGroupEditorScreenState
       appBar: AppBar(
         title: Text(isEditing ? l10n.edit : l10n.scheduleColorGroupCreate),
         centerTitle: true,
-        actions: [
-          TextButton(
-            onPressed: _save,
-            child: Text(l10n.save),
-          ),
-        ],
+        actions: [TextButton(onPressed: _save, child: Text(l10n.save))],
       ),
       body: WebDesktopContent(
         padding: EdgeInsets.zero,
@@ -416,7 +415,9 @@ class _ScheduleColorGroupEditorScreenState
                           : _incompleteColors.last,
                     );
                     if (picked == null) return;
-                    setState(() => _incompleteColors = [..._incompleteColors, picked]);
+                    setState(
+                      () => _incompleteColors = [..._incompleteColors, picked],
+                    );
                   },
                   onRemoveAt: (i) => setState(() {
                     final next = [..._incompleteColors];
@@ -453,7 +454,9 @@ class _ScheduleColorGroupEditorScreenState
                           : _completedColors.last,
                     );
                     if (picked == null) return;
-                    setState(() => _completedColors = [..._completedColors, picked]);
+                    setState(
+                      () => _completedColors = [..._completedColors, picked],
+                    );
                   },
                   onRemoveAt: (i) => setState(() {
                     final next = [..._completedColors];
@@ -498,18 +501,21 @@ class _ScheduleColorGroupEditorScreenState
     if (widget.group == null) {
       await provider.createScheduleColorGroup(
         name: name,
-        incompleteColorsArgb:
-            _incompleteColors.map((e) => e.toARGB32()).toList(),
+        incompleteColorsArgb: _incompleteColors
+            .map((e) => e.toARGB32())
+            .toList(),
         completedColorsArgb: _completedColors.map((e) => e.toARGB32()).toList(),
       );
     } else {
       await provider.updateScheduleColorGroup(
         widget.group!.copyWith(
           name: name,
-          incompleteColorsArgb:
-              _incompleteColors.map((e) => e.toARGB32()).toList(),
-          completedColorsArgb:
-              _completedColors.map((e) => e.toARGB32()).toList(),
+          incompleteColorsArgb: _incompleteColors
+              .map((e) => e.toARGB32())
+              .toList(),
+          completedColorsArgb: _completedColors
+              .map((e) => e.toARGB32())
+              .toList(),
         ),
       );
     }
@@ -629,7 +635,10 @@ class _ColorListEditor extends StatelessWidget {
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             TextButton.icon(
@@ -691,7 +700,8 @@ class _EditableColorChip extends StatelessWidget {
             onPressed: onDelete,
             icon: Icon(
               Icons.close,
-              color: ThemeData.estimateBrightnessForColor(color) == Brightness.dark
+              color:
+                  ThemeData.estimateBrightnessForColor(color) == Brightness.dark
                   ? Colors.white
                   : Colors.black,
             ),

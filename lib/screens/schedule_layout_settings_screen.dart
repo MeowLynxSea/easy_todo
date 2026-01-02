@@ -20,6 +20,7 @@ class _ScheduleLayoutSettingsScreenState
   RangeValues? _rangeDraft;
   Set<int>? _weekdaysDraft;
   double? _labelScaleDraft;
+  int? _visibleDaysDraft;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +39,9 @@ class _ScheduleLayoutSettingsScreenState
     final providerScale = provider.scheduleLabelTextScale.clamp(0.8, 1.4);
     final labelScale = _labelScaleDraft ?? providerScale;
 
+    final providerVisibleDays = provider.scheduleVisibleDayCount.clamp(3, 10);
+    final visibleDays = _visibleDaysDraft ?? providerVisibleDays;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.scheduleLayoutSettings),
@@ -51,6 +55,7 @@ class _ScheduleLayoutSettingsScreenState
                 _rangeDraft = null;
                 _weekdaysDraft = null;
                 _labelScaleDraft = null;
+                _visibleDaysDraft = null;
               });
             },
             child: Text(l10n.resetButton),
@@ -62,6 +67,47 @@ class _ScheduleLayoutSettingsScreenState
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.scheduleVisibleDays,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      l10n.scheduleVisibleDaysValue(visibleDays),
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    Slider(
+                      value: visibleDays.toDouble(),
+                      min: 3,
+                      max: 10,
+                      divisions: 7,
+                      label: visibleDays.toString(),
+                      activeColor: AppTheme.primaryColor,
+                      onChanged: (value) {
+                        setState(() => _visibleDaysDraft = value.round());
+                      },
+                      onChangeEnd: (value) async {
+                        await provider.setScheduleVisibleDayCount(
+                          value.round(),
+                        );
+                        if (!mounted) return;
+                        setState(() => _visibleDaysDraft = null);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),

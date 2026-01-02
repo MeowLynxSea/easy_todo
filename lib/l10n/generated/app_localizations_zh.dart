@@ -1518,6 +1518,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get scheduleTimeRange => '一天内显示的时间范围';
 
   @override
+  String get scheduleVisibleDays => '日程同时显示天数';
+
+  @override
+  String scheduleVisibleDaysValue(Object count) {
+    return '$count 天';
+  }
+
+  @override
   String get scheduleVisibleWeekdays => '本周显示哪些天';
 
   @override

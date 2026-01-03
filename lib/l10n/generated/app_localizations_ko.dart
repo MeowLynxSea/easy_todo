@@ -12,6 +12,22 @@ class AppLocalizationsKo extends AppLocalizations {
   String get preferences => '설정';
 
   @override
+  String get navigationSettingsTitle => '탐색';
+
+  @override
+  String get navigationCustomizeTabsTitle => '탭 사용자 지정';
+
+  @override
+  String get navigationCustomizeTabsSubtitle =>
+      '드래그하여 아래(데스크톱에서는 왼쪽)에 표시되는 탭과 순서를 변경할 수 있습니다. 할 일과 설정은 반드시 유지해야 하며, 나머지는 선택 사항입니다.';
+
+  @override
+  String get navigationDefaultTabTitle => '기본 탭';
+
+  @override
+  String get navigationDefaultTabFieldLabel => '앱 시작 시 열기';
+
+  @override
   String get appSettings => '앱 설정';
 
   @override

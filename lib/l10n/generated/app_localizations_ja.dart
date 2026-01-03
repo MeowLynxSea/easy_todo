@@ -12,6 +12,22 @@ class AppLocalizationsJa extends AppLocalizations {
   String get preferences => '設定';
 
   @override
+  String get navigationSettingsTitle => 'ナビゲーション';
+
+  @override
+  String get navigationCustomizeTabsTitle => 'タブをカスタマイズ';
+
+  @override
+  String get navigationCustomizeTabsSubtitle =>
+      'ドラッグして下部（デスクトップでは左側）に表示するタブと順序を変更できます。必ず「ToDo」と「設定」を残し、その他は任意です。';
+
+  @override
+  String get navigationDefaultTabTitle => 'デフォルトのタブ';
+
+  @override
+  String get navigationDefaultTabFieldLabel => '起動時に開く';
+
+  @override
   String get appSettings => 'アプリ設定';
 
   @override

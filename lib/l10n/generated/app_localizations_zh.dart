@@ -12,6 +12,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get preferences => '设置';
 
   @override
+  String get navigationSettingsTitle => '导航';
+
+  @override
+  String get navigationCustomizeTabsTitle => '自定义 Tab';
+
+  @override
+  String get navigationCustomizeTabsSubtitle =>
+      '通过拖拽来自定义下方（桌面端左侧）显示的 Tab 入口和顺序。必须保留「待办事项」和「设置」，其余可选。';
+
+  @override
+  String get navigationDefaultTabTitle => '默认 Tab';
+
+  @override
+  String get navigationDefaultTabFieldLabel => '启动时默认打开';
+
+  @override
   String get appSettings => '应用设置';
 
   @override

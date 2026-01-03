@@ -1,5 +1,10 @@
 {
   "preferences": "Preferences",
+  "navigationSettingsTitle": "Navigation",
+  "navigationCustomizeTabsTitle": "Customize tabs",
+  "navigationCustomizeTabsSubtitle": "Drag to reorder the tabs shown below / on the left. You must keep Todos and Preferences. Other tabs are optional.",
+  "navigationDefaultTabTitle": "Default tab",
+  "navigationDefaultTabFieldLabel": "Default tab on launch",
   "appSettings": "App Settings",
   "notifications": "Notifications",
   "notificationsSubtitle": "Manage notification preferences",

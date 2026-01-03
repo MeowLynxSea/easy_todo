@@ -30,6 +30,7 @@ import 'package:easy_todo/services/timezone_service.dart';
 import 'package:easy_todo/utils/app_scroll_behavior.dart';
 import 'package:easy_todo/utils/responsive.dart';
 import 'package:easy_todo/utils/platform_utils.dart';
+import 'package:easy_todo/utils/app_tabs.dart';
 import 'package:easy_todo/widgets/responsive_web_frame.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -294,18 +295,10 @@ class _AutoSyncIndicator extends StatelessWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen>
     with WidgetsBindingObserver {
-  int _currentIndex = 0;
+  AppTabId _currentTabId = AppTabId.todos;
+  bool _didInitDefaultTab = false;
   final PageController _pageController = PageController();
   final UpdateService _updateService = UpdateService();
-
-  final List<Widget> _screens = [
-    const TodoListScreen(),
-    const ImportanceQuadrantScreen(),
-    const ScheduleScreen(),
-    const HistoryScreen(),
-    const StatisticsScreen(),
-    const PreferenceScreen(),
-  ];
 
   @override
   void initState() {
@@ -316,6 +309,24 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     }
     _checkRepeatTodos();
     _initializePermissions();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final appSettings = context.watch<AppSettingsProvider>();
+    if (_didInitDefaultTab || appSettings.isLoading) return;
+    _didInitDefaultTab = true;
+    _currentTabId = appSettings.navigationDefaultTabId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final tabs = context.read<AppSettingsProvider>().visibleNavigationTabs;
+      final index = tabs.indexOf(_currentTabId);
+      if (index < 0) return;
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(index);
+      }
+    });
   }
 
   Future<void> _checkForUpdates() async {
@@ -497,20 +508,29 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
   }
 
   void _onTabTapped(int index) {
-    if (_currentIndex == index) return;
+    final tabs = context.read<AppSettingsProvider>().visibleNavigationTabs;
+    if (index < 0 || index >= tabs.length) return;
+    _onTabTappedById(tabs[index], tabs: tabs);
+  }
+
+  void _onTabTappedById(AppTabId tab, {required List<AppTabId> tabs}) {
+    if (_currentTabId == tab) return;
+
+    final nextIndex = tabs.indexOf(tab);
+    if (nextIndex < 0) return;
 
     final currentPageIndex =
         _pageController.hasClients && _pageController.page != null
         ? _pageController.page!.round()
-        : _currentIndex;
-    final distance = (currentPageIndex - index).abs();
+        : tabs.indexOf(_currentTabId).clamp(0, tabs.length - 1);
+    final distance = (currentPageIndex - nextIndex).abs();
 
     setState(() {
-      _currentIndex = index;
+      _currentTabId = tab;
     });
 
     if (isWebDesktop(context)) {
-      _pageController.jumpToPage(index);
+      _pageController.jumpToPage(nextIndex);
       return;
     }
 
@@ -518,15 +538,26 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     // 触发多次 `onPageChanged` 和大量重绘，移动端/移动 Web 上很容易卡顿。
     // 这里对非相邻跳转改为直接跳转，保留相邻切换的轻量动画。
     if (distance > 1) {
-      _pageController.jumpToPage(index);
+      _pageController.jumpToPage(nextIndex);
       return;
     }
 
     _pageController.animateToPage(
-      index,
+      nextIndex,
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeOutCubic,
     );
+  }
+
+  Widget _screenForTab(AppTabId tab) {
+    return switch (tab) {
+      AppTabId.todos => const TodoListScreen(),
+      AppTabId.importanceQuadrant => const ImportanceQuadrantScreen(),
+      AppTabId.schedule => const ScheduleScreen(),
+      AppTabId.history => const HistoryScreen(),
+      AppTabId.statistics => const StatisticsScreen(),
+      AppTabId.preferences => const PreferenceScreen(),
+    };
   }
 
   @override
@@ -534,21 +565,56 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     final l10n = AppLocalizations.of(context)!;
     final desktopWeb = isWebDesktop(context);
     final desktopWebWide = isWebDesktopWide(context);
+    final appSettings = context.watch<AppSettingsProvider>();
+    final tabs = appSettings.visibleNavigationTabs;
 
-    // Ensure the current index is always in range when tabs change.
-    if (_currentIndex >= _screens.length) {
-      _currentIndex = 0;
+    if (tabs.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    var currentIndex = tabs.indexOf(_currentTabId);
+    if (currentIndex < 0) {
+      final fallback = tabs.contains(appSettings.navigationDefaultTabId)
+          ? appSettings.navigationDefaultTabId
+          : tabs.first;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final updatedTabs = context
+            .read<AppSettingsProvider>()
+            .visibleNavigationTabs;
+        final nextTab = updatedTabs.contains(fallback)
+            ? fallback
+            : updatedTabs.first;
+        final nextIndex = updatedTabs.indexOf(nextTab);
+        setState(() {
+          _currentTabId = nextTab;
+        });
+        if (_pageController.hasClients && nextIndex >= 0) {
+          _pageController.jumpToPage(nextIndex);
+        }
+      });
+      currentIndex = 0;
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (!_pageController.hasClients) return;
+        final currentPage = _pageController.page?.round() ?? currentIndex;
+        if (currentPage != currentIndex) {
+          _pageController.jumpToPage(currentIndex);
+        }
+      });
     }
 
     final pageView = PageView(
       controller: _pageController,
       physics: desktopWeb ? const NeverScrollableScrollPhysics() : null,
       onPageChanged: (index) {
+        if (index < 0 || index >= tabs.length) return;
         setState(() {
-          _currentIndex = index;
+          _currentTabId = tabs[index];
         });
       },
-      children: _screens,
+      children: tabs.map(_screenForTab).toList(growable: false),
     );
 
     final scaffold = Scaffold(
@@ -557,7 +623,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
               children: [
                 SafeArea(
                   child: NavigationRail(
-                    selectedIndex: _currentIndex,
+                    selectedIndex: currentIndex,
                     onDestinationSelected: _onTabTapped,
                     extended: desktopWebWide,
                     labelType: desktopWebWide
@@ -593,36 +659,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                       ),
                     ),
                     destinations: [
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.task_alt_outlined),
-                        selectedIcon: const Icon(Icons.task_alt),
-                        label: Text(l10n.todos),
-                      ),
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.grid_view_outlined),
-                        selectedIcon: const Icon(Icons.grid_view),
-                        label: Text(l10n.importanceQuadrant),
-                      ),
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.calendar_month_outlined),
-                        selectedIcon: const Icon(Icons.calendar_month),
-                        label: Text(l10n.schedule),
-                      ),
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.history_outlined),
-                        selectedIcon: const Icon(Icons.history),
-                        label: Text(l10n.history),
-                      ),
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.bar_chart_outlined),
-                        selectedIcon: const Icon(Icons.bar_chart),
-                        label: Text(l10n.stats),
-                      ),
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.settings_outlined),
-                        selectedIcon: const Icon(Icons.settings),
-                        label: Text(l10n.preferences),
-                      ),
+                      for (final tab in tabs)
+                        NavigationRailDestination(
+                          icon: Icon(tab.icon),
+                          selectedIcon: Icon(tab.selectedIcon),
+                          label: Text(tab.label(l10n)),
+                        ),
                     ],
                   ),
                 ),
@@ -659,48 +701,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      Expanded(
-                        child: _buildNavItem(
-                          icon: Icons.task_alt,
-                          label: l10n.todos,
-                          index: 0,
+                      for (var i = 0; i < tabs.length; i++)
+                        Expanded(
+                          child: _buildNavItem(
+                            tab: tabs[i],
+                            label: tabs[i].label(l10n),
+                            index: i,
+                            isSelected: i == currentIndex,
+                          ),
                         ),
-                      ),
-                      Expanded(
-                        child: _buildNavItem(
-                          icon: Icons.grid_view,
-                          label: l10n.importanceQuadrant,
-                          index: 1,
-                        ),
-                      ),
-                      Expanded(
-                        child: _buildNavItem(
-                          icon: Icons.calendar_month,
-                          label: l10n.schedule,
-                          index: 2,
-                        ),
-                      ),
-                      Expanded(
-                        child: _buildNavItem(
-                          icon: Icons.history,
-                          label: l10n.history,
-                          index: 3,
-                        ),
-                      ),
-                      Expanded(
-                        child: _buildNavItem(
-                          icon: Icons.bar_chart,
-                          label: l10n.stats,
-                          index: 4,
-                        ),
-                      ),
-                      Expanded(
-                        child: _buildNavItem(
-                          icon: Icons.settings_outlined,
-                          label: l10n.preferences,
-                          index: 5,
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -710,44 +719,36 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
 
     if (!desktopWeb) return scaffold;
 
+    final digitKeys = <LogicalKeyboardKey>[
+      LogicalKeyboardKey.digit1,
+      LogicalKeyboardKey.digit2,
+      LogicalKeyboardKey.digit3,
+      LogicalKeyboardKey.digit4,
+      LogicalKeyboardKey.digit5,
+      LogicalKeyboardKey.digit6,
+      LogicalKeyboardKey.digit7,
+      LogicalKeyboardKey.digit8,
+      LogicalKeyboardKey.digit9,
+    ];
+
+    final shortcuts = <ShortcutActivator, Intent>{};
+    final maxTabs = tabs.length.clamp(0, digitKeys.length);
+    for (var i = 0; i < maxTabs; i++) {
+      shortcuts[SingleActivator(digitKeys[i], control: true)] = _GoToTabIntent(
+        i,
+      );
+      shortcuts[SingleActivator(digitKeys[i], meta: true)] = _GoToTabIntent(i);
+    }
+
     return Shortcuts(
-      shortcuts: const {
-        SingleActivator(LogicalKeyboardKey.digit1, control: true):
-            _GoToTabIntent(0),
-        SingleActivator(LogicalKeyboardKey.digit2, control: true):
-            _GoToTabIntent(1),
-        SingleActivator(LogicalKeyboardKey.digit3, control: true):
-            _GoToTabIntent(2),
-        SingleActivator(LogicalKeyboardKey.digit4, control: true):
-            _GoToTabIntent(3),
-        SingleActivator(LogicalKeyboardKey.digit5, control: true):
-            _GoToTabIntent(4),
-        SingleActivator(LogicalKeyboardKey.digit6, control: true):
-            _GoToTabIntent(5),
-        SingleActivator(LogicalKeyboardKey.digit1, meta: true): _GoToTabIntent(
-          0,
-        ),
-        SingleActivator(LogicalKeyboardKey.digit2, meta: true): _GoToTabIntent(
-          1,
-        ),
-        SingleActivator(LogicalKeyboardKey.digit3, meta: true): _GoToTabIntent(
-          2,
-        ),
-        SingleActivator(LogicalKeyboardKey.digit4, meta: true): _GoToTabIntent(
-          3,
-        ),
-        SingleActivator(LogicalKeyboardKey.digit5, meta: true): _GoToTabIntent(
-          4,
-        ),
-        SingleActivator(LogicalKeyboardKey.digit6, meta: true): _GoToTabIntent(
-          5,
-        ),
-      },
+      shortcuts: shortcuts,
       child: Actions(
         actions: {
           _GoToTabIntent: CallbackAction<_GoToTabIntent>(
             onInvoke: (intent) {
-              _onTabTapped(intent.index);
+              final idx = intent.index;
+              if (idx < 0 || idx >= tabs.length) return null;
+              _onTabTappedById(tabs[idx], tabs: tabs);
               return null;
             },
           ),
@@ -758,11 +759,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
   }
 
   Widget _buildNavItem({
-    required IconData icon,
+    required AppTabId tab,
     required String label,
     required int index,
+    required bool isSelected,
   }) {
-    final isSelected = _currentIndex == index;
     final color = isSelected
         ? Theme.of(context).colorScheme.primary
         : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
@@ -781,7 +782,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 24),
+            Icon(
+              isSelected ? tab.selectedIcon : tab.icon,
+              color: color,
+              size: 24,
+            ),
             const SizedBox(height: 4),
             Text(
               label,

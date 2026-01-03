@@ -1,5 +1,10 @@
 {
   "preferences": "Preferences",
+  "navigationSettingsTitle": "Navegación",
+  "navigationCustomizeTabsTitle": "Personalizar pestañas",
+  "navigationCustomizeTabsSubtitle": "Arrastra para reordenar las pestañas mostradas abajo/a la izquierda. Debes mantener Tareas y Preferencias. Las demás son opcionales.",
+  "navigationDefaultTabTitle": "Pestaña predeterminada",
+  "navigationDefaultTabFieldLabel": "Abrir al iniciar",
   "appSettings": "App Settings",
   "notifications": "Notifications",
   "notificationsSubtitle": "Manage notification preferences",

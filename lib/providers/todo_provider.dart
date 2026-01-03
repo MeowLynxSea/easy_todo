@@ -753,9 +753,7 @@ class TodoProvider extends ChangeNotifier {
             }
           }
         } catch (e) {
-          debugPrint(
-            'Error processing importance for todo ${todo.title}: $e',
-          );
+          debugPrint('Error processing importance for todo ${todo.title}: $e');
         }
       }
     } catch (e) {
@@ -1966,25 +1964,25 @@ class TodoProvider extends ChangeNotifier {
       }
 
       // Update the repeat todo with AI results
-    final categoryOk =
-        !_aiProvider!.settings.enableAutoCategorization ||
-        (category != null && category.isNotEmpty) ||
-        (repeatTodo.aiCategory != null && repeatTodo.aiCategory!.isNotEmpty);
-    final priorityOk =
-        !_aiProvider!.settings.enablePrioritySorting ||
-        (priority != null && priority > 0) ||
-        repeatTodo.aiPriority > 0;
-    final importanceOk =
-        !_aiProvider!.settings.enableImportanceRating ||
-        (importance != null && importance > 0) ||
-        repeatTodo.aiImportance > 0;
+      final categoryOk =
+          !_aiProvider!.settings.enableAutoCategorization ||
+          (category != null && category.isNotEmpty) ||
+          (repeatTodo.aiCategory != null && repeatTodo.aiCategory!.isNotEmpty);
+      final priorityOk =
+          !_aiProvider!.settings.enablePrioritySorting ||
+          (priority != null && priority > 0) ||
+          repeatTodo.aiPriority > 0;
+      final importanceOk =
+          !_aiProvider!.settings.enableImportanceRating ||
+          (importance != null && importance > 0) ||
+          repeatTodo.aiImportance > 0;
 
-    final processedRepeatTodo = repeatTodo.copyWith(
-      aiCategory: category,
-      aiPriority: priority ?? 0,
-      aiImportance: importance ?? 0,
-      aiProcessed: categoryOk && priorityOk && importanceOk,
-    );
+      final processedRepeatTodo = repeatTodo.copyWith(
+        aiCategory: category,
+        aiPriority: priority ?? 0,
+        aiImportance: importance ?? 0,
+        aiProcessed: categoryOk && priorityOk && importanceOk,
+      );
 
       // Save to database
       await _putRepeatTodo(processedRepeatTodo);
@@ -3499,8 +3497,7 @@ class TodoProvider extends ChangeNotifier {
         debugPrint('Rate limit detected, setting global cooldown');
         _lastRateLimitError = DateTime.now();
       }
-    }
-    finally {
+    } finally {
       _processingTodos.remove(todo.id);
     }
 
@@ -3598,19 +3595,19 @@ class TodoProvider extends ChangeNotifier {
             (todo.aiCategory != null &&
                 todo.aiCategory!.isNotEmpty &&
                 !needsCategory);
-      final priorityOk =
-          (newPriority != null && newPriority > 0) ||
-          (todo.aiPriority > 0 && !needsPriority);
-      final importanceOk =
-          (newImportance != null && newImportance > 0) ||
-          (todo.aiImportance > 0 && !needsImportance);
+        final priorityOk =
+            (newPriority != null && newPriority > 0) ||
+            (todo.aiPriority > 0 && !needsPriority);
+        final importanceOk =
+            (newImportance != null && newImportance > 0) ||
+            (todo.aiImportance > 0 && !needsImportance);
 
-      final updatedTodo = todo.copyWith(
-        aiCategory: newCategory ?? todo.aiCategory,
-        aiPriority: newPriority ?? todo.aiPriority,
-        aiImportance: newImportance ?? todo.aiImportance,
-        aiProcessed: categoryOk && priorityOk && importanceOk,
-      );
+        final updatedTodo = todo.copyWith(
+          aiCategory: newCategory ?? todo.aiCategory,
+          aiPriority: newPriority ?? todo.aiPriority,
+          aiImportance: newImportance ?? todo.aiImportance,
+          aiProcessed: categoryOk && priorityOk && importanceOk,
+        );
 
         // Save to Hive database
         await _putTodo(updatedTodo);
@@ -3682,7 +3679,8 @@ class TodoProvider extends ChangeNotifier {
             aiCategory: category,
             aiPriority: priority,
             aiImportance: importance,
-            aiProcessed: isCategoryValid && isPriorityValid && isImportanceValid,
+            aiProcessed:
+                isCategoryValid && isPriorityValid && isImportanceValid,
           );
 
           final todosBox = _hiveService.todosBox;

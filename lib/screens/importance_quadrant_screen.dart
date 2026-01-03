@@ -40,36 +40,28 @@ class ImportanceQuadrantScreen extends StatelessWidget {
       return (urgency: 60, importance: 60);
     }
 
-    final urgencies = scored
-        .map((t) => t.aiPriority)
-        .toList(growable: false);
+    final urgencies = scored.map((t) => t.aiPriority).toList(growable: false);
     final importances = scored
         .map((t) => t.aiImportance)
         .toList(growable: false);
 
     const candidateQuantiles = <double>[0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65];
-    final urgencyCandidates = candidateQuantiles
-        .map(
-          (q) => _quantileThreshold(
-            urgencies,
-            fallback: 60,
-            quantile: q,
-          ),
-        )
-        .toSet()
-        .toList(growable: false)
-      ..sort();
-    final importanceCandidates = candidateQuantiles
-        .map(
-          (q) => _quantileThreshold(
-            importances,
-            fallback: 60,
-            quantile: q,
-          ),
-        )
-        .toSet()
-        .toList(growable: false)
-      ..sort();
+    final urgencyCandidates =
+        candidateQuantiles
+            .map(
+              (q) => _quantileThreshold(urgencies, fallback: 60, quantile: q),
+            )
+            .toSet()
+            .toList(growable: false)
+          ..sort();
+    final importanceCandidates =
+        candidateQuantiles
+            .map(
+              (q) => _quantileThreshold(importances, fallback: 60, quantile: q),
+            )
+            .toSet()
+            .toList(growable: false)
+          ..sort();
 
     final n = scored.length;
     final expected = n / 4.0;
@@ -100,9 +92,7 @@ class ImportanceQuadrantScreen extends StatelessWidget {
           }
         }
 
-        final minCount = [iu, inu, niu, ninu].reduce(
-          (a, b) => a < b ? a : b,
-        );
+        final minCount = [iu, inu, niu, ninu].reduce((a, b) => a < b ? a : b);
 
         // Prefer thresholds that avoid empty quadrants.
         // Tie-break using a simple balance score (sum of squared deviations).
@@ -129,8 +119,11 @@ class ImportanceQuadrantScreen extends StatelessWidget {
     if (bestMinCount <= 0) {
       return (
         urgency: _quantileThreshold(urgencies, fallback: 60, quantile: 0.5),
-        importance:
-            _quantileThreshold(importances, fallback: 60, quantile: 0.5),
+        importance: _quantileThreshold(
+          importances,
+          fallback: 60,
+          quantile: 0.5,
+        ),
       );
     }
 

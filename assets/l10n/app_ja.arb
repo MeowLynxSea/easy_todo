@@ -1,5 +1,10 @@
 {
   "preferences": "設定",
+  "navigationSettingsTitle": "ナビゲーション",
+  "navigationCustomizeTabsTitle": "タブをカスタマイズ",
+  "navigationCustomizeTabsSubtitle": "ドラッグして下部（デスクトップでは左側）に表示するタブと順序を変更できます。必ず「ToDo」と「設定」を残し、その他は任意です。",
+  "navigationDefaultTabTitle": "デフォルトのタブ",
+  "navigationDefaultTabFieldLabel": "起動時に開く",
   "appSettings": "アプリ設定",
   "notifications": "通知",
   "notificationsSubtitle": "通知設定を管理",

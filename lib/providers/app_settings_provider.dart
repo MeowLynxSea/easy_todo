@@ -7,6 +7,8 @@ import 'package:easy_todo/services/biometric_service.dart';
 import 'package:easy_todo/services/repositories/user_preferences_repository.dart';
 import 'package:easy_todo/utils/random_id.dart';
 import 'package:easy_todo/utils/schedule_color_group_presets.dart';
+import 'package:easy_todo/utils/app_tabs.dart';
+import 'package:easy_todo/utils/navigation_tab_prefs.dart';
 
 extension _FirstOrNullExtension<T> on Iterable<T> {
   T? get firstOrNull {
@@ -52,6 +54,25 @@ class AppSettingsProvider extends ChangeNotifier {
   List<ScheduleColorGroup> get schedulePresetColorGroups =>
       List<ScheduleColorGroup>.unmodifiable(ScheduleColorGroupPresets.all);
 
+  NavigationTabConfig get navigationTabConfig {
+    return normalizeNavigationTabConfig(
+      tabOrder: _preferences.navigationTabOrder,
+      enabledTabs: _preferences.navigationEnabledTabs,
+      defaultTab: _preferences.navigationDefaultTab,
+    );
+  }
+
+  List<AppTabId> get visibleNavigationTabs {
+    return List<AppTabId>.unmodifiable(
+      resolveVisibleTabs(config: navigationTabConfig),
+    );
+  }
+
+  AppTabId get navigationDefaultTabId {
+    return AppTabIdX.fromStorageKey(navigationTabConfig.defaultTab) ??
+        AppTabId.todos;
+  }
+
   ScheduleColorGroup get scheduleEffectiveActiveColorGroup {
     final id = _preferences.scheduleActiveColorGroupId;
     final custom = scheduleCustomColorGroups
@@ -81,6 +102,28 @@ class AppSettingsProvider extends ChangeNotifier {
 
       var preferencesChanged = false;
       _preferences = await _preferencesRepository.load();
+
+      final normalizedNav = normalizeNavigationTabConfig(
+        tabOrder: _preferences.navigationTabOrder,
+        enabledTabs: _preferences.navigationEnabledTabs,
+        defaultTab: _preferences.navigationDefaultTab,
+      );
+      if (!listEquals(
+            _preferences.navigationTabOrder,
+            normalizedNav.tabOrder,
+          ) ||
+          !listEquals(
+            _preferences.navigationEnabledTabs,
+            normalizedNav.enabledTabs,
+          ) ||
+          _preferences.navigationDefaultTab != normalizedNav.defaultTab) {
+        _preferences = _preferences.copyWith(
+          navigationTabOrder: normalizedNav.tabOrder,
+          navigationEnabledTabs: normalizedNav.enabledTabs,
+          navigationDefaultTab: normalizedNav.defaultTab,
+        );
+        preferencesChanged = true;
+      }
 
       if (savedDevice == null) {
         // Legacy migration from AppSettingsModel (pre-sync split).
@@ -136,6 +179,9 @@ class AppSettingsProvider extends ChangeNotifier {
                   defaultPrefs.scheduleActiveColorGroupId,
               scheduleCustomColorGroupsString:
                   defaultPrefs.scheduleCustomColorGroupsString,
+              navigationTabOrder: _preferences.navigationTabOrder,
+              navigationEnabledTabs: _preferences.navigationEnabledTabs,
+              navigationDefaultTab: _preferences.navigationDefaultTab,
             );
             preferencesChanged = true;
           }
@@ -503,6 +549,63 @@ class AppSettingsProvider extends ChangeNotifier {
     _preferences = _preferences.copyWith(scheduleLabelTextScale: normalized);
     await _savePreferences();
     notifyListeners();
+  }
+
+  Future<void> updateNavigationTabs({
+    List<String>? tabOrder,
+    List<String>? enabledTabs,
+    String? defaultTab,
+  }) async {
+    final nextConfig = normalizeNavigationTabConfig(
+      tabOrder: tabOrder ?? _preferences.navigationTabOrder,
+      enabledTabs: enabledTabs ?? _preferences.navigationEnabledTabs,
+      defaultTab: defaultTab ?? _preferences.navigationDefaultTab,
+    );
+
+    _preferences = _preferences.copyWith(
+      navigationTabOrder: nextConfig.tabOrder,
+      navigationEnabledTabs: nextConfig.enabledTabs,
+      navigationDefaultTab: nextConfig.defaultTab,
+    );
+    await _savePreferences();
+    notifyListeners();
+  }
+
+  Future<void> setNavigationTabOrder(List<String> tabOrder) async {
+    await updateNavigationTabs(tabOrder: tabOrder);
+  }
+
+  Future<void> setNavigationTabEnabled(String tabKey, bool enabled) async {
+    final normalizedKey = tabKey.trim();
+    final tab = AppTabIdX.fromStorageKey(normalizedKey);
+    if (tab == null) return;
+    if (tab.isRequired) {
+      await updateNavigationTabs();
+      return;
+    }
+
+    final current = navigationTabConfig;
+    final enabledSet = current.enabledTabs.toSet();
+    if (enabled) {
+      enabledSet.add(normalizedKey);
+    } else {
+      enabledSet.remove(normalizedKey);
+    }
+
+    await updateNavigationTabs(enabledTabs: enabledSet.toList());
+  }
+
+  Future<void> setNavigationDefaultTab(String tabKey) async {
+    await updateNavigationTabs(defaultTab: tabKey);
+  }
+
+  Future<void> resetNavigationTabsToDefault() async {
+    final defaults = UserPreferencesModel.create();
+    await updateNavigationTabs(
+      tabOrder: defaults.navigationTabOrder,
+      enabledTabs: defaults.navigationEnabledTabs,
+      defaultTab: defaults.navigationDefaultTab,
+    );
   }
 
   _ScheduleTimeRange _normalizeScheduleTimeRange({

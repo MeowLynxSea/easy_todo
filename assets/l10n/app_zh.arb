@@ -1,5 +1,10 @@
 {
   "preferences": "设置",
+  "navigationSettingsTitle": "导航",
+  "navigationCustomizeTabsTitle": "自定义 Tab",
+  "navigationCustomizeTabsSubtitle": "通过拖拽来自定义下方（桌面端左侧）显示的 Tab 入口和顺序。必须保留「待办事项」和「设置」，其余可选。",
+  "navigationDefaultTabTitle": "默认 Tab",
+  "navigationDefaultTabFieldLabel": "启动时默认打开",
   "appSettings": "应用设置",
   "notifications": "通知",
   "notificationsSubtitle": "管理通知偏好",

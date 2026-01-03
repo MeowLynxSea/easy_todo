@@ -12,6 +12,22 @@ class AppLocalizationsEs extends AppLocalizations {
   String get preferences => 'Preferences';
 
   @override
+  String get navigationSettingsTitle => 'Navegación';
+
+  @override
+  String get navigationCustomizeTabsTitle => 'Personalizar pestañas';
+
+  @override
+  String get navigationCustomizeTabsSubtitle =>
+      'Arrastra para reordenar las pestañas mostradas abajo/a la izquierda. Debes mantener Tareas y Preferencias. Las demás son opcionales.';
+
+  @override
+  String get navigationDefaultTabTitle => 'Pestaña predeterminada';
+
+  @override
+  String get navigationDefaultTabFieldLabel => 'Abrir al iniciar';
+
+  @override
   String get appSettings => 'App Settings';
 
   @override

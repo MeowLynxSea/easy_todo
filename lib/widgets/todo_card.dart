@@ -361,7 +361,9 @@ class _TodoCardState extends State<TodoCard> {
 
     // If AI features are enabled but data is missing, trigger background generation only for active todos
     if (settings.enableAIFeatures && !latestTodo.isCompleted) {
-      if (needsCategoryLoading || needsPriorityLoading || needsImportanceLoading) {
+      if (needsCategoryLoading ||
+          needsPriorityLoading ||
+          needsImportanceLoading) {
         // Only trigger if todo was created more than 2 seconds ago to avoid spam during creation
         final now = DateTime.now();
         final timeSinceCreation = now.difference(latestTodo.createdAt);
@@ -442,10 +444,7 @@ class _TodoCardState extends State<TodoCard> {
               icon: Icons.label_important,
             )
           else if (needsImportanceLoading && !latestTodo.isCompleted)
-            _buildLoadingChip(
-              label: l10n.importance,
-              color: Colors.purple,
-            ),
+            _buildLoadingChip(label: l10n.importance, color: Colors.purple),
       ],
     );
   }

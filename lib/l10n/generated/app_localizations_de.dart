@@ -12,6 +12,22 @@ class AppLocalizationsDe extends AppLocalizations {
   String get preferences => 'Einstellungen';
 
   @override
+  String get navigationSettingsTitle => 'Navigation';
+
+  @override
+  String get navigationCustomizeTabsTitle => 'Tabs anpassen';
+
+  @override
+  String get navigationCustomizeTabsSubtitle =>
+      'Ziehen, um die unten/links angezeigten Tabs neu zu ordnen. Todos und Einstellungen müssen vorhanden sein; alle anderen Tabs sind optional.';
+
+  @override
+  String get navigationDefaultTabTitle => 'Standard-Tab';
+
+  @override
+  String get navigationDefaultTabFieldLabel => 'Beim Start öffnen';
+
+  @override
   String get appSettings => 'App-Einstellungen';
 
   @override

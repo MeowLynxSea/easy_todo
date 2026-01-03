@@ -66,10 +66,7 @@ class AIService {
           );
           break;
         case 'importance':
-          localizedPrompt = l10n.aiPromptImportance(
-            '{description}',
-            '{title}',
-          );
+          localizedPrompt = l10n.aiPromptImportance('{description}', '{title}');
           break;
         case 'motivation':
           localizedPrompt = l10n.aiPromptMotivation(

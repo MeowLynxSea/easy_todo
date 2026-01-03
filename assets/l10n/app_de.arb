@@ -1,5 +1,10 @@
 {
   "preferences": "Einstellungen",
+  "navigationSettingsTitle": "Navigation",
+  "navigationCustomizeTabsTitle": "Tabs anpassen",
+  "navigationCustomizeTabsSubtitle": "Ziehen, um die unten/links angezeigten Tabs neu zu ordnen. Todos und Einstellungen müssen vorhanden sein; alle anderen Tabs sind optional.",
+  "navigationDefaultTabTitle": "Standard-Tab",
+  "navigationDefaultTabFieldLabel": "Beim Start öffnen",
   "appSettings": "App-Einstellungen",
   "notifications": "Benachrichtigungen",
   "notificationsSubtitle": "Benachrichtigungseinstellungen verwalten",

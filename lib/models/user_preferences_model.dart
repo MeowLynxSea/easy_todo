@@ -42,6 +42,18 @@ class UserPreferencesModel {
   /// Schedule: serialized user-defined color groups.
   final String scheduleCustomColorGroupsString;
 
+  /// Navigation: tab order key list.
+  /// Keys are stable strings (see AppTabId.storageKey).
+  final List<String> navigationTabOrder;
+
+  /// Navigation: enabled tab key list.
+  /// Must always include required tabs.
+  final List<String> navigationEnabledTabs;
+
+  /// Navigation: default tab key when the app starts.
+  /// Must be enabled; otherwise falls back to first enabled.
+  final String navigationDefaultTab;
+
   const UserPreferencesModel({
     required this.languageCode,
     required this.themeModeIndex,
@@ -61,6 +73,9 @@ class UserPreferencesModel {
     required this.scheduleLabelTextScale,
     required this.scheduleActiveColorGroupId,
     required this.scheduleCustomColorGroupsString,
+    required this.navigationTabOrder,
+    required this.navigationEnabledTabs,
+    required this.navigationDefaultTab,
   });
 
   UserPreferencesModel copyWith({
@@ -82,6 +97,9 @@ class UserPreferencesModel {
     double? scheduleLabelTextScale,
     String? scheduleActiveColorGroupId,
     String? scheduleCustomColorGroupsString,
+    List<String>? navigationTabOrder,
+    List<String>? navigationEnabledTabs,
+    String? navigationDefaultTab,
   }) {
     final normalizedVisibleDays =
         (scheduleVisibleDayCount ?? this.scheduleVisibleDayCount).clamp(3, 10);
@@ -112,6 +130,10 @@ class UserPreferencesModel {
       scheduleCustomColorGroupsString:
           scheduleCustomColorGroupsString ??
           this.scheduleCustomColorGroupsString,
+      navigationTabOrder: navigationTabOrder ?? this.navigationTabOrder,
+      navigationEnabledTabs:
+          navigationEnabledTabs ?? this.navigationEnabledTabs,
+      navigationDefaultTab: navigationDefaultTab ?? this.navigationDefaultTab,
     );
   }
 
@@ -135,6 +157,23 @@ class UserPreferencesModel {
       scheduleLabelTextScale: 1.0,
       scheduleActiveColorGroupId: 'preset:warm_cool',
       scheduleCustomColorGroupsString: '',
+      navigationTabOrder: <String>[
+        'todos',
+        'importanceQuadrant',
+        'schedule',
+        'history',
+        'statistics',
+        'preferences',
+      ],
+      navigationEnabledTabs: <String>[
+        'todos',
+        'importanceQuadrant',
+        'schedule',
+        'history',
+        'statistics',
+        'preferences',
+      ],
+      navigationDefaultTab: 'todos',
     );
   }
 
@@ -158,6 +197,9 @@ class UserPreferencesModel {
       'scheduleLabelTextScale': scheduleLabelTextScale,
       'scheduleActiveColorGroupId': scheduleActiveColorGroupId,
       'scheduleCustomColorGroupsString': scheduleCustomColorGroupsString,
+      'navigationTabOrder': navigationTabOrder,
+      'navigationEnabledTabs': navigationEnabledTabs,
+      'navigationDefaultTab': navigationDefaultTab,
     };
   }
 
@@ -214,6 +256,19 @@ class UserPreferencesModel {
       scheduleCustomColorGroupsString:
           (json['scheduleCustomColorGroupsString'] as String?) ??
           defaults.scheduleCustomColorGroupsString,
+      navigationTabOrder:
+          (json['navigationTabOrder'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          defaults.navigationTabOrder,
+      navigationEnabledTabs:
+          (json['navigationEnabledTabs'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          defaults.navigationEnabledTabs,
+      navigationDefaultTab:
+          (json['navigationDefaultTab'] as String?) ??
+          defaults.navigationDefaultTab,
     );
   }
 }

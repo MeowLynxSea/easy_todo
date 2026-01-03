@@ -12,6 +12,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String get preferences => 'Préférences';
 
   @override
+  String get navigationSettingsTitle => 'Navigation';
+
+  @override
+  String get navigationCustomizeTabsTitle => 'Personnaliser les onglets';
+
+  @override
+  String get navigationCustomizeTabsSubtitle =>
+      'Faites glisser pour réorganiser les onglets affichés en bas/à gauche. Vous devez conserver Tâches et Préférences. Les autres onglets sont facultatifs.';
+
+  @override
+  String get navigationDefaultTabTitle => 'Onglet par défaut';
+
+  @override
+  String get navigationDefaultTabFieldLabel => 'Ouvrir au lancement';
+
+  @override
   String get appSettings => 'Paramètres de l\'application';
 
   @override

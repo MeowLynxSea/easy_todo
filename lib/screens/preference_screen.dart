@@ -18,6 +18,7 @@ import 'package:easy_todo/screens/storage_screen.dart';
 import 'package:easy_todo/screens/backup_restore_screen.dart';
 import 'package:easy_todo/screens/notification_settings_screen.dart';
 import 'package:easy_todo/screens/view_settings_screen.dart';
+import 'package:easy_todo/screens/navigation_settings_screen.dart';
 import 'package:easy_todo/screens/schedule_layout_settings_screen.dart';
 import 'package:easy_todo/screens/schedule_color_groups_screen.dart';
 import 'package:easy_todo/screens/about_screen.dart';
@@ -194,6 +195,17 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                       onTap: () {
                         _openPreferenceSubPage(
                           (context) => const ViewSettingsScreen(),
+                        );
+                      },
+                    ),
+                    const Divider(),
+                    _buildPreferenceItem(
+                      icon: Icons.view_list_outlined,
+                      title: l10n.navigationSettingsTitle,
+                      subtitle: l10n.navigationCustomizeTabsTitle,
+                      onTap: () {
+                        _openPreferenceSubPage(
+                          (context) => const NavigationSettingsScreen(),
                         );
                       },
                     ),

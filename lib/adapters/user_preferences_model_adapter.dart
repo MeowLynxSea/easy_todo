@@ -36,13 +36,34 @@ class UserPreferencesModelAdapter extends TypeAdapter<UserPreferencesModel> {
       scheduleCustomColorGroupsString: fields[16] == null
           ? ''
           : fields[16] as String,
+      navigationTabOrder:
+          (fields[18] as List?)?.cast<String>() ??
+          const <String>[
+            'todos',
+            'importanceQuadrant',
+            'schedule',
+            'history',
+            'statistics',
+            'preferences',
+          ],
+      navigationEnabledTabs:
+          (fields[19] as List?)?.cast<String>() ??
+          const <String>[
+            'todos',
+            'importanceQuadrant',
+            'schedule',
+            'history',
+            'statistics',
+            'preferences',
+          ],
+      navigationDefaultTab: fields[20] == null ? 'todos' : fields[20] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, UserPreferencesModel obj) {
     writer
-      ..writeByte(18)
+      ..writeByte(21)
       ..writeByte(0)
       ..write(obj.viewMode)
       ..writeByte(1)
@@ -78,6 +99,12 @@ class UserPreferencesModelAdapter extends TypeAdapter<UserPreferencesModel> {
       ..writeByte(15)
       ..write(obj.scheduleActiveColorGroupId)
       ..writeByte(16)
-      ..write(obj.scheduleCustomColorGroupsString);
+      ..write(obj.scheduleCustomColorGroupsString)
+      ..writeByte(18)
+      ..write(obj.navigationTabOrder)
+      ..writeByte(19)
+      ..write(obj.navigationEnabledTabs)
+      ..writeByte(20)
+      ..write(obj.navigationDefaultTab);
   }
 }

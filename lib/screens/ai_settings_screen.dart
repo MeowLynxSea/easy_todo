@@ -133,7 +133,8 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
       enableAutoCategorization: aiProvider.settings.enableAutoCategorization,
       enablePrioritySorting: aiProvider.settings.enablePrioritySorting,
       enableImportanceRating: aiProvider.settings.enableImportanceRating,
-      enableMotivationalMessages: aiProvider.settings.enableMotivationalMessages,
+      enableMotivationalMessages:
+          aiProvider.settings.enableMotivationalMessages,
       enableSmartNotifications: aiProvider.settings.enableSmartNotifications,
       syncApiKey: aiProvider.settings.syncApiKey,
       temperature: double.tryParse(_temperatureController.text) ?? 1.0,

@@ -114,6 +114,36 @@ abstract class AppLocalizations {
   /// **'Preferences'**
   String get preferences;
 
+  /// No description provided for @navigationSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Navigation'**
+  String get navigationSettingsTitle;
+
+  /// No description provided for @navigationCustomizeTabsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Customize tabs'**
+  String get navigationCustomizeTabsTitle;
+
+  /// No description provided for @navigationCustomizeTabsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag to reorder the tabs shown below / on the left. You must keep Todos and Preferences. Other tabs are optional.'**
+  String get navigationCustomizeTabsSubtitle;
+
+  /// No description provided for @navigationDefaultTabTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Default tab'**
+  String get navigationDefaultTabTitle;
+
+  /// No description provided for @navigationDefaultTabFieldLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Default tab on launch'**
+  String get navigationDefaultTabFieldLabel;
+
   /// No description provided for @appSettings.
   ///
   /// In en, this message translates to:

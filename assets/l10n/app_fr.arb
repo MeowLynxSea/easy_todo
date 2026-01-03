@@ -1,5 +1,10 @@
 {
   "preferences": "Préférences",
+  "navigationSettingsTitle": "Navigation",
+  "navigationCustomizeTabsTitle": "Personnaliser les onglets",
+  "navigationCustomizeTabsSubtitle": "Faites glisser pour réorganiser les onglets affichés en bas/à gauche. Vous devez conserver Tâches et Préférences. Les autres onglets sont facultatifs.",
+  "navigationDefaultTabTitle": "Onglet par défaut",
+  "navigationDefaultTabFieldLabel": "Ouvrir au lancement",
   "appSettings": "Paramètres de l'application",
   "notifications": "Notifications",
   "notificationsSubtitle": "Gérer les préférences de notification",

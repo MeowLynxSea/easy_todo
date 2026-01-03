@@ -2386,7 +2386,13 @@ class AppLocalizationsKo extends AppLocalizations {
   String get prioritySorting => '우선순위 정렬';
 
   @override
-  String get prioritySortingSubtitle => '작업의 중요도와 우선순위를 평가합니다';
+  String get importanceRating => '중요도 평가';
+
+  @override
+  String get importanceRatingSubtitle => '중요도를 우선순위와 별도로 평가합니다';
+
+  @override
+  String get prioritySortingSubtitle => '작업의 우선순위(긴급도)를 평가합니다';
 
   @override
   String get motivationalMessages => '동기 부여 메시지';
@@ -2686,6 +2692,21 @@ class AppLocalizationsKo extends AppLocalizations {
   String get importance => '중요도';
 
   @override
+  String get importanceQuadrant => '사분면';
+
+  @override
+  String get important => '중요';
+
+  @override
+  String get notImportant => '중요하지 않음';
+
+  @override
+  String get urgent => '긴급';
+
+  @override
+  String get notUrgent => '긴급하지 않음';
+
+  @override
   String get noCategoriesAvailable => '사용 가능한 카테고리 없음';
 
   @override
@@ -2726,6 +2747,11 @@ class AppLocalizationsKo extends AppLocalizations {
     Object title,
   ) {
     return '이 할 일 작업의 우선순위를 0-100으로 평가하세요. 다음을 고려하세요:\n      - 긴급성: 얼마나 빨리 필요한가요? (마감일: $deadline)\n      - 영향력: 완료하지 않을 경우 결과는 무엇인가요?\n      - 노력: 얼마나 많은 시간/자원이 필요한가요?\n      - 개인적 중요성: 이것이 당신에게 얼마나 가치 있는가요?\n\n      작업: \"$title\"\n      설명: \"$description\"\n      마감일 있음: $hasDeadline\n      마감일: $deadline\n\n      가이드라인:\n      - 0-20: 낮은 우선순위, 연기 가능\n      - 21-40: 중간 우선순위, 곧 해야 함\n      - 41-70: 높은 우선순위, 완료가 중요\n      - 71-100: 중요 우선순위, 긴급한 완료 필요\n\n      0-100 사이의 숫자로만 응답하세요.';
+  }
+
+  @override
+  String aiPromptImportance(Object description, Object title) {
+    return '이 할 일 작업의 중요도를 0-100으로 평가하세요. 장기적인 가치와 영향에 집중합니다.\n\n      고려할 점:\n      - 영향: 완료하면 얼마나 중요한가요?\n      - 장기적 가치: 나중에 도움이 되나요?\n      - 정렬: 목표/가치에 부합하나요?\n      - 결과: 절대 하지 않으면 무엇을 잃나요?\n\n      작업: \"$title\"\n      설명: \"$description\"\n\n      가이드라인:\n      - 0-20: 낮은 중요도\n      - 21-40: 어느 정도 중요\n      - 41-70: 중요\n      - 71-100: 매우 중요\n\n      0-100 사이의 숫자로만 응답하세요.';
   }
 
   @override

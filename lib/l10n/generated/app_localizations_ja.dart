@@ -2384,7 +2384,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get prioritySorting => '優先度ソート';
 
   @override
-  String get prioritySortingSubtitle => 'タスクの重要度と優先度を評価する';
+  String get importanceRating => '重要度評価';
+
+  @override
+  String get importanceRatingSubtitle => '重要度を優先度とは別に評価する';
+
+  @override
+  String get prioritySortingSubtitle => 'タスクの優先度（緊急度）を評価する';
 
   @override
   String get motivationalMessages => 'モチベーションメッセージ';
@@ -2684,6 +2690,21 @@ class AppLocalizationsJa extends AppLocalizations {
   String get importance => '重要度';
 
   @override
+  String get importanceQuadrant => '四象限';
+
+  @override
+  String get important => '重要';
+
+  @override
+  String get notImportant => '重要ではない';
+
+  @override
+  String get urgent => '緊急';
+
+  @override
+  String get notUrgent => '緊急ではない';
+
+  @override
   String get noCategoriesAvailable => '利用可能なカテゴリーがありません';
 
   @override
@@ -2724,6 +2745,11 @@ class AppLocalizationsJa extends AppLocalizations {
     Object title,
   ) {
     return 'このToDoタスクの優先度を0-100で評価してください。以下を考慮：\n      - 緊急性：どのくらい早く必要ですか？（締切：$deadline）\n      - 影響：完了しない場合の結果は何ですか？\n      - 労力：どのくらいの時間/リソースが必要ですか？\n      - 個人的重要性：これがあなたにとってどれほど価値がありますか？\n\n      タスク：\"$title\"\n      説明：\"$description\"\n      締切あり：$hasDeadline\n      締切：$deadline\n\n      ガイドライン：\n      - 0-20：低優先度、延期可能\n      - 21-40：中優先度、すぐに行うべき\n      - 41-70：高優先度、完了が重要\n      - 71-100：重要優先度、緊急の完了が必要\n\n      0-100の数字でのみ応答してください。';
+  }
+
+  @override
+  String aiPromptImportance(Object description, Object title) {
+    return 'このToDoタスクの重要度を0-100で評価してください。長期的な価値と影響に焦点を当てます。\n\n      考慮する点：\n      - 影響：完了するとどれほど重要ですか？\n      - 長期的価値：将来の利益につながりますか？\n      - 整合性：あなたの目標/価値観に合っていますか？\n      - 結果：一度もやらない場合、何を失いますか？\n\n      タスク：\"$title\"\n      説明：\"$description\"\n\n      ガイドライン：\n      - 0-20：重要度が低い\n      - 21-40：ある程度重要\n      - 41-70：重要\n      - 71-100：非常に重要\n\n      0-100の数字でのみ応答してください。';
   }
 
   @override

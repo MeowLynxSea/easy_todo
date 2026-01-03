@@ -38,13 +38,14 @@ class TodoModelAdapter extends TypeAdapter<TodoModel> {
       endTime: fields[18] as DateTime?,
       generatedKey: fields[19] as String?,
       scheduleColorSeed: fields[20] as String?,
+      aiImportance: fields[21] == null ? 0 : fields[21] as int,
     );
   }
 
   @override
   void write(BinaryWriter writer, TodoModel obj) {
     writer
-      ..writeByte(21)
+      ..writeByte(22)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -86,7 +87,9 @@ class TodoModelAdapter extends TypeAdapter<TodoModel> {
       ..writeByte(19)
       ..write(obj.generatedKey)
       ..writeByte(20)
-      ..write(obj.scheduleColorSeed);
+      ..write(obj.scheduleColorSeed)
+      ..writeByte(21)
+      ..write(obj.aiImportance);
   }
 
   @override

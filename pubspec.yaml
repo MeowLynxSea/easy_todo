@@ -132,6 +132,11 @@ flutter:
   assets:
     - assets/l10n/app_en.arb
     - assets/l10n/app_zh.arb
+    - assets/l10n/app_de.arb
+    - assets/l10n/app_es.arb
+    - assets/l10n/app_fr.arb
+    - assets/l10n/app_ja.arb
+    - assets/l10n/app_ko.arb
     - assets/images/
 
   # An image asset can refer to one or more resolution-specific "variants", see

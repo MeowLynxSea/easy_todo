@@ -2497,8 +2497,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get prioritySorting => 'Tri par priorité';
 
   @override
+  String get importanceRating => 'Évaluation de l\'importance';
+
+  @override
+  String get importanceRatingSubtitle =>
+      'Évaluez l\'importance séparément de la priorité';
+
+  @override
   String get prioritySortingSubtitle =>
-      'Évaluez l\'importance et la priorité des tâches';
+      'Évaluez la priorité (urgence) des tâches';
 
   @override
   String get motivationalMessages => 'Messages motivationnels';
@@ -2813,6 +2820,21 @@ class AppLocalizationsFr extends AppLocalizations {
   String get importance => 'Importance';
 
   @override
+  String get importanceQuadrant => 'Quadrants';
+
+  @override
+  String get important => 'Important';
+
+  @override
+  String get notImportant => 'Peu important';
+
+  @override
+  String get urgent => 'Urgent';
+
+  @override
+  String get notUrgent => 'Pas urgent';
+
+  @override
   String get noCategoriesAvailable => 'Aucune catégorie disponible';
 
   @override
@@ -2854,6 +2876,11 @@ class AppLocalizationsFr extends AppLocalizations {
     Object title,
   ) {
     return 'Évaluez la priorité de cette tâche de 0-100, en considérant:\n      - Urgence: Quand est-ce nécessaire ? (date limite: $deadline)\n      - Impact: Quelles sont les conséquences de ne pas la terminer ?\n      - Effort: Combien de temps/ressources sont nécessaires ?\n      - Importance personnelle: Quelle est sa valeur pour vous ?\n\n      Tâche: \"$title\"\n      Description: \"$description\"\n      A une date limite: $hasDeadline\n      Date limite: $deadline\n\n      Directives:\n      - 0-20: Priorité faible, peut être reportée\n      - 21-40: Priorité modérée, devrait être faite bientôt\n      - 41-70: Priorité élevée, importante à compléter\n      - 71-100: Priorité critique, complétion urgente nécessaire\n\n      Répondez uniquement avec un nombre de 0-100.';
+  }
+
+  @override
+  String aiPromptImportance(Object description, Object title) {
+    return 'Évaluez l\'importance de cette tâche de 0-100, en vous concentrant sur la valeur et l\'impact à long terme.\n\n      Considérez :\n      - Impact : Quelle est l\'importance si elle est accomplie ?\n      - Valeur à long terme : Vous sera-t-elle utile plus tard ?\n      - Alignement : Correspond-elle à vos objectifs/valeurs ?\n      - Conséquences : Que perdez-vous si vous ne la faites jamais ?\n\n      Tâche : \"$title\"\n      Description : \"$description\"\n\n      Directives :\n      - 0-20 : Faible importance\n      - 21-40 : Importance modérée\n      - 41-70 : Important\n      - 71-100 : Extrêmement important\n\n      Répondez uniquement avec un nombre de 0-100.';
   }
 
   @override

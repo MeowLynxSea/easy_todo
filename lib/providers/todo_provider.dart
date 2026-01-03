@@ -142,6 +142,7 @@ class TodoProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isProcessingCategories = false;
   bool _isProcessingPriorities = false;
+  bool _isProcessingImportance = false;
   String _searchQuery = '';
   TodoFilter _currentFilter = TodoFilter.active;
   DateTimeRange? _dateRange;
@@ -201,6 +202,7 @@ class TodoProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isProcessingCategories => _isProcessingCategories;
   bool get isProcessingPriorities => _isProcessingPriorities;
+  bool get isProcessingImportance => _isProcessingImportance;
   String get searchQuery => _searchQuery;
   TodoFilter get currentFilter => _currentFilter;
   DateTimeRange? get dateRange => _dateRange;
@@ -232,6 +234,10 @@ class TodoProvider extends ChangeNotifier {
 
     _aiProvider!.onProcessMissingPriority = () {
       unawaited(processMissingPriority());
+    };
+
+    _aiProvider!.onProcessMissingImportance = () {
+      unawaited(processMissingImportance());
     };
   }
 
@@ -295,7 +301,9 @@ class TodoProvider extends ChangeNotifier {
 
       // Check if todo has AI processed flag but missing AI data
       if (todo.aiProcessed &&
-          (todo.aiCategory == null || todo.aiPriority == 0)) {
+          (todo.aiCategory == null ||
+              todo.aiPriority == 0 ||
+              todo.aiImportance == 0)) {
         // Only reset if we're missing data for enabled features
         final needsCategory =
             _aiProvider!.settings.enableAutoCategorization &&
@@ -303,8 +311,11 @@ class TodoProvider extends ChangeNotifier {
         final needsPriority =
             _aiProvider!.settings.enablePrioritySorting &&
             (todo.aiPriority == 0);
+        final needsImportance =
+            _aiProvider!.settings.enableImportanceRating &&
+            (todo.aiImportance == 0);
 
-        if (needsCategory || needsPriority) {
+        if (needsCategory || needsPriority || needsImportance) {
           // Reset aiProcessed flag only for missing enabled features
           final resetTodo = todo.copyWith(aiProcessed: false);
           await _putTodo(resetTodo);
@@ -327,13 +338,17 @@ class TodoProvider extends ChangeNotifier {
           (todo.aiCategory == null || todo.aiCategory!.isEmpty);
       final needsPriority =
           _aiProvider!.settings.enablePrioritySorting && (todo.aiPriority == 0);
+      final needsImportance =
+          _aiProvider!.settings.enableImportanceRating &&
+          (todo.aiImportance == 0);
 
       if (!todo.aiProcessed &&
-          (needsCategory || needsPriority) &&
+          (needsCategory || needsPriority || needsImportance) &&
           _aiProvider!.isAIServiceValid) {
         try {
           String? restoredCategory = todo.aiCategory;
           int? restoredPriority = todo.aiPriority;
+          int? restoredImportance = todo.aiImportance;
           bool madeChanges = false;
 
           // Only process if we actually need something that's enabled (already checked in if condition)
@@ -364,6 +379,18 @@ class TodoProvider extends ChangeNotifier {
               }
             }
 
+            if (_aiProvider!.settings.enableImportanceRating &&
+                (todo.aiImportance == 0)) {
+              final importance = await _aiProvider!.assessImportance(
+                todo,
+                forceRefresh: false,
+              );
+              if (importance != null && importance > 0) {
+                restoredImportance = importance;
+                madeChanges = true;
+              }
+            }
+
             // Only update if we actually restored something
             if (madeChanges) {
               // Mark as processed only if the enabled features are successfully restored
@@ -373,11 +400,15 @@ class TodoProvider extends ChangeNotifier {
               final priorityOk =
                   !_aiProvider!.settings.enablePrioritySorting ||
                   restoredPriority > 0;
+              final importanceOk =
+                  !_aiProvider!.settings.enableImportanceRating ||
+                  restoredImportance > 0;
 
               final updatedTodo = todo.copyWith(
                 aiCategory: restoredCategory,
                 aiPriority: restoredPriority,
-                aiProcessed: categoryOk && priorityOk,
+                aiImportance: restoredImportance,
+                aiProcessed: categoryOk && priorityOk && importanceOk,
               );
 
               await _putTodo(updatedTodo);
@@ -590,7 +621,7 @@ class TodoProvider extends ChangeNotifier {
           (todo) =>
               !todo.isCompleted &&
               !todo.isGeneratedFromRepeat &&
-              (todo.aiCategory == null || !todo.aiProcessed),
+              (todo.aiCategory == null || todo.aiCategory!.isEmpty),
         )
         .toList();
 
@@ -609,10 +640,7 @@ class TodoProvider extends ChangeNotifier {
           );
 
           if (category != null) {
-            final updatedTodo = todo.copyWith(
-              aiCategory: category,
-              aiProcessed: true,
-            );
+            final updatedTodo = todo.copyWith(aiCategory: category);
 
             await _putTodo(updatedTodo);
 
@@ -646,7 +674,7 @@ class TodoProvider extends ChangeNotifier {
           (todo) =>
               !todo.isCompleted &&
               !todo.isGeneratedFromRepeat &&
-              (todo.aiPriority == 0 || !todo.aiProcessed),
+              todo.aiPriority == 0,
         )
         .toList();
 
@@ -665,10 +693,7 @@ class TodoProvider extends ChangeNotifier {
           );
 
           if (priority != null) {
-            final updatedTodo = todo.copyWith(
-              aiPriority: priority,
-              aiProcessed: true,
-            );
+            final updatedTodo = todo.copyWith(aiPriority: priority);
 
             await _putTodo(updatedTodo);
 
@@ -686,6 +711,57 @@ class TodoProvider extends ChangeNotifier {
       debugPrint('Error in priority process: $e');
     } finally {
       _isProcessingPriorities = false;
+      _applyFilters();
+      notifyListeners();
+    }
+  }
+
+  Future<void> processMissingImportance() async {
+    if (_aiProvider == null || !_aiProvider!.isAIServiceValid) return;
+
+    final unprocessedTodos = _todos
+        .where(
+          (todo) =>
+              !todo.isCompleted &&
+              !todo.isGeneratedFromRepeat &&
+              todo.aiImportance == 0,
+        )
+        .toList();
+
+    if (unprocessedTodos.isEmpty) return;
+
+    _isProcessingImportance = true;
+    notifyListeners();
+
+    try {
+      for (final todo in unprocessedTodos) {
+        try {
+          final languageCode = _languageProvider?.currentLanguageCode ?? 'en';
+          final importance = await _aiProvider!.aiService?.assessImportance(
+            todo,
+            languageCode,
+          );
+
+          if (importance != null) {
+            final updatedTodo = todo.copyWith(aiImportance: importance);
+
+            await _putTodo(updatedTodo);
+
+            final index = _todos.indexWhere((t) => t.id == todo.id);
+            if (index != -1) {
+              _todos[index] = updatedTodo;
+            }
+          }
+        } catch (e) {
+          debugPrint(
+            'Error processing importance for todo ${todo.title}: $e',
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error in importance process: $e');
+    } finally {
+      _isProcessingImportance = false;
       _applyFilters();
       notifyListeners();
     }
@@ -752,8 +828,37 @@ class TodoProvider extends ChangeNotifier {
         final hiveTodo = todosBox.get(todo.id);
         if (hiveTodo != null) {
           if (hiveTodo.aiPriority != todo.aiPriority ||
+              hiveTodo.aiImportance != todo.aiImportance ||
               hiveTodo.aiProcessed != todo.aiProcessed ||
               hiveTodo.aiCategory != todo.aiCategory) {}
+        }
+      }
+
+      // Ensure aiProcessed reflects currently enabled AI fields.
+      if (_aiProvider != null && _aiProvider!.isAIServiceValid) {
+        for (var i = 0; i < _todos.length; i++) {
+          final todo = _todos[i];
+          if (todo.isCompleted) continue;
+          if (todo.isGeneratedFromRepeat) continue;
+
+          final needsCategory =
+              _aiProvider!.settings.enableAutoCategorization &&
+              (todo.aiCategory == null || todo.aiCategory!.isEmpty);
+          final needsPriority =
+              _aiProvider!.settings.enablePrioritySorting &&
+              (todo.aiPriority == 0);
+          final needsImportance =
+              _aiProvider!.settings.enableImportanceRating &&
+              (todo.aiImportance == 0);
+
+          final shouldBeProcessed =
+              !(needsCategory || needsPriority || needsImportance);
+
+          if (todo.aiProcessed != shouldBeProcessed) {
+            final updatedTodo = todo.copyWith(aiProcessed: shouldBeProcessed);
+            await _putTodo(updatedTodo);
+            _todos[i] = updatedTodo;
+          }
         }
       }
 
@@ -1441,6 +1546,12 @@ class TodoProvider extends ChangeNotifier {
       case SortOrder.importanceDescending:
         _filteredTodos.sort((a, b) => b.aiPriority.compareTo(a.aiPriority));
         break;
+      case SortOrder.significanceAscending:
+        _filteredTodos.sort((a, b) => a.aiImportance.compareTo(b.aiImportance));
+        break;
+      case SortOrder.significanceDescending:
+        _filteredTodos.sort((a, b) => b.aiImportance.compareTo(a.aiImportance));
+        break;
     }
   }
 
@@ -1844,12 +1955,36 @@ class TodoProvider extends ChangeNotifier {
         priority = await _aiProvider!.assessPriority(tempTodo);
       }
 
+      int? importance = repeatTodo.aiImportance;
+      if (_aiProvider!.settings.enableImportanceRating &&
+          repeatTodo.aiImportance == 0) {
+        _repeatTodoAIStatus[repeatTodoId] = 'Assessing importance...';
+        notifyListeners();
+
+        await Future.delayed(const Duration(milliseconds: 1000));
+        importance = await _aiProvider!.assessImportance(tempTodo);
+      }
+
       // Update the repeat todo with AI results
-      final processedRepeatTodo = repeatTodo.copyWith(
-        aiCategory: category,
-        aiPriority: priority ?? 0,
-        aiProcessed: true,
-      );
+    final categoryOk =
+        !_aiProvider!.settings.enableAutoCategorization ||
+        (category != null && category.isNotEmpty) ||
+        (repeatTodo.aiCategory != null && repeatTodo.aiCategory!.isNotEmpty);
+    final priorityOk =
+        !_aiProvider!.settings.enablePrioritySorting ||
+        (priority != null && priority > 0) ||
+        repeatTodo.aiPriority > 0;
+    final importanceOk =
+        !_aiProvider!.settings.enableImportanceRating ||
+        (importance != null && importance > 0) ||
+        repeatTodo.aiImportance > 0;
+
+    final processedRepeatTodo = repeatTodo.copyWith(
+      aiCategory: category,
+      aiPriority: priority ?? 0,
+      aiImportance: importance ?? 0,
+      aiProcessed: categoryOk && priorityOk && importanceOk,
+    );
 
       // Save to database
       await _putRepeatTodo(processedRepeatTodo);
@@ -2647,6 +2782,7 @@ class TodoProvider extends ChangeNotifier {
     // 直接继承重复任务模板的AI数据，不进行重新处理
     String? inheritedCategory = repeatTodo.aiCategory;
     int inheritedPriority = repeatTodo.aiPriority;
+    int inheritedImportance = repeatTodo.aiImportance;
     bool inheritedProcessed = repeatTodo.aiProcessed;
 
     final generatedDate = targetDate;
@@ -2675,6 +2811,7 @@ class TodoProvider extends ChangeNotifier {
       dataUnit: repeatTodo.dataUnit,
       aiCategory: inheritedCategory,
       aiPriority: inheritedPriority,
+      aiImportance: inheritedImportance,
       aiProcessed: inheritedProcessed,
       startTime: inheritedStartTime,
       endTime: inheritedEndTime,
@@ -2909,6 +3046,8 @@ class TodoProvider extends ChangeNotifier {
         originalTodo.description != updatedTodo.description;
     final categoryChanged = originalTodo.aiCategory != updatedTodo.aiCategory;
     final priorityChanged = originalTodo.aiPriority != updatedTodo.aiPriority;
+    final importanceChanged =
+        originalTodo.aiImportance != updatedTodo.aiImportance;
     final dataUnitChanged = originalTodo.dataUnit != updatedTodo.dataUnit;
     final startTimeChanged =
         originalTodo.startTimeMinutes != updatedTodo.startTimeMinutes;
@@ -2920,6 +3059,7 @@ class TodoProvider extends ChangeNotifier {
         !descriptionChanged &&
         !categoryChanged &&
         !priorityChanged &&
+        !importanceChanged &&
         !dataUnitChanged &&
         !startTimeChanged &&
         !endTimeChanged) {
@@ -2966,6 +3106,11 @@ class TodoProvider extends ChangeNotifier {
           aiPriority: updatedTodo.aiPriority,
         );
       }
+      if (importanceChanged) {
+        updatedGeneratedTodo = updatedGeneratedTodo.copyWith(
+          aiImportance: updatedTodo.aiImportance,
+        );
+      }
       if (dataUnitChanged) {
         updatedGeneratedTodo = updatedGeneratedTodo.copyWith(
           dataUnit: updatedTodo.dataUnit,
@@ -2989,12 +3134,13 @@ class TodoProvider extends ChangeNotifier {
       }
 
       // 更新AI处理状态
-      if (categoryChanged || priorityChanged) {
+      if (categoryChanged || priorityChanged || importanceChanged) {
         final isCategoryValid =
             updatedGeneratedTodo.aiCategory?.isNotEmpty == true;
         final isPriorityValid = updatedGeneratedTodo.aiPriority > 0;
+        final isImportanceValid = updatedGeneratedTodo.aiImportance > 0;
         updatedGeneratedTodo = updatedGeneratedTodo.copyWith(
-          aiProcessed: isCategoryValid && isPriorityValid,
+          aiProcessed: isCategoryValid && isPriorityValid && isImportanceValid,
         );
       }
 
@@ -3029,6 +3175,7 @@ class TodoProvider extends ChangeNotifier {
       final updatedTodo = todo.copyWith(
         aiCategory: processedTemplate.aiCategory,
         aiPriority: processedTemplate.aiPriority,
+        aiImportance: processedTemplate.aiImportance,
         aiProcessed: processedTemplate.aiProcessed,
       );
 
@@ -3251,8 +3398,13 @@ class TodoProvider extends ChangeNotifier {
           (todo.aiCategory == null || todo.aiCategory!.isEmpty);
       bool needsPriority =
           _aiProvider!.settings.enablePrioritySorting && (todo.aiPriority == 0);
+      bool needsImportance =
+          _aiProvider!.settings.enableImportanceRating &&
+          (todo.aiImportance == 0);
 
-      if (!needsCategory && !needsPriority) return; // Nothing to process
+      if (!needsCategory && !needsPriority && !needsImportance) {
+        return;
+      }
 
       // Process categorization if needed
       String? newCategory;
@@ -3280,6 +3432,18 @@ class TodoProvider extends ChangeNotifier {
         }
       }
 
+      int? newImportance;
+      if (needsImportance) {
+        final importance = await _aiProvider!.aiService?.assessImportance(
+          todo,
+          languageCode,
+        );
+        if (importance != null && importance > 0) {
+          newImportance = importance;
+          needsUpdate = true;
+        }
+      }
+
       // Final check before updating - todo might have been deleted during AI processing
       if (!_todos.any((t) => t.id == todo.id)) {
         return;
@@ -3297,10 +3461,15 @@ class TodoProvider extends ChangeNotifier {
             (newPriority != null && newPriority > 0) ||
             (todo.aiPriority > 0 && !needsPriority);
 
+        final importanceOk =
+            (newImportance != null && newImportance > 0) ||
+            (todo.aiImportance > 0 && !needsImportance);
+
         final updatedTodo = todo.copyWith(
           aiCategory: newCategory ?? todo.aiCategory,
           aiPriority: newPriority ?? todo.aiPriority,
-          aiProcessed: categoryOk && priorityOk,
+          aiImportance: newImportance ?? todo.aiImportance,
+          aiProcessed: categoryOk && priorityOk && importanceOk,
         );
 
         // Save to Hive database
@@ -3331,7 +3500,9 @@ class TodoProvider extends ChangeNotifier {
         _lastRateLimitError = DateTime.now();
       }
     }
-    // Removed finally block since we remove from processing set early
+    finally {
+      _processingTodos.remove(todo.id);
+    }
 
     // Clean up old failure records periodically
     _cleanupOldFailureRecords();
@@ -3353,6 +3524,7 @@ class TodoProvider extends ChangeNotifier {
     bool needsProcessing = false;
     bool needsCategory = false;
     bool needsPriority = false;
+    bool needsImportance = false;
 
     // Check if AI features are enabled and if the todo is missing information
     if (_aiProvider!.settings.enableAutoCategorization &&
@@ -3364,6 +3536,12 @@ class TodoProvider extends ChangeNotifier {
     if (_aiProvider!.settings.enablePrioritySorting &&
         (todo.aiPriority == 0 || !todo.aiProcessed)) {
       needsPriority = true;
+      needsProcessing = true;
+    }
+
+    if (_aiProvider!.settings.enableImportanceRating &&
+        (todo.aiImportance == 0 || !todo.aiProcessed)) {
+      needsImportance = true;
       needsProcessing = true;
     }
 
@@ -3400,6 +3578,18 @@ class TodoProvider extends ChangeNotifier {
         }
       }
 
+      int? newImportance;
+      if (needsImportance) {
+        final importance = await _aiProvider!.aiService?.assessImportance(
+          todo,
+          languageCode,
+        );
+        if (importance != null) {
+          newImportance = importance;
+          needsUpdate = true;
+        }
+      }
+
       // Update if we made changes
       if (needsUpdate) {
         // Only mark as processed if both required fields are properly set
@@ -3408,15 +3598,19 @@ class TodoProvider extends ChangeNotifier {
             (todo.aiCategory != null &&
                 todo.aiCategory!.isNotEmpty &&
                 !needsCategory);
-        final priorityOk =
-            (newPriority != null && newPriority > 0) ||
-            (todo.aiPriority > 0 && !needsPriority);
+      final priorityOk =
+          (newPriority != null && newPriority > 0) ||
+          (todo.aiPriority > 0 && !needsPriority);
+      final importanceOk =
+          (newImportance != null && newImportance > 0) ||
+          (todo.aiImportance > 0 && !needsImportance);
 
-        final updatedTodo = todo.copyWith(
-          aiCategory: newCategory ?? todo.aiCategory,
-          aiPriority: newPriority ?? todo.aiPriority,
-          aiProcessed: categoryOk && priorityOk,
-        );
+      final updatedTodo = todo.copyWith(
+        aiCategory: newCategory ?? todo.aiCategory,
+        aiPriority: newPriority ?? todo.aiPriority,
+        aiImportance: newImportance ?? todo.aiImportance,
+        aiProcessed: categoryOk && priorityOk && importanceOk,
+      );
 
         // Save to Hive database
         await _putTodo(updatedTodo);
@@ -3477,15 +3671,18 @@ class TodoProvider extends ChangeNotifier {
           final todo = _todos[todoIndex];
           final category = result['category'] as String?;
           final priority = (result['priority'] as int?) ?? 0;
+          final importance = (result['importance'] as int?) ?? 0;
 
           // Only mark as processed if both category and priority are valid
           final isCategoryValid = category?.isNotEmpty == true;
           final isPriorityValid = priority > 0;
+          final isImportanceValid = importance > 0;
 
           final updatedTodo = todo.copyWith(
             aiCategory: category,
             aiPriority: priority,
-            aiProcessed: isCategoryValid && isPriorityValid,
+            aiImportance: importance,
+            aiProcessed: isCategoryValid && isPriorityValid && isImportanceValid,
           );
 
           final todosBox = _hiveService.todosBox;
@@ -3501,6 +3698,7 @@ class TodoProvider extends ChangeNotifier {
 
           if (savedTodo?.aiCategory != updatedTodo.aiCategory ||
               savedTodo?.aiPriority != updatedTodo.aiPriority ||
+              savedTodo?.aiImportance != updatedTodo.aiImportance ||
               savedTodo?.aiProcessed != updatedTodo.aiProcessed) {
             debugPrint(
               'TodoProvider: *** BATCH SAVE VERIFICATION FAILED FOR TODO: ${todo.title} ***',
@@ -3640,4 +3838,6 @@ enum SortOrder {
   alphabetical,
   importanceAscending,
   importanceDescending,
+  significanceAscending,
+  significanceDescending,
 }

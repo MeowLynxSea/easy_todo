@@ -231,7 +231,9 @@ class _TodoCardState extends State<TodoCard> {
     if (!settings.enableAIFeatures) return false;
 
     // Check if any AI features are enabled
-    if (!settings.enableAutoCategorization && !settings.enablePrioritySorting) {
+    if (!settings.enableAutoCategorization &&
+        !settings.enablePrioritySorting &&
+        !settings.enableImportanceRating) {
       return false;
     }
 
@@ -247,7 +249,9 @@ class _TodoCardState extends State<TodoCard> {
           settings.enableAutoCategorization && latestTodo.aiCategory != null;
       bool hasPriorityData =
           settings.enablePrioritySorting && latestTodo.aiPriority > 0;
-      return hasCategoryData || hasPriorityData;
+      bool hasImportanceData =
+          settings.enableImportanceRating && latestTodo.aiImportance > 0;
+      return hasCategoryData || hasPriorityData || hasImportanceData;
     }
 
     // Show if data exists or if it's being generated
@@ -255,11 +259,17 @@ class _TodoCardState extends State<TodoCard> {
         settings.enableAutoCategorization && latestTodo.aiCategory != null;
     bool hasPriorityData =
         settings.enablePrioritySorting && latestTodo.aiPriority > 0;
+    bool hasImportanceData =
+        settings.enableImportanceRating && latestTodo.aiImportance > 0;
     bool needsGeneration =
         (settings.enableAutoCategorization && latestTodo.aiCategory == null) ||
-        (settings.enablePrioritySorting && latestTodo.aiPriority == 0);
+        (settings.enablePrioritySorting && latestTodo.aiPriority == 0) ||
+        (settings.enableImportanceRating && latestTodo.aiImportance == 0);
 
-    return hasCategoryData || hasPriorityData || needsGeneration;
+    return hasCategoryData ||
+        hasPriorityData ||
+        hasImportanceData ||
+        needsGeneration;
   }
 
   Widget _buildReminderChip() {
@@ -339,16 +349,19 @@ class _TodoCardState extends State<TodoCard> {
 
     bool shouldShowCategory = settings.enableAutoCategorization;
     bool shouldShowPriority = settings.enablePrioritySorting;
+    bool shouldShowImportance = settings.enableImportanceRating;
 
     // Check if we need to show loading states
     bool needsCategoryLoading =
         settings.enableAutoCategorization && latestTodo.aiCategory == null;
     bool needsPriorityLoading =
         settings.enablePrioritySorting && latestTodo.aiPriority == 0;
+    bool needsImportanceLoading =
+        settings.enableImportanceRating && latestTodo.aiImportance == 0;
 
     // If AI features are enabled but data is missing, trigger background generation only for active todos
     if (settings.enableAIFeatures && !latestTodo.isCompleted) {
-      if (needsCategoryLoading || needsPriorityLoading) {
+      if (needsCategoryLoading || needsPriorityLoading || needsImportanceLoading) {
         // Only trigger if todo was created more than 2 seconds ago to avoid spam during creation
         final now = DateTime.now();
         final timeSinceCreation = now.difference(latestTodo.createdAt);
@@ -375,12 +388,16 @@ class _TodoCardState extends State<TodoCard> {
         shouldShowCategory && latestTodo.aiCategory != null;
     bool shouldShowPriorityWithData =
         shouldShowPriority && latestTodo.aiPriority > 0;
+    bool shouldShowImportanceWithData =
+        shouldShowImportance && latestTodo.aiImportance > 0;
 
     // If nothing to show (no data and no loading needed), return empty
     if (!shouldShowCategoryWithData &&
         !shouldShowPriorityWithData &&
+        !shouldShowImportanceWithData &&
         !needsCategoryLoading &&
-        !needsPriorityLoading) {
+        !needsPriorityLoading &&
+        !needsImportanceLoading) {
       return const SizedBox();
     }
 
@@ -414,6 +431,20 @@ class _TodoCardState extends State<TodoCard> {
             _buildLoadingChip(
               label: l10n.prioritySorting,
               color: Colors.orange,
+            ),
+
+        // Importance tag or loading
+        if (shouldShowImportance)
+          if (shouldShowImportanceWithData && latestTodo.aiImportance > 0)
+            _buildAIChip(
+              label: '${latestTodo.aiImportance}',
+              color: _getImportanceColor(latestTodo.aiImportance),
+              icon: Icons.label_important,
+            )
+          else if (needsImportanceLoading && !latestTodo.isCompleted)
+            _buildLoadingChip(
+              label: l10n.importance,
+              color: Colors.purple,
             ),
       ],
     );
@@ -493,6 +524,18 @@ class _TodoCardState extends State<TodoCard> {
       return Colors.yellow.shade700;
     } else {
       return Colors.green;
+    }
+  }
+
+  Color _getImportanceColor(int importance) {
+    if (importance >= 80) {
+      return Colors.purple;
+    } else if (importance >= 60) {
+      return Colors.indigo;
+    } else if (importance >= 40) {
+      return Colors.blue;
+    } else {
+      return Colors.teal;
     }
   }
 

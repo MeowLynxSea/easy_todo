@@ -178,6 +178,14 @@ class AICacheService {
     return 'priority_${title.hashCode}_${description.hashCode}_$language${hasDeadline ? '_deadline' : ''}';
   }
 
+  static String getImportanceKey(
+    String title,
+    String description,
+    String language,
+  ) {
+    return 'importance_${title.hashCode}_${description.hashCode}_$language';
+  }
+
   static String getIncentiveMessageKey(double completionRate, String language) {
     return 'incentive_${completionRate.round()}_$language';
   }
@@ -287,6 +295,11 @@ class AICacheService {
         language,
         hasDeadline: false,
       );
+      final importanceKey = getImportanceKey(
+        todo.title,
+        todo.description ?? '',
+        language,
+      );
 
       // Generate all possible notification cache keys (with different reminder times)
       final notificationKeys = <String>[];
@@ -327,6 +340,7 @@ class AICacheService {
         categorizationKey,
         priorityKeyWithDeadline,
         priorityKeyWithoutDeadline,
+        importanceKey,
         ...notificationKeys,
       ]);
 

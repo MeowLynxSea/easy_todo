@@ -2460,8 +2460,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get prioritySorting => 'Ordenación por Prioridad';
 
   @override
+  String get importanceRating => 'Evaluación de Importancia';
+
+  @override
+  String get importanceRatingSubtitle =>
+      'Evalúe la importancia por separado de la prioridad';
+
+  @override
   String get prioritySortingSubtitle =>
-      'Evalúe la importancia y prioridad de las tareas';
+      'Evalúe la prioridad (urgencia) de las tareas';
 
   @override
   String get motivationalMessages => 'Mensajes Motivacionales';
@@ -2775,6 +2782,21 @@ class AppLocalizationsEs extends AppLocalizations {
   String get importance => 'Importancia';
 
   @override
+  String get importanceQuadrant => 'Cuadrantes';
+
+  @override
+  String get important => 'Importante';
+
+  @override
+  String get notImportant => 'No importante';
+
+  @override
+  String get urgent => 'Urgente';
+
+  @override
+  String get notUrgent => 'No urgente';
+
+  @override
   String get noCategoriesAvailable => 'No hay categorías disponibles';
 
   @override
@@ -2816,6 +2838,11 @@ class AppLocalizationsEs extends AppLocalizations {
     Object title,
   ) {
     return 'Califica la prioridad de esta tarea pendiente de 0-100, considerando:\n      - Urgencia: ¿Qué tan pronto se necesita? (fecha límite: $deadline)\n      - Impacto: ¿Cuáles son las consecuencias de no completarla?\n      - Esfuerzo: ¿Cuánto tiempo/recursos requerirá?\n      - Importancia personal: ¿Qué tan valiosa es para ti?\n\n      Tarea: \"$title\"\n      Descripción: \"$description\"\n      Tiene fecha límite: $hasDeadline\n      Fecha límite: $deadline\n\n      Directrices:\n      - 0-20: Prioridad baja, puede posponerse\n      - 21-40: Prioridad moderada, debe hacerse pronto\n      - 41-70: Prioridad alta, importante completar\n      - 71-100: Prioridad crítica, necesidad urgente de completar\n\n      Responde solo con un número de 0-100.';
+  }
+
+  @override
+  String aiPromptImportance(Object description, Object title) {
+    return 'Califica la importancia de esta tarea pendiente de 0-100, enfocándote en el valor e impacto a largo plazo.\n\n      Considera:\n      - Impacto: ¿Cuánto importa si se completa?\n      - Valor a largo plazo: ¿Beneficiará más adelante?\n      - Alineación: ¿Apoya tus metas/valores?\n      - Consecuencias: ¿Qué se pierde si nunca se hace?\n\n      Tarea: \"$title\"\n      Descripción: \"$description\"\n\n      Directrices:\n      - 0-20: Baja importancia\n      - 21-40: Algo de importancia\n      - 41-70: Importante\n      - 71-100: Extremadamente importante\n\n      Responde solo con un número de 0-100.';
   }
 
   @override

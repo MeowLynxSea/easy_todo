@@ -74,6 +74,9 @@ class TodoModel extends HiveObject {
   @HiveField(20)
   String? scheduleColorSeed;
 
+  @HiveField(21, defaultValue: 0)
+  int aiImportance; // AI-generated importance (0-100)
+
   TodoModel({
     required this.id,
     required this.title,
@@ -96,6 +99,7 @@ class TodoModel extends HiveObject {
     this.endTime,
     this.generatedKey,
     this.scheduleColorSeed,
+    this.aiImportance = 0,
   });
 
   factory TodoModel.create({
@@ -115,6 +119,7 @@ class TodoModel extends HiveObject {
     DateTime? startTime,
     DateTime? endTime,
     String? scheduleColorSeed,
+    int aiImportance = 0,
   }) {
     // 使用系统时间，避免时区混乱
     final now = DateTime.now();
@@ -146,6 +151,7 @@ class TodoModel extends HiveObject {
       startTime: startTime,
       endTime: endTime,
       scheduleColorSeed: scheduleColorSeed,
+      aiImportance: aiImportance,
     );
   }
 
@@ -171,6 +177,7 @@ class TodoModel extends HiveObject {
     Object? endTime = _unset,
     Object? generatedKey = _unset,
     Object? scheduleColorSeed = _unset,
+    int? aiImportance,
   }) {
     final resolvedDescription = identical(description, _unset)
         ? this.description
@@ -214,6 +221,7 @@ class TodoModel extends HiveObject {
       endTime: resolvedEndTime,
       generatedKey: resolvedGeneratedKey,
       scheduleColorSeed: resolvedScheduleColorSeed,
+      aiImportance: aiImportance ?? this.aiImportance,
     );
   }
 
@@ -240,6 +248,7 @@ class TodoModel extends HiveObject {
       'endTime': endTime?.toIso8601String(),
       'generatedKey': generatedKey,
       'scheduleColorSeed': scheduleColorSeed,
+      'aiImportance': aiImportance,
     };
   }
 
@@ -272,6 +281,7 @@ class TodoModel extends HiveObject {
       endTime: json['endTime'] != null ? DateTime.parse(json['endTime']) : null,
       generatedKey: json['generatedKey'],
       scheduleColorSeed: json['scheduleColorSeed'],
+      aiImportance: json['aiImportance'] ?? 0,
     );
   }
 

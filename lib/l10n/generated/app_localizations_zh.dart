@@ -2373,7 +2373,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get prioritySorting => '优先级排序';
 
   @override
-  String get prioritySortingSubtitle => '评估任务重要性和优先级';
+  String get importanceRating => '重要程度评定';
+
+  @override
+  String get importanceRatingSubtitle => '将重要程度与优先级分开评估';
+
+  @override
+  String get prioritySortingSubtitle => '评估任务优先级（紧急程度）';
 
   @override
   String get motivationalMessages => '激励消息';
@@ -2671,6 +2677,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get importance => '重要程度';
 
   @override
+  String get importanceQuadrant => '四象限';
+
+  @override
+  String get important => '重要';
+
+  @override
+  String get notImportant => '不重要';
+
+  @override
+  String get urgent => '紧急';
+
+  @override
+  String get notUrgent => '不紧急';
+
+  @override
   String get noCategoriesAvailable => '暂无分类数据';
 
   @override
@@ -2711,6 +2732,11 @@ class AppLocalizationsZh extends AppLocalizations {
     Object title,
   ) {
     return '评估这个待办任务的优先级（0-100），考虑：\n      - 紧急性：需要多快完成？（截止日期：$deadline）\n      - 影响：不完成会有什么后果？\n      - 努力程度：需要多少时间/资源？\n      - 个人重要性：这对你的价值如何？\n\n      任务：\"$title\"\n      描述：\"$description\"\n      有截止日期：$hasDeadline\n      截止日期：$deadline\n\n      指导原则：\n      - 0-20：低优先级，可以推迟\n      - 21-40：中等优先级，应该尽快做\n      - 41-70：高优先级，重要要完成\n      - 71-100：关键优先级，急需完成\n\n      只回复0-100的数字。';
+  }
+
+  @override
+  String aiPromptImportance(Object description, Object title) {
+    return '评估这个待办任务的重要程度（0-100），重点关注长期价值与影响。\n\n      考虑：\n      - 影响：完成后带来的影响有多大？\n      - 长期价值：未来是否会受益？\n      - 目标一致性：是否符合你的目标/价值观？\n      - 机会成本：如果永远不做会失去什么？\n\n      任务：\"$title\"\n      描述：\"$description\"\n\n      指导原则：\n      - 0-20：不太重要\n      - 21-40：有一定重要性\n      - 41-70：重要\n      - 71-100：非常重要\n\n      只回复0-100的数字。';
   }
 
   @override

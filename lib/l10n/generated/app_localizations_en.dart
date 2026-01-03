@@ -2448,7 +2448,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prioritySorting => 'Priority Sorting';
 
   @override
-  String get prioritySortingSubtitle => 'Assess task importance and priority';
+  String get importanceRating => 'Importance Rating';
+
+  @override
+  String get importanceRatingSubtitle =>
+      'Assess task importance separately from priority';
+
+  @override
+  String get prioritySortingSubtitle => 'Assess task priority (urgency)';
 
   @override
   String get motivationalMessages => 'Motivational Messages';
@@ -2761,6 +2768,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importance => 'Importance';
 
   @override
+  String get importanceQuadrant => 'Quadrants';
+
+  @override
+  String get important => 'Important';
+
+  @override
+  String get notImportant => 'Not important';
+
+  @override
+  String get urgent => 'Urgent';
+
+  @override
+  String get notUrgent => 'Not urgent';
+
+  @override
   String get noCategoriesAvailable => 'No categories available';
 
   @override
@@ -2802,6 +2824,11 @@ class AppLocalizationsEn extends AppLocalizations {
     Object title,
   ) {
     return 'Rate the priority of this todo task from 0-100, considering:\n      - Urgency: How soon is it needed? (deadline: $deadline)\n      - Impact: What are the consequences of not completing it?\n      - Effort: How much time/resources will it require?\n      - Personal importance: How valuable is this to you?\n\n      Task: \"$title\"\n      Description: \"$description\"\n      Has deadline: $hasDeadline\n      Deadline: $deadline\n\n      Guidelines:\n      - 0-20: Low priority, can be postponed\n      - 21-40: Moderate priority, should be done soon\n      - 41-70: High priority, important to complete\n      - 71-100: Critical priority, urgent completion needed\n\n      Respond with only a number from 0-100.';
+  }
+
+  @override
+  String aiPromptImportance(Object description, Object title) {
+    return 'Rate the importance of this todo task from 0-100, focusing on long-term value and impact.\n\n      Consider:\n      - Impact: How much does this matter if completed?\n      - Long-term value: Will it benefit you later?\n      - Alignment: Does it support your goals/values?\n      - Consequences: What is lost if it is never done?\n\n      Task: \"$title\"\n      Description: \"$description\"\n\n      Guidelines:\n      - 0-20: Low importance\n      - 21-40: Some importance\n      - 41-70: Important\n      - 71-100: Extremely important\n\n      Respond with only a number from 0-100.';
   }
 
   @override

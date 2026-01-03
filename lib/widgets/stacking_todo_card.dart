@@ -20,6 +20,7 @@ class StackingTodoCard extends StatefulWidget {
   final int totalCount;
   final bool showCategoryLoading;
   final bool showPriorityLoading;
+  final bool showImportanceLoading;
 
   const StackingTodoCard({
     super.key,
@@ -33,6 +34,7 @@ class StackingTodoCard extends StatefulWidget {
     this.currentIndex = 1,
     this.showCategoryLoading = false,
     this.showPriorityLoading = false,
+    this.showImportanceLoading = false,
     this.totalCount = 1,
   });
 
@@ -631,6 +633,7 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
 
     bool shouldShowCategory = settings.enableAutoCategorization;
     bool shouldShowPriority = settings.enablePrioritySorting;
+    bool shouldShowImportance = settings.enableImportanceRating;
 
     // If AI features are enabled but data is missing, trigger background generation
     if (settings.enableAIFeatures && !latestTodo.isCompleted) {
@@ -638,8 +641,12 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
           settings.enableAutoCategorization && latestTodo.aiCategory == null;
       bool needsPriorityGeneration =
           settings.enablePrioritySorting && latestTodo.aiPriority == 0;
+      bool needsImportanceGeneration =
+          settings.enableImportanceRating && latestTodo.aiImportance == 0;
 
-      if (needsCategoryGeneration || needsPriorityGeneration) {
+      if (needsCategoryGeneration ||
+          needsPriorityGeneration ||
+          needsImportanceGeneration) {
         // Only trigger if todo was created more than 2 seconds ago to avoid spam during creation
         final now = DateTime.now();
         final timeSinceCreation = now.difference(latestTodo.createdAt);
@@ -657,8 +664,13 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
     bool shouldShowPriorityWithData =
         shouldShowPriority &&
         (latestTodo.aiPriority > 0 || widget.showPriorityLoading);
+    bool shouldShowImportanceWithData =
+        shouldShowImportance &&
+        (latestTodo.aiImportance > 0 || widget.showImportanceLoading);
 
-    return shouldShowCategoryWithData || shouldShowPriorityWithData;
+    return shouldShowCategoryWithData ||
+        shouldShowPriorityWithData ||
+        shouldShowImportanceWithData;
   }
 
   Widget _buildAITags(BuildContext context, TodoModel todo) {
@@ -677,6 +689,7 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
 
     bool shouldShowCategory = settings.enableAutoCategorization;
     bool shouldShowPriority = settings.enablePrioritySorting;
+    bool shouldShowImportance = settings.enableImportanceRating;
 
     // Check if this is a repeat-generated todo and its template is being processed
     bool isRepeatTodoProcessing =
@@ -695,18 +708,31 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
             latestTodo.aiPriority == 0 &&
             !latestTodo.isCompleted) ||
         (isRepeatTodoProcessing && shouldShowPriority);
+    bool needsImportanceLoading =
+        (shouldShowImportance &&
+            latestTodo.aiImportance == 0 &&
+            !latestTodo.isCompleted) ||
+        (isRepeatTodoProcessing && shouldShowImportance);
+
+    // Allow parent to drive loading state when batch processing
+    needsImportanceLoading =
+        needsImportanceLoading || widget.showImportanceLoading;
 
     // Check what we should actually display
     bool shouldShowCategoryWithData =
         shouldShowCategory && latestTodo.aiCategory != null;
     bool shouldShowPriorityWithData =
         shouldShowPriority && latestTodo.aiPriority > 0;
+    bool shouldShowImportanceWithData =
+        shouldShowImportance && latestTodo.aiImportance > 0;
 
     // If nothing to show (no data and no loading needed), return empty
     if (!shouldShowCategoryWithData &&
         !shouldShowPriorityWithData &&
         !needsCategoryLoading &&
-        !needsPriorityLoading) {
+        !needsPriorityLoading &&
+        !shouldShowImportanceWithData &&
+        !needsImportanceLoading) {
       return const SizedBox();
     }
 
@@ -799,6 +825,24 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
                       ? Colors.grey
                       : Theme.of(context).colorScheme.primary,
                 ),
+
+            // Importance tag or loading
+            if (shouldShowImportance)
+              if (shouldShowImportanceWithData && latestTodo.aiImportance > 0)
+                _buildAIChip(
+                  label: '${latestTodo.aiImportance}',
+                  color: latestTodo.isCompleted
+                      ? Colors.grey
+                      : _getImportanceTagColor(latestTodo.aiImportance),
+                  icon: Icons.label_important_outline,
+                )
+              else if (needsImportanceLoading)
+                _buildLoadingChip(
+                  label: l10n.importance,
+                  color: latestTodo.isCompleted
+                      ? Colors.grey
+                      : Theme.of(context).colorScheme.primary,
+                ),
           ],
         ),
       ],
@@ -879,6 +923,18 @@ class _StackingTodoCardState extends State<StackingTodoCard> {
       return Colors.yellow.shade700;
     } else {
       return Colors.green;
+    }
+  }
+
+  Color _getImportanceTagColor(int importance) {
+    if (importance >= 80) {
+      return Colors.purple;
+    } else if (importance >= 60) {
+      return Colors.indigo;
+    } else if (importance >= 40) {
+      return Colors.blue;
+    } else {
+      return Colors.teal;
     }
   }
 

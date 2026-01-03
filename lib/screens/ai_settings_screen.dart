@@ -75,6 +75,7 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
       modelName: _modelNameController.text.trim(),
       enableAutoCategorization: aiProvider.settings.enableAutoCategorization,
       enablePrioritySorting: aiProvider.settings.enablePrioritySorting,
+      enableImportanceRating: aiProvider.settings.enableImportanceRating,
       enableMotivationalMessages:
           aiProvider.settings.enableMotivationalMessages,
       enableSmartNotifications: aiProvider.settings.enableSmartNotifications,
@@ -129,12 +130,18 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
       apiEndpoint: _apiEndpointController.text.trim(),
       apiKey: _apiKeyController.text.trim(),
       modelName: _modelNameController.text.trim(),
+      enableAutoCategorization: aiProvider.settings.enableAutoCategorization,
+      enablePrioritySorting: aiProvider.settings.enablePrioritySorting,
+      enableImportanceRating: aiProvider.settings.enableImportanceRating,
+      enableMotivationalMessages: aiProvider.settings.enableMotivationalMessages,
+      enableSmartNotifications: aiProvider.settings.enableSmartNotifications,
       syncApiKey: aiProvider.settings.syncApiKey,
       temperature: double.tryParse(_temperatureController.text) ?? 1.0,
       maxTokens: int.tryParse(_maxTokensController.text) ?? 10000,
       requestTimeout: int.tryParse(_timeoutController.text) ?? 60000,
       maxRequestsPerMinute:
           int.tryParse(_maxRequestsPerMinuteController.text) ?? 20,
+      customPersonaPrompt: aiProvider.settings.customPersonaPrompt,
       apiFormat: aiProvider.settings.apiFormat, // Preserve current API format
     );
 
@@ -587,6 +594,31 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
                           ),
                           SwitchListTile(
                             title: Text(
+                              l10n.importanceRating,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                            subtitle: Text(
+                              l10n.importanceRatingSubtitle,
+                              style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant
+                                    .withValues(alpha: 0.8),
+                              ),
+                            ),
+                            value: aiProvider.settings.enableImportanceRating,
+                            onChanged: (value) {
+                              HapticFeedback.lightImpact();
+                              final newSettings = aiProvider.settings.copyWith(
+                                enableImportanceRating: value,
+                              );
+                              aiProvider.updateSettings(newSettings);
+                            },
+                          ),
+                          SwitchListTile(
+                            title: Text(
                               l10n.motivationalMessages,
                               style: TextStyle(
                                 color: Theme.of(context).colorScheme.onSurface,
@@ -756,6 +788,7 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
       modelName: _modelNameController.text.trim(),
       enableAutoCategorization: aiProvider.settings.enableAutoCategorization,
       enablePrioritySorting: aiProvider.settings.enablePrioritySorting,
+      enableImportanceRating: aiProvider.settings.enableImportanceRating,
       enableMotivationalMessages:
           aiProvider.settings.enableMotivationalMessages,
       enableSmartNotifications: aiProvider.settings.enableSmartNotifications,

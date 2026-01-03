@@ -2486,8 +2486,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get prioritySorting => 'Prioritätssortierung';
 
   @override
+  String get importanceRating => 'Wichtigkeitsbewertung';
+
+  @override
+  String get importanceRatingSubtitle =>
+      'Bewerten Sie die Wichtigkeit getrennt von der Priorität';
+
+  @override
   String get prioritySortingSubtitle =>
-      'Bewerten Sie die Wichtigkeit und Priorität von Aufgaben';
+      'Bewerten Sie die Priorität (Dringlichkeit) von Aufgaben';
 
   @override
   String get motivationalMessages => 'Motivierende Nachrichten';
@@ -2801,6 +2808,21 @@ class AppLocalizationsDe extends AppLocalizations {
   String get importance => 'Wichtigkeit';
 
   @override
+  String get importanceQuadrant => 'Quadranten';
+
+  @override
+  String get important => 'Wichtig';
+
+  @override
+  String get notImportant => 'Nicht wichtig';
+
+  @override
+  String get urgent => 'Dringend';
+
+  @override
+  String get notUrgent => 'Nicht dringend';
+
+  @override
   String get noCategoriesAvailable => 'Keine Kategorien verfügbar';
 
   @override
@@ -2842,6 +2864,11 @@ class AppLocalizationsDe extends AppLocalizations {
     Object title,
   ) {
     return 'Bewerten Sie die Priorität dieser Todo-Aufgabe von 0-100, unter Berücksichtigung von:\n      - Dringlichkeit: Wie schnell wird es benötigt? (Frist: $deadline)\n      - Auswirkungen: Was sind die Konsequenzen des Nicht-Abschlusses?\n      - Aufwand: Wie viel Zeit/Ressourcen werden benötigt?\n      - Persönliche Wichtigkeit: Wie wertvoll ist dies für Sie?\n\n      Aufgabe: \"$title\"\n      Beschreibung: \"$description\"\n      Hat Frist: $hasDeadline\n      Frist: $deadline\n\n      Richtlinien:\n      - 0-20: Niedrige Priorität, kann verschoben werden\n      - 21-40: Mittlere Priorität, sollte bald erledigt werden\n      - 41-70: Hohe Priorität, wichtig zu vervollständigen\n      - 71-100: Kritische Priorität, dringender Abschluss erforderlich\n\n      Antworten Sie nur mit einer Zahl von 0-100.';
+  }
+
+  @override
+  String aiPromptImportance(Object description, Object title) {
+    return 'Bewerten Sie die Wichtigkeit dieser Todo-Aufgabe von 0-100, mit Fokus auf langfristigen Wert und Auswirkungen.\n\n      Berücksichtigen Sie:\n      - Auswirkungen: Wie sehr zählt es, wenn es erledigt ist?\n      - Langfristiger Wert: Bringt es später Nutzen?\n      - Ausrichtung: Unterstützt es Ihre Ziele/Werte?\n      - Konsequenzen: Was geht verloren, wenn es nie erledigt wird?\n\n      Aufgabe: \"$title\"\n      Beschreibung: \"$description\"\n\n      Richtlinien:\n      - 0-20: Geringe Wichtigkeit\n      - 21-40: Etwas wichtig\n      - 41-70: Wichtig\n      - 71-100: Extrem wichtig\n\n      Antworten Sie nur mit einer Zahl von 0-100.';
   }
 
   @override

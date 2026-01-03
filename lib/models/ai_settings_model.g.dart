@@ -32,13 +32,14 @@ class AISettingsModelAdapter extends TypeAdapter<AISettingsModel> {
       maxRequestsPerMinute: fields[12] == null ? 20 : fields[12] as int,
       customPersonaPrompt: fields[13] == null ? '' : fields[13] as String,
       apiFormat: fields[14] == null ? 'openai' : fields[14] as String,
+      enableImportanceRating: fields[15] == null ? true : fields[15] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, AISettingsModel obj) {
     writer
-      ..writeByte(15)
+      ..writeByte(16)
       ..writeByte(0)
       ..write(obj.enableAIFeatures)
       ..writeByte(1)
@@ -68,7 +69,9 @@ class AISettingsModelAdapter extends TypeAdapter<AISettingsModel> {
       ..writeByte(13)
       ..write(obj.customPersonaPrompt)
       ..writeByte(14)
-      ..write(obj.apiFormat);
+      ..write(obj.apiFormat)
+      ..writeByte(15)
+      ..write(obj.enableImportanceRating);
   }
 
   @override

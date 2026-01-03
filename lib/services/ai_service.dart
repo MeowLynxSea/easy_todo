@@ -65,6 +65,12 @@ class AIService {
             '{title}',
           );
           break;
+        case 'importance':
+          localizedPrompt = l10n.aiPromptImportance(
+            '{description}',
+            '{title}',
+          );
+          break;
         case 'motivation':
           localizedPrompt = l10n.aiPromptMotivation(
             '{date}',
@@ -146,6 +152,25 @@ class AIService {
         - 21-40: Moderate priority, should be done soon
         - 41-70: High priority, important to complete
         - 71-100: Critical priority, urgent completion needed
+
+        Respond with only a number from 0-100.''';
+      case 'importance':
+        return '''Rate the importance of this todo task from 0-100, focusing on long-term value and impact.
+
+        Consider:
+        - Impact: How much does this matter if completed?
+        - Long-term value: Will it benefit you later?
+        - Alignment: Does it support your goals/values?
+        - Consequences: What is lost if it is never done?
+
+        Task: "{title}"
+        Description: "{description}"
+
+        Guidelines:
+        - 0-20: Low importance
+        - 21-40: Some importance
+        - 41-70: Important
+        - 71-100: Extremely important
 
         Respond with only a number from 0-100.''';
       case 'motivation':
@@ -377,6 +402,30 @@ class AIService {
     }
   }
 
+  // Task importance assessment
+  Future<int?> assessImportance(TodoModel todo, String languageCode) async {
+    if (!settings.enableImportanceRating) return null;
+
+    try {
+      final prompt = _getPromptForLanguage('importance', languageCode)
+          .replaceAll('{title}', todo.title)
+          .replaceAll('{description}', todo.description ?? '');
+
+      final result = await callAI(prompt, languageCode);
+      if (result != null) {
+        try {
+          return int.parse(result);
+        } catch (_) {
+          return null;
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error in assessImportance: $e');
+      rethrow;
+    }
+  }
+
   // Motivational message for statistics
   Future<String?> generateMotivationalMessage(
     StatisticsModel statistics,
@@ -543,7 +592,7 @@ class AIService {
     return await callAI(basePrompt, languageCode);
   }
 
-  // Batch process tasks for categorization and priority
+  // Batch process tasks for categorization, priority, and importance
   Future<Map<String, dynamic>> processTasksBatch(
     List<TodoModel> tasks,
     String languageCode,
@@ -573,7 +622,19 @@ class AIService {
               initialDelayMs: 1000, // Reduced initial delay
             );
 
-            results[task.id] = {'category': category, 'priority': priority};
+            await Future.delayed(const Duration(milliseconds: 500));
+
+            final importance = await _retryWithDelay(
+              () => assessImportance(task, languageCode),
+              maxRetries: 2,
+              initialDelayMs: 1000,
+            );
+
+            results[task.id] = {
+              'category': category,
+              'priority': priority,
+              'importance': importance,
+            };
           } catch (e) {
             // Continue with next task
           }

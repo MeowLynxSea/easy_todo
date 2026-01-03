@@ -21,6 +21,7 @@ import 'package:easy_todo/screens/history_screen.dart';
 import 'package:easy_todo/screens/schedule_screen.dart';
 import 'package:easy_todo/screens/statistics_screen.dart';
 import 'package:easy_todo/screens/preference_screen.dart';
+import 'package:easy_todo/screens/importance_quadrant_screen.dart';
 import 'package:easy_todo/screens/forced_update_page.dart';
 import 'package:easy_todo/widgets/auth_wrapper.dart';
 import 'package:easy_todo/widgets/sync_auth_link_handler.dart';
@@ -299,6 +300,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
 
   final List<Widget> _screens = [
     const TodoListScreen(),
+    const ImportanceQuadrantScreen(),
     const ScheduleScreen(),
     const HistoryScreen(),
     const StatisticsScreen(),
@@ -533,6 +535,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     final desktopWeb = isWebDesktop(context);
     final desktopWebWide = isWebDesktopWide(context);
 
+    // Ensure the current index is always in range when tabs change.
+    if (_currentIndex >= _screens.length) {
+      _currentIndex = 0;
+    }
+
     final pageView = PageView(
       controller: _pageController,
       physics: desktopWeb ? const NeverScrollableScrollPhysics() : null,
@@ -590,6 +597,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                         icon: const Icon(Icons.task_alt_outlined),
                         selectedIcon: const Icon(Icons.task_alt),
                         label: Text(l10n.todos),
+                      ),
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.grid_view_outlined),
+                        selectedIcon: const Icon(Icons.grid_view),
+                        label: Text(l10n.importanceQuadrant),
                       ),
                       NavigationRailDestination(
                         icon: const Icon(Icons.calendar_month_outlined),
@@ -656,30 +668,37 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                       ),
                       Expanded(
                         child: _buildNavItem(
+                          icon: Icons.grid_view,
+                          label: l10n.importanceQuadrant,
+                          index: 1,
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildNavItem(
                           icon: Icons.calendar_month,
                           label: l10n.schedule,
-                          index: 1,
+                          index: 2,
                         ),
                       ),
                       Expanded(
                         child: _buildNavItem(
                           icon: Icons.history,
                           label: l10n.history,
-                          index: 2,
+                          index: 3,
                         ),
                       ),
                       Expanded(
                         child: _buildNavItem(
                           icon: Icons.bar_chart,
                           label: l10n.stats,
-                          index: 3,
+                          index: 4,
                         ),
                       ),
                       Expanded(
                         child: _buildNavItem(
                           icon: Icons.settings_outlined,
                           label: l10n.preferences,
-                          index: 4,
+                          index: 5,
                         ),
                       ),
                     ],
@@ -703,6 +722,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
             _GoToTabIntent(3),
         SingleActivator(LogicalKeyboardKey.digit5, control: true):
             _GoToTabIntent(4),
+        SingleActivator(LogicalKeyboardKey.digit6, control: true):
+            _GoToTabIntent(5),
         SingleActivator(LogicalKeyboardKey.digit1, meta: true): _GoToTabIntent(
           0,
         ),
@@ -717,6 +738,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
         ),
         SingleActivator(LogicalKeyboardKey.digit5, meta: true): _GoToTabIntent(
           4,
+        ),
+        SingleActivator(LogicalKeyboardKey.digit6, meta: true): _GoToTabIntent(
+          5,
         ),
       },
       child: Actions(

@@ -4666,10 +4666,22 @@ abstract class AppLocalizations {
   /// **'Priority Sorting'**
   String get prioritySorting;
 
+  /// No description provided for @importanceRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Importance Rating'**
+  String get importanceRating;
+
+  /// No description provided for @importanceRatingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Assess task importance separately from priority'**
+  String get importanceRatingSubtitle;
+
   /// No description provided for @prioritySortingSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Assess task importance and priority'**
+  /// **'Assess task priority (urgency)'**
   String get prioritySortingSubtitle;
 
   /// No description provided for @motivationalMessages.
@@ -5236,6 +5248,36 @@ abstract class AppLocalizations {
   /// **'Importance'**
   String get importance;
 
+  /// No description provided for @importanceQuadrant.
+  ///
+  /// In en, this message translates to:
+  /// **'Quadrants'**
+  String get importanceQuadrant;
+
+  /// No description provided for @important.
+  ///
+  /// In en, this message translates to:
+  /// **'Important'**
+  String get important;
+
+  /// No description provided for @notImportant.
+  ///
+  /// In en, this message translates to:
+  /// **'Not important'**
+  String get notImportant;
+
+  /// No description provided for @urgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Urgent'**
+  String get urgent;
+
+  /// No description provided for @notUrgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Not urgent'**
+  String get notUrgent;
+
   /// No description provided for @noCategoriesAvailable.
   ///
   /// In en, this message translates to:
@@ -5306,6 +5348,12 @@ abstract class AppLocalizations {
     Object hasDeadline,
     Object title,
   );
+
+  /// No description provided for @aiPromptImportance.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate the importance of this todo task from 0-100, focusing on long-term value and impact.\n\n      Consider:\n      - Impact: How much does this matter if completed?\n      - Long-term value: Will it benefit you later?\n      - Alignment: Does it support your goals/values?\n      - Consequences: What is lost if it is never done?\n\n      Task: \"{title}\"\n      Description: \"{description}\"\n\n      Guidelines:\n      - 0-20: Low importance\n      - 21-40: Some importance\n      - 41-70: Important\n      - 71-100: Extremely important\n\n      Respond with only a number from 0-100.'**
+  String aiPromptImportance(Object description, Object title);
 
   /// No description provided for @aiPromptMotivation.
   ///

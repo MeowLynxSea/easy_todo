@@ -114,5 +114,17 @@ void main() {
       final decoded = TodoModel.fromJson(todo.toJson());
       expect(decoded.scheduleColorSeed, 'seed');
     });
+
+    test('round-trips aiImportance', () {
+      final todo = TodoModel(
+        id: 't1',
+        title: 'todo',
+        createdAt: DateTime.utc(2025, 1, 1),
+        aiImportance: 77,
+      );
+
+      final decoded = TodoModel.fromJson(todo.toJson());
+      expect(decoded.aiImportance, 77);
+    });
   });
 }

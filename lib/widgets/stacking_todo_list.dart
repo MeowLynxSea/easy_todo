@@ -13,6 +13,7 @@ class StackingTodoList extends StatefulWidget {
   final Function(TodoModel)? onTap;
   final bool isProcessingCategories;
   final bool isProcessingPriorities;
+  final bool isProcessingImportance;
 
   const StackingTodoList({
     super.key,
@@ -24,6 +25,7 @@ class StackingTodoList extends StatefulWidget {
     this.onTap,
     this.isProcessingCategories = false,
     this.isProcessingPriorities = false,
+    this.isProcessingImportance = false,
   });
 
   @override
@@ -164,6 +166,9 @@ class _StackingTodoListState extends State<StackingTodoList> {
                                 widget.isProcessingPriorities &&
                                 (widget.todos[index].aiPriority == 0 ||
                                     !widget.todos[index].aiProcessed),
+                            showImportanceLoading:
+                                widget.isProcessingImportance &&
+                                (widget.todos[index].aiImportance == 0),
                           ),
                         ),
                       ),
@@ -224,6 +229,9 @@ class _StackingTodoListState extends State<StackingTodoList> {
                           widget.isProcessingPriorities &&
                           (widget.todos[_currentIndex].aiPriority == 0 ||
                               !widget.todos[_currentIndex].aiProcessed),
+                      showImportanceLoading:
+                          widget.isProcessingImportance &&
+                          (widget.todos[_currentIndex].aiImportance == 0),
                     ),
                   ),
                 ),

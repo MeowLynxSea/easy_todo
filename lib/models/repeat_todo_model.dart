@@ -61,6 +61,9 @@ class RepeatTodoModel extends HiveObject {
   @HiveField(17, defaultValue: false)
   bool aiProcessed; // Whether this todo has been processed by AI
 
+  @HiveField(23, defaultValue: 0)
+  int aiImportance; // AI-generated importance (0-100)
+
   // Optional time range for generated todos (minutes from midnight).
   // For repeat todos we store time only (no date).
   @HiveField(18)
@@ -100,6 +103,7 @@ class RepeatTodoModel extends HiveObject {
     this.aiCategory,
     this.aiPriority = 0,
     this.aiProcessed = false,
+    this.aiImportance = 0,
     this.startTimeMinutes,
     this.endTimeMinutes,
     this.backfillEnabled = false,
@@ -121,6 +125,7 @@ class RepeatTodoModel extends HiveObject {
     String? aiCategory,
     int aiPriority = 0,
     bool aiProcessed = false,
+    int aiImportance = 0,
     int? startTimeMinutes,
     int? endTimeMinutes,
     bool backfillEnabled = false,
@@ -150,6 +155,7 @@ class RepeatTodoModel extends HiveObject {
       aiCategory: aiCategory,
       aiPriority: aiPriority,
       aiProcessed: aiProcessed,
+      aiImportance: aiImportance,
       startTimeMinutes: startTimeMinutes,
       endTimeMinutes: endTimeMinutes,
       backfillEnabled: backfillEnabled,
@@ -177,6 +183,7 @@ class RepeatTodoModel extends HiveObject {
     String? aiCategory,
     int? aiPriority,
     bool? aiProcessed,
+    int? aiImportance,
     int? startTimeMinutes,
     int? endTimeMinutes,
     bool? backfillEnabled,
@@ -203,6 +210,7 @@ class RepeatTodoModel extends HiveObject {
       aiCategory: aiCategory ?? this.aiCategory,
       aiPriority: aiPriority ?? this.aiPriority,
       aiProcessed: aiProcessed ?? this.aiProcessed,
+      aiImportance: aiImportance ?? this.aiImportance,
       startTimeMinutes: startTimeMinutes ?? this.startTimeMinutes,
       endTimeMinutes: endTimeMinutes ?? this.endTimeMinutes,
       backfillEnabled: backfillEnabled ?? this.backfillEnabled,
@@ -231,6 +239,7 @@ class RepeatTodoModel extends HiveObject {
       'aiCategory': aiCategory,
       'aiPriority': aiPriority,
       'aiProcessed': aiProcessed,
+      'aiImportance': aiImportance,
       'startTimeMinutes': startTimeMinutes,
       'endTimeMinutes': endTimeMinutes,
       'backfillEnabled': backfillEnabled,
@@ -277,6 +286,7 @@ class RepeatTodoModel extends HiveObject {
       aiCategory: json['aiCategory'],
       aiPriority: json['aiPriority'] ?? 0,
       aiProcessed: json['aiProcessed'] ?? false,
+      aiImportance: json['aiImportance'] ?? 0,
       startTimeMinutes: json['startTimeMinutes'],
       endTimeMinutes: json['endTimeMinutes'],
       backfillEnabled: json['backfillEnabled'] ?? false,

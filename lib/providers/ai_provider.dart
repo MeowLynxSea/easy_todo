@@ -218,6 +218,16 @@ class AIProvider extends ChangeNotifier {
       _processMissingPriority();
     }
 
+    // Check if importance rating was enabled (skip during initialization)
+    if (_settings.enableImportanceRating &&
+        !oldSettings.enableImportanceRating &&
+        !_isInitializing) {
+      debugPrint(
+        'AIProvider: Importance rating enabled, processing unprocessed tasks',
+      );
+      _processMissingImportance();
+    }
+
     // Check if motivational messages setting changed (skip during initialization)
     if (_settings.enableMotivationalMessages !=
             oldSettings.enableMotivationalMessages &&
@@ -304,9 +314,15 @@ class AIProvider extends ChangeNotifier {
     onProcessMissingPriority?.call();
   }
 
+  // Process missing importance for tasks when enabled
+  void _processMissingImportance() {
+    onProcessMissingImportance?.call();
+  }
+
   // Callbacks for TodoProvider to handle missing information
   VoidCallback? onProcessMissingCategorization;
   VoidCallback? onProcessMissingPriority;
+  VoidCallback? onProcessMissingImportance;
 
   Future<bool> testConnection() async {
     if (!isAIServiceValid) {
@@ -438,6 +454,58 @@ class AIProvider extends ChangeNotifier {
       }
     } catch (e) {
       _lastError = 'Error assessing priority: $e';
+      return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<int?> assessImportance(
+    TodoModel todo, {
+    bool forceRefresh = false,
+  }) async {
+    if (!_settings.enableImportanceRating || !isAIServiceValid) {
+      return null;
+    }
+
+    // For completed todos, always prefer cached data to avoid unnecessary API calls
+    if (todo.isCompleted && !forceRefresh) {
+      if (todo.aiImportance > 0) {
+        return todo.aiImportance;
+      }
+    }
+
+    await _ensureCacheInitialized();
+
+    final languageCode = Intl.getCurrentLocale();
+    final cacheKey = AICacheService.getImportanceKey(
+      todo.title,
+      todo.description ?? '',
+      languageCode,
+    );
+
+    if (!forceRefresh) {
+      final cached = await _cacheService.get<int>(cacheKey);
+      if (cached != null) return cached;
+    }
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final importance = await _aiService!.assessImportance(todo, languageCode);
+
+      if (importance != null) {
+        await _cacheService.set(cacheKey, importance);
+        _lastError = null;
+        return importance;
+      } else {
+        _lastError = 'Failed to assess importance';
+        return null;
+      }
+    } catch (e) {
+      _lastError = 'Error assessing importance: $e';
       return null;
     } finally {
       _isLoading = false;
@@ -840,6 +908,15 @@ class AIProvider extends ChangeNotifier {
               hasDeadline: todo.reminderTime != null,
             );
             await _cacheService.set(cacheKey, result['priority']);
+          }
+
+          if (result['importance'] != null) {
+            final cacheKey = AICacheService.getImportanceKey(
+              todo.title,
+              todo.description ?? '',
+              languageCode,
+            );
+            await _cacheService.set(cacheKey, result['importance']);
           }
         } catch (e) {
           debugPrint('Error caching AI result: $e');

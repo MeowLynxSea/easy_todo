@@ -146,9 +146,12 @@ class _TodoListScreenState extends State<TodoListScreen> {
     final showCategoryFilter =
         aiProvider.settings.enableAIFeatures &&
         aiProvider.settings.enableAutoCategorization;
-    final showImportanceSort =
+    final showUrgencySort =
         aiProvider.settings.enableAIFeatures &&
         aiProvider.settings.enablePrioritySorting;
+    final showSignificanceSort =
+        aiProvider.settings.enableAIFeatures &&
+        aiProvider.settings.enableImportanceRating;
 
     final tabCount = 3 + (showCategoryFilter ? 1 : 0);
 
@@ -307,7 +310,8 @@ class _TodoListScreenState extends State<TodoListScreen> {
                           filterProvider,
                           todoProvider,
                           setState,
-                          showImportanceSort: showImportanceSort,
+                          showImportanceSort:
+                              showUrgencySort || showSignificanceSort,
                         ),
                       ],
                     ),
@@ -557,10 +561,12 @@ class _TodoListScreenState extends State<TodoListScreen> {
     return ListView(
       children: SortOrder.values
           .where((order) {
-            // Filter out importance sorting options if not enabled
+            // Filter out AI-based sorting options if not enabled
             if (!showImportanceSort &&
                 (order == SortOrder.importanceAscending ||
-                    order == SortOrder.importanceDescending)) {
+                    order == SortOrder.importanceDescending ||
+                    order == SortOrder.significanceAscending ||
+                    order == SortOrder.significanceDescending)) {
               return false;
             }
             return true;
@@ -578,9 +584,15 @@ class _TodoListScreenState extends State<TodoListScreen> {
                 title = l10n.alphabetical;
                 break;
               case SortOrder.importanceAscending:
-                title = '${l10n.importance} (${l10n.ascending})';
+                title = '${l10n.aiPriorityUrgent} (${l10n.ascending})';
                 break;
               case SortOrder.importanceDescending:
+                title = '${l10n.aiPriorityUrgent} (${l10n.descending})';
+                break;
+              case SortOrder.significanceAscending:
+                title = '${l10n.importance} (${l10n.ascending})';
+                break;
+              case SortOrder.significanceDescending:
                 title = '${l10n.importance} (${l10n.descending})';
                 break;
             }
@@ -1013,6 +1025,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
         onTap: (todo) => _showTodoDetails(todo),
         isProcessingCategories: provider.isProcessingCategories,
         isProcessingPriorities: provider.isProcessingPriorities,
+        isProcessingImportance: provider.isProcessingImportance,
       );
     } else {
       return OptimizedTodoList(

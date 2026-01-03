@@ -22,6 +22,9 @@ class AISettingsModel extends HiveObject {
   @HiveField(5, defaultValue: true)
   bool enablePrioritySorting;
 
+  @HiveField(15, defaultValue: true)
+  bool enableImportanceRating;
+
   @HiveField(6, defaultValue: true)
   bool enableMotivationalMessages;
 
@@ -56,6 +59,7 @@ class AISettingsModel extends HiveObject {
     this.modelName = 'gpt-3.5-turbo',
     this.enableAutoCategorization = true,
     this.enablePrioritySorting = true,
+    this.enableImportanceRating = true,
     this.enableMotivationalMessages = true,
     this.enableSmartNotifications = true,
     this.syncApiKey = false,
@@ -74,6 +78,7 @@ class AISettingsModel extends HiveObject {
     String? modelName,
     bool? enableAutoCategorization,
     bool? enablePrioritySorting,
+    bool? enableImportanceRating,
     bool? enableMotivationalMessages,
     bool? enableSmartNotifications,
     bool? syncApiKey,
@@ -93,6 +98,8 @@ class AISettingsModel extends HiveObject {
           enableAutoCategorization ?? this.enableAutoCategorization,
       enablePrioritySorting:
           enablePrioritySorting ?? this.enablePrioritySorting,
+      enableImportanceRating:
+          enableImportanceRating ?? this.enableImportanceRating,
       enableMotivationalMessages:
           enableMotivationalMessages ?? this.enableMotivationalMessages,
       enableSmartNotifications:
@@ -125,6 +132,7 @@ class AISettingsModel extends HiveObject {
       'modelName': modelName,
       'enableAutoCategorization': enableAutoCategorization,
       'enablePrioritySorting': enablePrioritySorting,
+      'enableImportanceRating': enableImportanceRating,
       'enableMotivationalMessages': enableMotivationalMessages,
       'enableSmartNotifications': enableSmartNotifications,
       'syncApiKey': syncApiKey,
@@ -151,6 +159,9 @@ class AISettingsModel extends HiveObject {
       enablePrioritySorting:
           (json['enablePrioritySorting'] as bool?) ??
           defaults.enablePrioritySorting,
+      enableImportanceRating:
+          (json['enableImportanceRating'] as bool?) ??
+          defaults.enableImportanceRating,
       enableMotivationalMessages:
           (json['enableMotivationalMessages'] as bool?) ??
           defaults.enableMotivationalMessages,

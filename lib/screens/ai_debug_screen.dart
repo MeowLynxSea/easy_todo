@@ -90,6 +90,10 @@ class _AIDebugScreenState extends State<AIDebugScreen> {
                       aiProvider.settings.enablePrioritySorting.toString(),
                     ),
                     _buildInfoRow(
+                      l10n.importanceRating,
+                      aiProvider.settings.enableImportanceRating.toString(),
+                    ),
+                    _buildInfoRow(
                       l10n.motivationalMessages,
                       aiProvider.settings.enableMotivationalMessages.toString(),
                     ),
@@ -129,6 +133,13 @@ class _AIDebugScreenState extends State<AIDebugScreen> {
                       l10n.todosWithAIPriority,
                       todoProvider.allTodos
                           .where((t) => t.aiPriority > 0)
+                          .length
+                          .toString(),
+                    ),
+                    _buildInfoRow(
+                      l10n.importance,
+                      todoProvider.allTodos
+                          .where((t) => t.aiImportance > 0)
                           .length
                           .toString(),
                     ),

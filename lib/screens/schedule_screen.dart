@@ -31,6 +31,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   bool _didInitialJump = false;
   int? _lastVisibleDays;
 
+  final Set<int> _expandedUnscheduledDays = <int>{};
+
   @override
   void initState() {
     super.initState();
@@ -261,9 +263,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               final maxUnscheduled = List<int>.generate(visibleDays, (i) {
                 final dayStart = visibleStart.add(Duration(days: i));
                 final items = itemsByDay[dayStart] ?? const [];
-                return items
-                    .where((e) => e.type == _ItemType.unscheduled)
-                    .length;
+                final unscheduledCount =
+                    items.where((e) => e.type == _ItemType.unscheduled).length;
+                final isExpanded = _expandedUnscheduledDays.contains(
+                  dayStart.millisecondsSinceEpoch,
+                );
+
+                if (unscheduledCount <= 3) return unscheduledCount;
+                return isExpanded ? unscheduledCount : 3;
               }).fold<int>(0, math.max);
 
               final baseUnscheduledItemHeight = isDesktop ? 24.0 : 22.0;
@@ -413,6 +420,18 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                                 isWebDesktop: isDesktop,
                                 incompletePalette: incompletePalette,
                                 completedPalette: completedPalette,
+                                unscheduledExpanded: _expandedUnscheduledDays
+                                    .contains(dayStart.millisecondsSinceEpoch),
+                                onToggleUnscheduledExpanded: () {
+                                  setState(() {
+                                    final key = dayStart.millisecondsSinceEpoch;
+                                    if (_expandedUnscheduledDays.contains(key)) {
+                                      _expandedUnscheduledDays.remove(key);
+                                    } else {
+                                      _expandedUnscheduledDays.add(key);
+                                    }
+                                  });
+                                },
                                 onEdit: _showEditDialog,
                               );
 
@@ -649,6 +668,8 @@ class _TimeGutter extends StatelessWidget {
 }
 
 class _DayColumn extends StatelessWidget {
+  static const int _basePointGroupToleranceMinutes = 5;
+
   final DateTime dayStart;
   final bool isToday;
   final List<_PlacedScheduleItem> items;
@@ -668,6 +689,8 @@ class _DayColumn extends StatelessWidget {
   final bool isWebDesktop;
   final List<Color> incompletePalette;
   final List<Color> completedPalette;
+  final bool unscheduledExpanded;
+  final VoidCallback onToggleUnscheduledExpanded;
   final ValueChanged<TodoModel> onEdit;
 
   const _DayColumn({
@@ -690,6 +713,8 @@ class _DayColumn extends StatelessWidget {
     required this.isWebDesktop,
     required this.incompletePalette,
     required this.completedPalette,
+    required this.unscheduledExpanded,
+    required this.onToggleUnscheduledExpanded,
     required this.onEdit,
   });
 
@@ -815,10 +840,25 @@ class _DayColumn extends StatelessWidget {
   }) {
     if (items.isEmpty) return const [];
 
-    final visibleItems = items;
+    final shouldFold = items.length > 3;
+    final isExpanded = shouldFold && unscheduledExpanded;
 
-    return [
-      for (int i = 0; i < visibleItems.length; i++)
+    final visibleItems = <_PlacedScheduleItem>[];
+    String? toggleLabel;
+
+    if (!shouldFold) {
+      visibleItems.addAll(items);
+    } else if (isExpanded) {
+      visibleItems.addAll(items);
+      toggleLabel = _collapseLabel(context);
+    } else {
+      visibleItems.addAll(items.take(2));
+      toggleLabel = _moreTodosLabel(context, items.length - 2);
+    }
+
+    final children = <Widget>[];
+    for (int i = 0; i < visibleItems.length; i++) {
+      children.add(
         Positioned(
           top: headerHeight + 6 + i * (unscheduledItemHeight + unscheduledGap),
           left: 6,
@@ -838,7 +878,40 @@ class _DayColumn extends StatelessWidget {
             onEdit: () => onEdit(visibleItems[i].todo),
           ),
         ),
-    ];
+      );
+    }
+
+    if (toggleLabel != null) {
+      final i = visibleItems.length;
+      children.add(
+        Positioned(
+          top: headerHeight + 6 + i * (unscheduledItemHeight + unscheduledGap),
+          left: 6,
+          right: 6,
+          height: unscheduledItemHeight,
+          child: _ScheduleToggleChip(
+            label: toggleLabel,
+            dense: dense,
+            textScale: labelTextScale,
+            onTap: onToggleUnscheduledExpanded,
+          ),
+        ),
+      );
+    }
+
+    return children;
+  }
+
+  String _moreTodosLabel(BuildContext context, int count) {
+    final language = Localizations.localeOf(context).languageCode;
+    if (language == 'zh') return '+$count\u4e2a\u5f85\u529e';
+    return '+$count todos';
+  }
+
+  String _collapseLabel(BuildContext context) {
+    final language = Localizations.localeOf(context).languageCode;
+    if (language == 'zh') return '\u6536\u8d77';
+    return 'Collapse';
   }
 
   List<Widget> _buildTimedItems(
@@ -852,11 +925,64 @@ class _DayColumn extends StatelessWidget {
 
     final minBlockHeight = dense ? 18.0 : 22.0;
 
+    final pointChipHeight = dense ? 20.0 : 22.0;
+    final overlapToleranceMinutes = _overlapToleranceMinutes(
+      chipHeight: pointChipHeight,
+    );
+    final pointGroupToleranceMinutes = math.max(
+      _basePointGroupToleranceMinutes,
+      overlapToleranceMinutes,
+    );
+
+    final rangedItems = <_PlacedScheduleItem>[];
+    final pointItems = <_PlacedScheduleItem>[];
+    for (final item in items) {
+      if (item.type == _ItemType.ranged) {
+        rangedItems.add(item);
+      } else {
+        pointItems.add(item);
+      }
+    }
+
+    final pointGroups = <_PointGroup>[];
+    for (final item in pointItems) {
+      final at = item.start;
+      if (at == null) continue;
+
+      final minute = item.minutesFromMidnight;
+      if (pointGroups.isEmpty) {
+        pointGroups.add(
+          _PointGroup(
+            minute: minute,
+            at: at,
+            items: <_PlacedScheduleItem>[item],
+            lastMinute: minute,
+          ),
+        );
+        continue;
+      }
+
+      final lastGroup = pointGroups.last;
+      final withinTolerance =
+          (minute - lastGroup.lastMinute) <= pointGroupToleranceMinutes;
+      if (withinTolerance) {
+        lastGroup.items.add(item);
+        lastGroup.lastMinute = minute;
+      } else {
+        pointGroups.add(
+          _PointGroup(
+            minute: minute,
+            at: at,
+            items: <_PlacedScheduleItem>[item],
+            lastMinute: minute,
+          ),
+        );
+      }
+    }
+
     return [
-      for (final item in items)
-        if (item.type == _ItemType.ranged &&
-            item.start != null &&
-            item.end != null)
+      for (final item in rangedItems)
+        if (item.start != null && item.end != null)
           _buildRangeBlock(
             context,
             item,
@@ -864,17 +990,147 @@ class _DayColumn extends StatelessWidget {
             warmPalette: warmPalette,
             coolPalette: coolPalette,
             compact: compact,
-          )
-        else if ((item.type == _ItemType.startOnly ||
-                item.type == _ItemType.endOnly) &&
-            item.start != null)
-          _buildPointMark(
-            context,
-            item,
-            warmPalette: warmPalette,
-            coolPalette: coolPalette,
           ),
+      for (final group in pointGroups)
+        _buildPointGroupMark(
+          context,
+          group,
+          warmPalette: warmPalette,
+          coolPalette: coolPalette,
+        ),
     ];
+  }
+
+  Widget _buildPointGroupMark(
+    BuildContext context,
+    _PointGroup group, {
+    required List<Color> warmPalette,
+    required List<Color> coolPalette,
+  }) {
+    final representative = group.items.first;
+    final minutes = group.minute;
+    if (minutes < startMinute || minutes >= endMinute) {
+      return const SizedBox.shrink();
+    }
+
+    final tickTop = topAreaHeight + (minutes - startMinute) * minuteHeight;
+
+    final color = _colorFor(
+      representative.todo,
+      warmPalette: warmPalette,
+      coolPalette: coolPalette,
+    );
+
+    final chipHeight = dense ? 20.0 : 22.0;
+    final top = tickTop - chipHeight / 2;
+
+    final count = group.items.length;
+    final timeLabel = _pointGroupTimeLabel(group);
+    final isGrouped = count > 1;
+
+    final label = isGrouped
+        ? '$timeLabel +$count'
+        : '$timeLabel ${representative.todo.title}';
+
+    final onTap = isGrouped
+        ? () => _showPointGroupDialog(context, group)
+        : () => onEdit(representative.todo);
+
+    return Positioned(
+      top: top,
+      left: 6,
+      right: 6,
+      height: chipHeight,
+      child: _ScheduleGroupChip(
+        label: label,
+        color: color,
+        dense: dense,
+        textScale: labelTextScale,
+        isWebDesktop: isWebDesktop,
+        onTap: onTap,
+      ),
+    );
+  }
+
+  void _showPointGroupDialog(BuildContext context, _PointGroup group) {
+    final timeLabel = _pointGroupTimeLabel(group);
+    final materialL10n = MaterialLocalizations.of(context);
+    final screenSize = MediaQuery.sizeOf(context);
+    final dialogWidth = math.min(360.0, screenSize.width * 0.92);
+    final maxHeight = screenSize.height * 0.6;
+    final estimatedListHeight = group.items.length * 52.0;
+    final dialogHeight = math.min(maxHeight, math.max(140.0, estimatedListHeight));
+
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(timeLabel),
+          content: SizedBox(
+            width: dialogWidth,
+            height: dialogHeight,
+            child: Scrollbar(
+              child: ListView.builder(
+                itemCount: group.items.length,
+                itemBuilder: (context, index) {
+                  final item = group.items[index];
+                  final todo = item.todo;
+                  final at = item.start;
+                  final itemTimeLabel = at == null ? null : _formatTime(at);
+
+                  return ListTile(
+                    dense: true,
+                    leading: itemTimeLabel == null
+                        ? null
+                        : SizedBox(
+                            width: 56,
+                            child: Text(
+                              itemTimeLabel,
+                              textAlign: TextAlign.right,
+                            ),
+                          ),
+                    title: Text(
+                      todo.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        onEdit(todo);
+                      });
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(materialL10n.closeButtonLabel),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _pointGroupTimeLabel(_PointGroup group) {
+    final firstAt = group.items.first.start;
+    final lastAt = group.items.last.start;
+    final firstLabel =
+        firstAt == null ? _formatTime(group.at) : _formatTime(firstAt);
+    final lastLabel = lastAt == null ? firstLabel : _formatTime(lastAt);
+
+    if (firstLabel == lastLabel) return firstLabel;
+    return '$firstLabel-$lastLabel';
+  }
+
+  int _overlapToleranceMinutes({required double chipHeight}) {
+    if (minuteHeight <= 0) return 1440;
+    final minutes = (chipHeight / minuteHeight).ceil() - 1;
+    return math.max(0, minutes);
   }
 
   Widget _buildRangeBlock(
@@ -914,46 +1170,6 @@ class _DayColumn extends StatelessWidget {
       right: 6,
       height: height - 2,
       child: _ScheduleBlock(
-        todo: item.todo,
-        color: color,
-        dense: dense,
-        showText: true,
-        textScale: labelTextScale,
-        isWebDesktop: isWebDesktop,
-        onEdit: () => onEdit(item.todo),
-      ),
-    );
-  }
-
-  Widget _buildPointMark(
-    BuildContext context,
-    _PlacedScheduleItem item, {
-    required List<Color> warmPalette,
-    required List<Color> coolPalette,
-  }) {
-    final at = item.start!;
-    final minutes = at.difference(dayStart).inMinutes;
-    if (minutes < startMinute || minutes >= endMinute) {
-      return const SizedBox.shrink();
-    }
-
-    final tickTop = topAreaHeight + (minutes - startMinute) * minuteHeight;
-
-    final color = _colorFor(
-      item.todo,
-      warmPalette: warmPalette,
-      coolPalette: coolPalette,
-    );
-
-    final chipHeight = dense ? 20.0 : 22.0;
-    final top = tickTop - chipHeight / 2;
-
-    return Positioned(
-      top: top,
-      left: 6,
-      right: 6,
-      height: chipHeight,
-      child: _ScheduleChip(
         todo: item.todo,
         color: color,
         dense: dense,
@@ -1046,6 +1262,124 @@ class _DayColumn extends StatelessWidget {
       hash = 0x7fffffff & (hash * 31 + unit);
     }
     return hash;
+  }
+}
+
+class _PointGroup {
+  final int minute;
+  final DateTime at;
+  final List<_PlacedScheduleItem> items;
+  int lastMinute;
+
+  _PointGroup({
+    required this.minute,
+    required this.at,
+    required this.items,
+    required this.lastMinute,
+  });
+}
+
+class _ScheduleToggleChip extends StatelessWidget {
+  final String label;
+  final bool dense;
+  final double textScale;
+  final VoidCallback onTap;
+
+  const _ScheduleToggleChip({
+    required this.label,
+    required this.dense,
+    required this.textScale,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final borderRadius = BorderRadius.circular(10);
+    final theme = Theme.of(context);
+    final baseStyle = theme.textTheme.labelMedium?.copyWith(
+      color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+      fontWeight: FontWeight.w600,
+    );
+    final textStyle = _scaleTextStyle(baseStyle, textScale);
+
+    return Material(
+      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+      borderRadius: borderRadius,
+      child: InkWell(
+        borderRadius: borderRadius,
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: dense ? 8 : 10),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: textStyle,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScheduleGroupChip extends StatelessWidget {
+  final String label;
+  final Color color;
+  final bool dense;
+  final double textScale;
+  final bool isWebDesktop;
+  final VoidCallback onTap;
+
+  const _ScheduleGroupChip({
+    required this.label,
+    required this.color,
+    required this.dense,
+    required this.textScale,
+    required this.isWebDesktop,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final borderRadius = BorderRadius.circular(10);
+    final theme = Theme.of(context);
+
+    final foreground =
+        ThemeData.estimateBrightnessForColor(color) == Brightness.dark
+        ? Colors.white
+        : Colors.black;
+
+    final baseStyle = theme.textTheme.labelMedium?.copyWith(
+      color: foreground.withValues(alpha: 0.9),
+      fontWeight: FontWeight.w700,
+    );
+    final textStyle = _scaleTextStyle(baseStyle, textScale);
+
+    final onLongPress = isWebDesktop ? null : onTap;
+    return Material(
+      color: color.withValues(alpha: 0.85),
+      borderRadius: borderRadius,
+      child: InkWell(
+        borderRadius: borderRadius,
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: dense ? 8 : 10),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: textStyle,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
